@@ -1,6 +1,34 @@
-﻿@{
-    ViewData["CrudAction"] = "Create";
+@model e_commerce_web_admin.Models.ViewModels.CategoryFormViewModel
+@{
+    ViewData["Title"] = "Thêm danh mục";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<partial name="~/Views/Shared/Admin/_CrudFormShell.cshtml" />
+<style>
+    @@keyframes cat-fade-up {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .cat-anim { animation: cat-fade-up 0.5s cubic-bezier(0.22,1,0.36,1) backwards; }
+</style>
 
+@* ── Breadcrumb + Header ── *@
+<div class="mb-6 cat-anim" style="animation-delay:0.05s">
+    <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+        <a asp-action="Index" class="hover:text-brand-600 transition-colors">Danh mục</a>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        <span class="text-slate-600 font-medium">Thêm mới</span>
+    </nav>
+    <h1 class="text-2xl font-bold text-slate-800">Thêm danh mục mới</h1>
+    <p class="text-slate-500 text-sm mt-0.5">Điền đầy đủ thông tin để tạo danh mục sản phẩm</p>
+</div>
+
+@* ── Form ── *@
+<form asp-action="Create" method="post" class="cat-anim" style="animation-delay:0.12s">
+    @Html.AntiForgeryToken()
+    <partial name="_Form" model="Model" />
+</form>
+
+@section Scripts {
+    <script src="~/js/categories.js" asp-append-version="true"></script>
+}

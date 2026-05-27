@@ -1,47 +1,265 @@
-﻿@{
+@{
     ViewData["Title"] = "Bảng điều khiển";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<section class="admin-page">
-    <header class="admin-page-header">
-        <div>
-            <span class="admin-kicker">Tổng quan</span>
-            <h1>Bảng điều khiển</h1>
-            <p>Các nhóm nghiệp vụ admin cần quản lý trực tiếp. Những bảng phụ, bảng lịch sử và bảng liên kết sẽ được hiển thị trong màn hình cha hoặc báo cáo riêng.</p>
-        </div>
-    </header>
+@* ── Entrance animations: keyframes tự chứa, chạy ngay khi trang load ── *@
+<style>
+    @@keyframes db-slide-up {
+        from { opacity: 0; transform: translateY(28px); }
+        to   { opacity: 1; transform: translateY(0);    }
+    }
+    @@keyframes db-slide-down {
+        from { opacity: 0; transform: translateY(-20px); }
+        to   { opacity: 1; transform: translateY(0);     }
+    }
 
-    <div class="admin-dashboard-grid">
-        <section class="admin-dashboard-group">
-            <h2>Danh mục sản phẩm</h2>
-            <a asp-controller="Brands" asp-action="Index">Thương hiệu</a>
-            <a asp-controller="Categories" asp-action="Index">Danh mục</a>
-            <a asp-controller="Products" asp-action="Index">Sản phẩm</a>
-            <a asp-controller="ProductVariants" asp-action="Index">Biến thể sản phẩm</a>
-        </section>
+    /*
+     * animation-fill-mode: backwards
+     * → element GIỮ trạng thái "from" (opacity:0) trong suốt animation-delay
+     * → sau đó TỰ ĐỘNG chạy animation vào, không cần JS
+     */
+    .db-anim-up {
+        animation: db-slide-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    }
+    .db-anim-down {
+        animation: db-slide-down 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    }
+</style>
 
-        <section class="admin-dashboard-group">
-            <h2>Cấu hình sản phẩm</h2>
-            <a asp-controller="Specifications" asp-action="Index">Thông số kỹ thuật</a>
-            <a asp-controller="CategorySpecifications" asp-action="Index">Thông số theo danh mục</a>
-            <a asp-controller="Attributes" asp-action="Index">Thuộc tính biến thể</a>
-            <a asp-controller="AttributeOptions" asp-action="Index">Giá trị thuộc tính</a>
-            <a asp-controller="CategoryVariantAttributes" asp-action="Index">Thuộc tính theo danh mục</a>
-        </section>
-
-        <section class="admin-dashboard-group">
-            <h2>Đơn hàng và người dùng</h2>
-            <a asp-controller="Users" asp-action="Index">Người dùng</a>
-            <a asp-controller="PaymentMethods" asp-action="Index">Phương thức thanh toán</a>
-            <a asp-controller="Orders" asp-action="Index">Đơn hàng</a>
-            <a asp-controller="Ratings" asp-action="Index">Đánh giá</a>
-        </section>
-
-        <section class="admin-dashboard-group">
-            <h2>Marketing</h2>
-            <a asp-controller="Vouchers" asp-action="Index">Voucher</a>
-            <a asp-controller="Campaigns" asp-action="Index">Chiến dịch</a>
-            <a asp-controller="Promotions" asp-action="Index">Chương trình khuyến mãi</a>
-        </section>
+@* Page header *@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 db-anim-down"
+     style="animation-delay: 0.05s">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">Tổng quan hệ thống</h1>
+        <p class="text-slate-500 text-sm mt-0.5">
+            Cập nhật lần cuối: <span id="lastUpdated" class="font-medium text-slate-600">--</span>
+        </p>
     </div>
-</section>
+    <div class="flex items-center gap-2">
+        <select id="periodSelect"
+                class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer">
+            <option value="today">Hôm nay</option>
+            <option value="week">7 ngày qua</option>
+            <option value="month" selected>30 ngày qua</option>
+            <option value="year">Năm nay</option>
+        </select>
+        <button onclick="window.dashboardRefresh && window.dashboardRefresh()"
+                class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            Làm mới
+        </button>
+    </div>
+</div>
+
+@* KPI Cards *@
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 db-anim-up"
+     style="animation-delay: 0.15s">
+
+    @* Doanh thu *@
+    <div class="kpi-card rounded-2xl border border-slate-200 p-5" id="kpi-revenue">
+        <div class="flex items-start justify-between mb-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <i data-lucide="trending-up" class="w-5 h-5 text-emerald-600"></i>
+            </div>
+            <span class="kpi-badge skeleton text-xs font-semibold px-2 py-0.5 rounded-full w-16 h-5 inline-block"></span>
+        </div>
+        <p class="text-slate-500 text-xs font-medium mb-1">Doanh thu</p>
+        <p class="kpi-value skeleton text-2xl font-bold text-slate-800 w-32 h-7 mb-2 block"></p>
+        <div class="chart-container h-10">
+            <canvas class="kpi-spark sparkline" data-chart-id="spark-revenue"></canvas>
+        </div>
+    </div>
+
+    @* Đơn hàng *@
+    <div class="kpi-card rounded-2xl border border-slate-200 p-5" id="kpi-orders">
+        <div class="flex items-start justify-between mb-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                <i data-lucide="shopping-cart" class="w-5 h-5 text-blue-600"></i>
+            </div>
+            <span class="kpi-badge skeleton text-xs font-semibold px-2 py-0.5 rounded-full w-16 h-5 inline-block"></span>
+        </div>
+        <p class="text-slate-500 text-xs font-medium mb-1">Đơn hàng</p>
+        <p class="kpi-value skeleton text-2xl font-bold text-slate-800 w-24 h-7 mb-2 block"></p>
+        <div class="chart-container h-10">
+            <canvas class="kpi-spark sparkline" data-chart-id="spark-orders"></canvas>
+        </div>
+    </div>
+
+    @* Khách hàng *@
+    <div class="kpi-card rounded-2xl border border-slate-200 p-5" id="kpi-customers">
+        <div class="flex items-start justify-between mb-3">
+            <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
+                <i data-lucide="users" class="w-5 h-5 text-violet-600"></i>
+            </div>
+            <span class="kpi-badge skeleton text-xs font-semibold px-2 py-0.5 rounded-full w-16 h-5 inline-block"></span>
+        </div>
+        <p class="text-slate-500 text-xs font-medium mb-1">Khách hàng</p>
+        <p class="kpi-value skeleton text-2xl font-bold text-slate-800 w-28 h-7 mb-2 block"></p>
+        <div class="chart-container h-10">
+            <canvas class="kpi-spark sparkline" data-chart-id="spark-customers"></canvas>
+        </div>
+    </div>
+
+    @* Sản phẩm *@
+    <div class="kpi-card rounded-2xl border border-slate-200 p-5" id="kpi-products">
+        <div class="flex items-start justify-between mb-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+                <i data-lucide="package" class="w-5 h-5 text-orange-600"></i>
+            </div>
+            <span class="kpi-badge skeleton text-xs font-semibold px-2 py-0.5 rounded-full w-16 h-5 inline-block"></span>
+        </div>
+        <p class="text-slate-500 text-xs font-medium mb-1">Sản phẩm</p>
+        <p class="kpi-value skeleton text-2xl font-bold text-slate-800 w-24 h-7 mb-2 block"></p>
+        <div class="chart-container h-10">
+            <canvas class="kpi-spark sparkline" data-chart-id="spark-products"></canvas>
+        </div>
+    </div>
+
+</div>
+
+@* Row 2: Biểu đồ doanh thu + Trạng thái đơn hàng *@
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 db-anim-up"
+     style="animation-delay: 0.28s">
+
+    @* Biểu đồ doanh thu (2/3) *@
+    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="font-bold text-slate-800">Doanh thu theo tháng</h2>
+                <p class="text-slate-400 text-xs mt-0.5">So sánh năm nay vs. năm ngoái</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-3 h-1 rounded-full bg-brand-500 inline-block"></span>
+                    Năm nay
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <span class="w-3 h-1 rounded-full bg-slate-300 inline-block"></span>
+                    Năm ngoái
+                </span>
+            </div>
+        </div>
+        <div class="chart-container h-56 sm:h-64">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+
+    @* Biểu đồ trạng thái đơn hàng (1/3) *@
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="mb-4">
+            <h2 class="font-bold text-slate-800">Trạng thái đơn hàng</h2>
+            <p class="text-slate-400 text-xs mt-0.5">Phân bố theo trạng thái</p>
+        </div>
+        <div class="chart-container h-44 flex items-center justify-center">
+            <canvas id="orderStatusChart"></canvas>
+        </div>
+        <div id="orderStatusLegend" class="mt-4 space-y-2"></div>
+    </div>
+
+</div>
+
+@* Row 3: Lưu lượng truy cập + Doanh thu theo danh mục *@
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 db-anim-up"
+     style="animation-delay: 0.42s">
+
+    @* Biểu đồ traffic (2/3) *@
+    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="font-bold text-slate-800">Lưu lượng truy cập</h2>
+                <p class="text-slate-400 text-xs mt-0.5">7 ngày gần nhất</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs flex-wrap">
+                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-brand-500 inline-block"></span>Phiên</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-violet-400 inline-block"></span>Lượt xem</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-amber-400 inline-block"></span>Người mới</span>
+            </div>
+        </div>
+        <div class="chart-container h-48 sm:h-56">
+            <canvas id="trafficChart"></canvas>
+        </div>
+    </div>
+
+    @* Doanh thu theo danh mục (1/3) *@
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="mb-4">
+            <h2 class="font-bold text-slate-800">Doanh thu theo danh mục</h2>
+            <p class="text-slate-400 text-xs mt-0.5">Tỷ lệ % đóng góp</p>
+        </div>
+        <div id="categoryRevenueBars" class="space-y-4">
+            <div class="skeleton h-4 rounded-full w-full"></div>
+            <div class="skeleton h-4 rounded-full w-4/5"></div>
+            <div class="skeleton h-4 rounded-full w-3/5"></div>
+            <div class="skeleton h-4 rounded-full w-2/5"></div>
+            <div class="skeleton h-4 rounded-full w-1/3"></div>
+            <div class="skeleton h-4 rounded-full w-1/4"></div>
+        </div>
+    </div>
+
+</div>
+
+@* Row 4: Top sản phẩm + Đơn hàng gần đây *@
+<div class="grid grid-cols-1 xl:grid-cols-5 gap-4 db-anim-up"
+     style="animation-delay: 0.56s">
+
+    @* Top 5 sản phẩm (2/5) *@
+    <div class="xl:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="font-bold text-slate-800">Top sản phẩm bán chạy</h2>
+                <p class="text-slate-400 text-xs mt-0.5">Theo doanh thu trong kỳ</p>
+            </div>
+            <a href="/Products" class="text-brand-600 hover:text-brand-700 text-xs font-medium">Xem tất cả →</a>
+        </div>
+        <div id="topProductsList" class="space-y-1">
+            <div class="skeleton h-12 rounded-xl"></div>
+            <div class="skeleton h-12 rounded-xl"></div>
+            <div class="skeleton h-12 rounded-xl"></div>
+            <div class="skeleton h-12 rounded-xl"></div>
+            <div class="skeleton h-12 rounded-xl"></div>
+        </div>
+    </div>
+
+    @* Đơn hàng gần đây (3/5) *@
+    <div class="xl:col-span-3 bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="font-bold text-slate-800">Đơn hàng gần đây</h2>
+                <p class="text-slate-400 text-xs mt-0.5">Đơn hàng được cập nhật mới nhất</p>
+            </div>
+            <a href="/Orders" class="text-brand-600 hover:text-brand-700 text-xs font-medium">Xem tất cả →</a>
+        </div>
+        <div class="overflow-x-auto -mx-5 px-5">
+            <table class="w-full text-sm min-w-[480px]">
+                <thead>
+                    <tr class="border-b border-slate-100">
+                        <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide pb-2 pr-4">Mã đơn</th>
+                        <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide pb-2 pr-4">Khách hàng</th>
+                        <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide pb-2 pr-4">Tổng tiền</th>
+                        <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide pb-2 pr-4">Trạng thái</th>
+                        <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide pb-2">Thời gian</th>
+                    </tr>
+                </thead>
+                <tbody id="recentOrdersBody">
+                    <tr>
+                        <td colspan="5" class="pt-4">
+                            <div class="space-y-2">
+                                <div class="skeleton h-8 rounded-lg"></div>
+                                <div class="skeleton h-8 rounded-lg"></div>
+                                <div class="skeleton h-8 rounded-lg"></div>
+                                <div class="skeleton h-8 rounded-lg"></div>
+                                <div class="skeleton h-8 rounded-lg"></div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+}

@@ -1,6 +1,44 @@
-﻿@{
-    ViewData["CrudAction"] = "Edit";
+@model e_commerce_web_admin.Models.ViewModels.CategoryFormViewModel
+@{
+    ViewData["Title"] = $"Sửa danh mục — {Model.Name}";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<partial name="~/Views/Shared/Admin/_CrudFormShell.cshtml" />
+<style>
+    @@keyframes cat-fade-up {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .cat-anim { animation: cat-fade-up 0.5s cubic-bezier(0.22,1,0.36,1) backwards; }
+</style>
 
+@* ── Breadcrumb + Header ── *@
+<div class="mb-6 cat-anim" style="animation-delay:0.05s">
+    <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+        <a asp-action="Index" class="hover:text-brand-600 transition-colors">Danh mục</a>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        <span class="text-slate-600 font-medium">Chỉnh sửa</span>
+    </nav>
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">@Model.Name</h1>
+            <p class="text-slate-500 text-sm mt-0.5 font-mono">/categories/@Model.Slug</p>
+        </div>
+        <span class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full
+            @(Model.IsActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500")">
+            <span class="w-1.5 h-1.5 rounded-full @(Model.IsActive ? "bg-emerald-500" : "bg-slate-400")"></span>
+            @(Model.IsActive ? "Đang hoạt động" : "Đã tắt")
+        </span>
+    </div>
+</div>
+
+@* ── Form ── *@
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="cat-anim" style="animation-delay:0.12s">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <partial name="_Form" model="Model" />
+</form>
+
+@section Scripts {
+    <script src="~/js/categories.js" asp-append-version="true"></script>
+}
