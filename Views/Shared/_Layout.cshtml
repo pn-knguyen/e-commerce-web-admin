@@ -1,0 +1,96 @@
+﻿@{
+    var pageTitle = ViewData["Title"] as string ?? "Admin";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@pageTitle - E-Commerce Admin</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/e_commerce_web_admin.styles.css" asp-append-version="true" />
+</head>
+<body class="admin-shell">
+    <div class="admin-app">
+        <aside class="admin-sidebar" data-admin-sidebar>
+            <a class="admin-brand" asp-controller="Dashboard" asp-action="Index">
+                <span class="admin-brand-mark">EC</span>
+                <span>
+                    <strong>E-Commerce</strong>
+                    <small>Admin</small>
+                </span>
+            </a>
+
+            <nav class="admin-nav" aria-label="Điều hướng quản trị">
+                <div class="admin-nav-group">
+                    <span class="admin-nav-label">Tổng quan</span>
+                    <a asp-controller="Dashboard" asp-action="Index">Bảng điều khiển</a>
+                </div>
+
+                <div class="admin-nav-group">
+                    <span class="admin-nav-label">Người dùng</span>
+                    <a asp-controller="Users" asp-action="Index">Người dùng</a>
+                </div>
+
+                <div class="admin-nav-group">
+                    <span class="admin-nav-label">Danh mục sản phẩm</span>
+                    <a asp-controller="Brands" asp-action="Index">Thương hiệu</a>
+                    <a asp-controller="Categories" asp-action="Index">Danh mục</a>
+                    <a asp-controller="Products" asp-action="Index">Sản phẩm</a>
+                    <a asp-controller="ProductVariants" asp-action="Index">Biến thể sản phẩm</a>
+                </div>
+
+                <div class="admin-nav-group">
+                    <span class="admin-nav-label">Cấu hình sản phẩm</span>
+                    <a asp-controller="Specifications" asp-action="Index">Thông số kỹ thuật</a>
+                    <a asp-controller="CategorySpecifications" asp-action="Index">Thông số theo danh mục</a>
+                    <a asp-controller="Attributes" asp-action="Index">Thuộc tính biến thể</a>
+                    <a asp-controller="AttributeOptions" asp-action="Index">Giá trị thuộc tính</a>
+                    <a asp-controller="CategoryVariantAttributes" asp-action="Index">Thuộc tính theo danh mục</a>
+                </div>
+
+                <div class="admin-nav-group">
+                    <span class="admin-nav-label">Đơn hàng</span>
+                    <a asp-controller="PaymentMethods" asp-action="Index">Phương thức thanh toán</a>
+                    <a asp-controller="Orders" asp-action="Index">Đơn hàng</a>
+                    <a asp-controller="Ratings" asp-action="Index">Đánh giá</a>
+                </div>
+
+                <div class="admin-nav-group">
+                    <span class="admin-nav-label">Marketing</span>
+                    <a asp-controller="Vouchers" asp-action="Index">Voucher</a>
+                    <a asp-controller="Campaigns" asp-action="Index">Chiến dịch</a>
+                    <a asp-controller="Promotions" asp-action="Index">Chương trình khuyến mãi</a>
+                </div>
+            </nav>
+        </aside>
+
+        <div class="admin-main">
+            <header class="admin-topbar">
+                <button class="admin-icon-button" type="button" data-admin-sidebar-toggle aria-label="Mở menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div>
+                    <span class="admin-topbar-kicker">Trang quản trị</span>
+                    <strong>@pageTitle</strong>
+                </div>
+            </header>
+
+            <main class="admin-content" role="main">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/admin.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

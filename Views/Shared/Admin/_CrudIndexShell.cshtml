@@ -1,0 +1,59 @@
+﻿@{
+    var moduleName = ViewData["ModuleName"] as string ?? "Module";
+    var moduleDescription = ViewData["ModuleDescription"] as string ?? string.Empty;
+    var managementGroup = ViewData["ManagementGroup"] as string ?? "Quản trị";
+    var canCreate = ViewData["CanCreate"] as bool? ?? true;
+}
+
+<section class="admin-page">
+    <header class="admin-page-header">
+        <div>
+            <span class="admin-kicker">@managementGroup</span>
+            <h1>@moduleName</h1>
+            <p>@moduleDescription</p>
+        </div>
+        @if (canCreate)
+        {
+            <div class="admin-page-actions">
+                <a class="admin-button admin-button-primary" asp-action="Create">Thêm mới</a>
+            </div>
+        }
+    </header>
+
+    <section class="admin-panel">
+        <form class="admin-filter" method="get">
+            <label class="admin-field">
+                <span>Từ khóa</span>
+                <input type="search" name="keyword" placeholder="Tìm kiếm" />
+            </label>
+            <label class="admin-field">
+                <span>Trạng thái</span>
+                <select name="status">
+                    <option value="">Tất cả</option>
+                    <option value="active">Đang hoạt động</option>
+                    <option value="inactive">Ngừng hoạt động</option>
+                </select>
+            </label>
+            <button class="admin-button" type="submit">Lọc</button>
+        </form>
+    </section>
+
+    <section class="admin-table-panel">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Thông tin chính</th>
+                    <th>Trạng thái</th>
+                    <th>Cập nhật</th>
+                    <th class="admin-table-actions">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="5" class="admin-empty-cell">Chưa có dữ liệu hiển thị.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</section>
