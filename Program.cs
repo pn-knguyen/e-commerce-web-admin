@@ -1,6 +1,8 @@
 using e_commerce_web_admin.Data;
 using e_commerce_web_admin.Services.Brands;
 using e_commerce_web_admin.Services.Categories;
+using e_commerce_web_admin.Services.CategorySpecifications;
+using e_commerce_web_admin.Services.Specifications;
 using e_commerce_web_admin.Services.Uploads;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +14,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<ICategoryAdminService, CategoryAdminService>();
 builder.Services.AddScoped<IBrandAdminService, BrandAdminService>();
+builder.Services.AddScoped<ISpecificationAdminService, SpecificationAdminService>();
+builder.Services.AddScoped<ICategorySpecAdminService, CategorySpecAdminService>();
 builder.Services.Configure<CloudinaryOptions>(
     builder.Configuration.GetSection(CloudinaryOptions.SectionName));
 builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
