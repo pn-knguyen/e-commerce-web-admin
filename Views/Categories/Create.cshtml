@@ -1,16 +1,12 @@
-@model e_commerce_web_admin.Models.ViewModels.CategoryFormViewModel
+@model e_commerce_web_admin.ViewModels.Categories.CategoryFormViewModel
 @{
     ViewData["Title"] = "Thêm danh mục";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<style>
-    @@keyframes cat-fade-up {
-        from { opacity: 0; transform: translateY(20px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-    .cat-anim { animation: cat-fade-up 0.5s cubic-bezier(0.22,1,0.36,1) backwards; }
-</style>
+@section Styles {
+    <link rel="stylesheet" href="~/css/categories.css" asp-append-version="true" />
+}
 
 @* ── Breadcrumb + Header ── *@
 <div class="mb-6 cat-anim" style="animation-delay:0.05s">
@@ -24,7 +20,7 @@
 </div>
 
 @* ── Form ── *@
-<form asp-action="Create" method="post" class="cat-anim" style="animation-delay:0.12s">
+<form asp-action="Create" method="post" enctype="multipart/form-data" class="cat-anim" style="animation-delay:0.12s">
     @Html.AntiForgeryToken()
     <partial name="_Form" model="Model" />
 </form>

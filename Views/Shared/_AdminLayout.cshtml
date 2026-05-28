@@ -153,7 +153,31 @@
         #adminTopbar {
             animation: fadeSlideDown 0.4s cubic-bezier(0.22,1,0.36,1) 0.1s both;
         }
+        /* ── Sidebar scroll on hover ── */
+        #sidebarNav {
+            overflow-y: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: #334155 transparent;
+        }
+        #sidebarNav:hover {
+            overflow-y: auto;
+        }
+        #sidebarNav::-webkit-scrollbar {
+            width: 4px;
+        }
+        #sidebarNav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #sidebarNav::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        #sidebarNav::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
     </style>
+
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 
 <body class="bg-slate-50 text-slate-800 antialiased">
@@ -163,13 +187,13 @@
          class="fixed inset-0 bg-slate-900/40 z-20 hidden lg:hidden"
          onclick="toggleSidebar()"></div>
 
-    <div class="flex min-h-screen">
+    <div class="flex h-screen overflow-hidden">
 
         @* ═══════════ SIDEBAR ═══════════ *@
         <aside id="adminSidebar"
                class="fixed top-0 left-0 h-screen w-64 bg-slate-900 z-30
-                      flex flex-col overflow-hidden
-                      -translate-x-full lg:translate-x-0 lg:static lg:h-auto">
+                      flex flex-col
+                      -translate-x-full lg:translate-x-0 transition-transform duration-300">
 
             @* Brand *@
             <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-800">
@@ -184,7 +208,8 @@
             </div>
 
             @* Nav *@
-            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" aria-label="Điều hướng quản trị">
+            <nav id="sidebarNav" class="flex-1 py-4 px-3 space-y-1"
+                 aria-label="Điều hướng quản trị">
 
                 <div class="mb-3">
                     <p class="text-slate-500 text-[10px] font-semibold uppercase tracking-widest px-3 mb-1">Tổng quan</p>
@@ -282,11 +307,12 @@
         </aside>
 
         @* ═══════════ MAIN ═══════════ *@
-        <div class="flex-1 flex flex-col min-w-0">
+        <div class="flex-1 flex flex-col min-w-0 lg:ml-64 overflow-y-auto">
 
             @* Topbar *@
             <header id="adminTopbar"
-                    class="sticky top-0 z-10 border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 h-16">
+                    class="sticky top-0 z-10 border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 h-16 shrink-0">
+
                 <div class="flex items-center gap-3">
                     <button id="sidebarToggle"
                             onclick="toggleSidebar()"

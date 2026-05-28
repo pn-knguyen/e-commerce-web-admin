@@ -1,0 +1,119 @@
+@keyframes cat-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cat-anim {
+    animation: cat-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.tree-row-child .tree-connector {
+    position: relative;
+}
+
+.tree-row-child .tree-connector::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 50%;
+    width: 14px;
+    height: 1px;
+    background: #cbd5e1;
+}
+
+.tree-row-child .tree-connector::after {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: -50%;
+    bottom: 50%;
+    width: 1px;
+    background: #cbd5e1;
+}
+
+.cat-row {
+    transition: background 0.15s ease;
+}
+
+.cat-row:hover {
+    background: #f8fafc;
+}
+
+.cat-row-parent {
+    position: relative;
+    background: linear-gradient(to right, rgba(20, 184, 166, 0.04) 0%, transparent 120px);
+}
+
+.cat-row-parent::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #14b8a6, #0d9488);
+    border-radius: 0 3px 3px 0;
+}
+
+.cat-row-child {
+    border-left: 3px solid #e2e8f0;
+}
+
+.category-thumb {
+    position: relative;
+    overflow: hidden;
+}
+
+.category-thumb-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.category-thumb-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.badge-active .dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.depth-guide {
+    display: inline-block;
+    width: 24px;
+    position: relative;
+}
+
+.depth-guide::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: -16px;
+    bottom: -4px;
+    width: 1px;
+    background: #e2e8f0;
+}
