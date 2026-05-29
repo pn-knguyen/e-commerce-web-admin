@@ -60,10 +60,10 @@ public sealed class AvailableSpecOption
 
 public sealed class CategorySpecAssignViewModel
 {
-    [Required]
+    [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Không xác định được danh mục.")]
     public long CategoryId { get; set; }
 
-    [Required(ErrorMessage = "Vui lòng chọn thông số.")]
+    [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Vui lòng chọn thông số.")]
     public long SpecificationId { get; set; }
 
     [StringLength(120, ErrorMessage = "Tên nhóm tối đa 120 ký tự.")]
@@ -77,10 +77,10 @@ public sealed class CategorySpecAssignViewModel
 
 public sealed class CategorySpecUpdateViewModel
 {
-    [Required]
+    [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Không xác định được danh mục.")]
     public long CategoryId { get; set; }
 
-    [Required]
+    [Range(typeof(long), "1", "9223372036854775807", ErrorMessage = "Không xác định được thông số.")]
     public long SpecificationId { get; set; }
 
     [StringLength(120)]

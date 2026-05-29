@@ -20,22 +20,34 @@
         <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
         <span class="text-slate-600 font-medium">@Model.CategoryName</span>
     </nav>
-    <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-sm">
-            <i data-lucide="list-checks" class="w-4 h-4 text-white"></i>
+    <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-sm flex-shrink-0">
+                <i data-lucide="list-checks" class="w-4 h-4 text-white"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-2xl font-bold text-slate-800 truncate">
+                    Thông số kỹ thuật — <span class="text-teal-600">@Model.CategoryName</span>
+                </h1>
+                <p class="text-slate-500 text-sm">
+                    <span class="font-mono text-slate-400 text-xs">/categories/@Model.CategorySlug</span>
+                    &nbsp;·&nbsp;
+                    @Model.TotalAssigned thông số đã gán
+                </p>
+            </div>
         </div>
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800">
-                Thông số kỹ thuật — <span class="text-teal-600">@Model.CategoryName</span>
-            </h1>
-            <p class="text-slate-500 text-sm">
-                <span class="font-mono text-slate-400 text-xs">/categories/@Model.CategorySlug</span>
-                &nbsp;·&nbsp;
-                @Model.TotalAssigned thông số đã gán
-            </p>
-        </div>
+
+        <a asp-controller="Categories" asp-action="Index"
+           class="inline-flex items-center gap-2 text-sm font-medium flex-shrink-0
+                  text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-800
+                  border border-slate-200 hover:border-slate-300
+                  px-4 py-2 rounded-xl transition-all shadow-sm">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Quay lại Danh mục
+        </a>
     </div>
 </div>
+
 
 @* ── Toasts ── *@
 @if (TempData["Success"] != null)
@@ -369,5 +381,5 @@
 </div>
 
 @section Scripts {
-    <script src="~/js/specifications.js" asp-append-version="true"></script>
+    <script src="~/js/category-specifications.js" asp-append-version="true"></script>
 }

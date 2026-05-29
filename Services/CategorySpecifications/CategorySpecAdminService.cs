@@ -25,11 +25,13 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
         var page = Math.Max(1, query.Page);
 
         // Specs đã gán
-        var assignedQuery = _db.CategorySpecifications
+        var allCategoryAssignments = await _db.CategorySpecifications
             .Include(cs => cs.Specification)
             .Where(cs => cs.CategoryId == categoryId)
-            .AsNoTracking();
+            .AsNoTracking()
+            .ToListAsync(ct);
 
+        var assignedQuery = allCategoryAssignments.AsEnumerable();
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = query.Search.Trim();
@@ -38,10 +40,10 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
                 cs.Specification!.Key.Contains(term));
         }
 
-        var allAssigned = await assignedQuery
+        var allAssigned = assignedQuery
             .OrderBy(cs => cs.SortOrder)
             .ThenBy(cs => cs.Specification!.Name)
-            .ToListAsync(ct);
+            .ToList();
 
         // Đếm usage của từng spec trong category này (qua Product)
         var categoryProductIds = await _db.Products
@@ -73,7 +75,7 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
         }).ToList();
 
         // Specs chưa gán
-        var assignedIds = allAssigned.Select(cs => cs.SpecificationId).ToHashSet();
+        var assignedIds = allCategoryAssignments.Select(cs => cs.SpecificationId).ToHashSet();
         var available = await _db.Specifications.AsNoTracking()
             .Where(s => !assignedIds.Contains(s.Id))
             .OrderBy(s => s.Name)
@@ -106,6 +108,12 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
     public async Task<CategorySpecSaveResult> AssignAsync(
         CategorySpecAssignViewModel form, CancellationToken ct = default)
     {
+        var categoryExists = await _db.Categories.AsNoTracking()
+            .AnyAsync(c => c.Id == form.CategoryId, ct);
+
+        if (!categoryExists)
+            return new CategorySpecSaveResult(false, "Không tìm thấy danh mục.");
+
         var spec = await _db.Specifications.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == form.SpecificationId, ct);
 

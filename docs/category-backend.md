@@ -13,6 +13,9 @@ ViewModels/Categories/CategoryViewModels.cs
 Views/Categories/*.cshtml
 wwwroot/js/categories.js
 wwwroot/css/categories.css
+Controllers/CategorySpecificationsController.cs
+Views/CategorySpecifications/Index.cshtml
+wwwroot/js/category-specifications.js
 ```
 
 Ý nghĩa từng nhóm:
@@ -22,7 +25,8 @@ wwwroot/css/categories.css
 - `Services/Categories/CategoryAdminService.cs`: nơi xử lý nghiệp vụ chính: tìm kiếm, phân trang, tạo, sửa, xóa, bật/tắt trạng thái, upload ảnh, validate quan hệ cha con.
 - `Services/Categories/CategoryServiceResults.cs`: các object kết quả trả về từ service để controller biết thao tác thành công hay thất bại.
 - `ViewModels/Categories/CategoryViewModels.cs`: dữ liệu dành riêng cho giao diện admin, không đưa thẳng entity `Category` ra view.
-- `Views/Categories/*.cshtml`, `wwwroot/js/categories.js`, `wwwroot/css/categories.css`: phần giao diện. Backend không đặt logic database trong các file này.
+- `Views/Categories/*.cshtml`, `wwwroot/js/categories.js`, `wwwroot/css/categories.css`: phần giao diện Category. Backend không đặt logic database trong các file này.
+- `CategorySpecificationsController`, `Views/CategorySpecifications/Index.cshtml`, `wwwroot/js/category-specifications.js`: module riêng để cấu hình thông số kỹ thuật theo từng danh mục. Category chỉ dẫn sang module này, không tự xử lý logic gán thông số.
 
 ## 2. Đăng ký service trong Program
 
@@ -31,6 +35,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<ICategoryAdminService, CategoryAdminService>();
+builder.Services.AddScoped<ISpecificationAdminService, SpecificationAdminService>();
+builder.Services.AddScoped<ICategorySpecAdminService, CategorySpecAdminService>();
 builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
 ```
 
@@ -38,6 +44,8 @@ builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
 
 - `ApplicationDbContext` dùng SQL Server thông qua connection string `DefaultConnection`.
 - `ICategoryAdminService` được map sang `CategoryAdminService`, nghĩa là controller chỉ cần yêu cầu interface.
+- `ISpecificationAdminService` được map sang `SpecificationAdminService`, phục vụ CRUD thông số kỹ thuật toàn cục.
+- `ICategorySpecAdminService` được map sang `CategorySpecAdminService`, phục vụ màn hình gán thông số vào danh mục.
 - `IImageUploadService` được map sang `CloudinaryImageUploadService`, giúp module Category upload ảnh mà không cần biết chi tiết Cloudinary hoạt động như thế nào.
 
 ## 3. Controller nhận request và giữ logic mỏng
@@ -760,3 +768,73 @@ Frontend của Category chịu trách nhiệm:
 
 Điểm quan trọng là frontend không tự xử lý nghiệp vụ database. Các ràng buộc như trùng slug, không chọn danh mục con làm cha, không xóa danh mục đang có sản phẩm đều nằm ở service backend.
 
+## 21. Cập nhật theo project hiện tại
+
+Ở project hiện tại, Category không chỉ có CRUD danh mục mà còn là điểm vào để cấu hình thông số kỹ thuật theo từng danh mục.
+
+Trong `Views/Categories/Index.cshtml`, mỗi dòng danh mục có nút đi sang màn hình cấu hình thông số:
+
+```cshtml
+<a asp-controller="CategorySpecifications"
+   asp-action="Index"
+   asp-route-categoryId="@cat.Id"
+   title="Thông số kỹ thuật"
+   class="cat-action-btn cat-action-spec">
+    <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+    <span>Thông số</span>
+</a>
+```
+
+Ý nghĩa:
+
+- Category vẫn chỉ quản lý danh mục.
+- Việc gán thông số vào danh mục được chuyển sang module riêng `CategorySpecification`.
+- URL nhận `categoryId` để biết đang cấu hình thông số cho danh mục nào.
+
+Frontend của Category hiện nằm ở:
+
+```text
+wwwroot/js/categories.js
+wwwroot/css/categories.css
+```
+
+Trong `categories.js`, thao tác bật/tắt trạng thái gọi endpoint backend rồi reload trang:
+
+```javascript
+const response = await fetch(`/Categories/ToggleActive/${id}`, {
+    method: 'POST',
+    headers: {
+        RequestVerificationToken: token,
+        'X-Requested-With': 'XMLHttpRequest',
+    },
+});
+
+if (!response.ok) {
+    throw new Error('Server error');
+}
+
+await response.json();
+window.location.reload();
+```
+
+Lý do reload sau khi bật/tắt:
+
+- Cập nhật lại thống kê tổng danh mục đang bật.
+- Cập nhật lại thống kê danh mục đã tắt.
+- Tránh UI hiển thị lệch với dữ liệu thực tế trong database.
+
+Hiện tại phần thông số theo danh mục đã được tách sang file riêng:
+
+```text
+Views/CategorySpecifications/Index.cshtml
+wwwroot/js/category-specifications.js
+Services/CategorySpecifications/CategorySpecAdminService.cs
+```
+
+Như vậy ranh giới hiện tại là:
+
+- `CategoriesController` và `CategoryAdminService`: CRUD danh mục.
+- `SpecificationsController` và `SpecificationAdminService`: CRUD thông số kỹ thuật toàn cục.
+- `CategorySpecificationsController` và `CategorySpecAdminService`: gán thông số kỹ thuật vào danh mục.
+
+Đây là cách tách hợp lý hơn so với đưa tất cả logic vào một controller lớn, vì mỗi module có nghiệp vụ riêng và dễ bảo trì hơn.

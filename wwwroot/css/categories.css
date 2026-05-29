@@ -122,3 +122,61 @@
     width: 1px;
     background: #e2e8f0;
 }
+
+/* ── Action buttons ── */
+
+/* Nút có icon + label ngắn (Thông số) */
+.cat-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 9px;
+    border-radius: 8px;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+}
+
+.cat-action-spec {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+.cat-action-spec:hover {
+    background: #ddd6fe;
+    color: #6d28d9;
+}
+
+/* Nút icon-only (Sửa, Xoá) */
+.cat-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    transition: background 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+}
+
+.cat-action-edit {
+    color: #0d9488;
+    background: #f0fdfa;
+}
+.cat-action-edit:hover {
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
+.cat-action-delete {
+    color: #ef4444;
+    background: #fff1f2;
+}
+.cat-action-delete:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+

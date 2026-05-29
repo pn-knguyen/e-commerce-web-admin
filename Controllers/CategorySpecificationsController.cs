@@ -40,6 +40,11 @@ public sealed class CategorySpecificationsController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(CategorySpecUpdateViewModel form, CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new { succeeded = false, message = "Dữ liệu cập nhật không hợp lệ." });
+        }
+
         var result = await _service.UpdateAsync(form, ct);
         return Ok(new { result.Succeeded, result.Message });
     }

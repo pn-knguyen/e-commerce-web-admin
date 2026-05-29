@@ -369,9 +369,31 @@
         // Active nav link
         (function markActive() {
             const path = window.location.pathname.toLowerCase();
+
+            // Map sub-pages (không có nav riêng) về parent nav link tương ứng
+            const subPageMap = {
+                '/categoryspecifications': '/categories',
+            };
+
+            // Xác định href cần highlight (có thể là parent)
+            let parentHref = null;
+            for (const [subPath, mappedHref] of Object.entries(subPageMap)) {
+                if (path.startsWith(subPath)) {
+                    parentHref = mappedHref;
+                    break;
+                }
+            }
+
             document.querySelectorAll('.nav-link[href]').forEach(link => {
                 const href = (link.getAttribute('href') || '').toLowerCase();
-                if (href && href !== '/' && path.startsWith(href)) {
+                if (!href || href === '/') return;
+
+                // Khớp trực tiếp với path hiện tại
+                if (path.startsWith(href)) {
+                    link.classList.add('is-active');
+                }
+                // Hoặc khớp via sub-page map
+                else if (parentHref && href === parentHref) {
                     link.classList.add('is-active');
                 }
             });
