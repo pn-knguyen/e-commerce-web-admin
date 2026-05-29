@@ -1,4 +1,5 @@
 using e_commerce_web_admin.Data;
+using e_commerce_web_admin.Services.Attributes;
 using e_commerce_web_admin.Services.Brands;
 using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.Services.CategorySpecifications;
@@ -16,6 +17,7 @@ builder.Services.AddScoped<ICategoryAdminService, CategoryAdminService>();
 builder.Services.AddScoped<IBrandAdminService, BrandAdminService>();
 builder.Services.AddScoped<ISpecificationAdminService, SpecificationAdminService>();
 builder.Services.AddScoped<ICategorySpecAdminService, CategorySpecAdminService>();
+builder.Services.AddScoped<IAttributeAdminService, AttributeAdminService>();
 builder.Services.Configure<CloudinaryOptions>(
     builder.Configuration.GetSection(CloudinaryOptions.SectionName));
 builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();

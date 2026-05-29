@@ -1,0 +1,148 @@
+/* ── Entrance animation ─────────────────────────────────────────────────── */
+@keyframes attr-fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.attr-anim {
+    animation: attr-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* ── Table rows ─────────────────────────────────────────────────────────── */
+.attr-row {
+    transition: background 0.15s ease;
+}
+.attr-row:hover {
+    background: #f8fafc;
+}
+
+/* ── Key / Code badge ───────────────────────────────────────────────────── */
+.attr-code-badge {
+    display: inline-flex;
+    align-items: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #f0fdfa;
+    color: #0d9488;
+    border: 1px solid #99f6e4;
+    white-space: nowrap;
+}
+
+/* ── Option tags ────────────────────────────────────────────────────────── */
+.option-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: #f1f5f9;
+    color: #475569;
+    white-space: nowrap;
+}
+
+/* ── Option row in panel ────────────────────────────────────────────────── */
+.option-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.12s ease;
+}
+.option-row:last-child { border-bottom: none; }
+.option-row:hover { background: #f8fafc; }
+
+/* ── Inline edit input ──────────────────────────────────────────────────── */
+.option-label-input {
+    font-size: 13px;
+    color: #334155;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 8px;
+    background: transparent;
+    width: 100%;
+    transition: border-color 0.15s, background 0.15s;
+}
+.option-label-input:focus {
+    outline: none;
+    border-color: #5eead4;
+    background: #f0fdfa;
+}
+.option-label-input.dirty {
+    border-color: #fbbf24;
+    background: #fffbeb;
+}
+
+/* ── Assign panel (options form) ────────────────────────────────────────── */
+.assign-panel {
+    background: linear-gradient(135deg, #f0fdfa 0%, #e8fdf8 100%);
+    border: 1px solid #99f6e4;
+}
+
+/* ── Action buttons (reuse categories pattern) ──────────────────────────── */
+.attr-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    transition: background 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: none;
+}
+
+.attr-action-edit  { color: #0d9488; background: #f0fdfa; }
+.attr-action-edit:hover  { background: #ccfbf1; color: #0f766e; }
+
+.attr-action-delete { color: #ef4444; background: #fff1f2; }
+.attr-action-delete:hover { background: #fee2e2; color: #dc2626; }
+
+.attr-action-opts {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 9px;
+    border-radius: 8px;
+    background: #ede9fe;
+    color: #7c3aed;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.attr-action-opts:hover { background: #ddd6fe; color: #6d28d9; }
+
+/* ── Loading skeleton ───────────────────────────────────────────────────── */
+.option-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer-attr 1.4s infinite;
+    border-radius: 6px;
+    height: 14px;
+}
+@keyframes shimmer-attr {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── Save indicator ─────────────────────────────────────────────────────── */
+.saving-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #99f6e4;
+    border-top-color: #14b8a6;
+    border-radius: 50%;
+    animation: spin-attr 0.6s linear infinite;
+    display: none;
+}
+@keyframes spin-attr {
+    to { transform: rotate(360deg); }
+}
