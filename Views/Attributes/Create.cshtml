@@ -1,14 +1,19 @@
+@using e_commerce_web_admin.ViewModels.Attributes
 @model e_commerce_web_admin.ViewModels.Attributes.AttributeFormViewModel
 @{
     ViewData["Title"] = "Thêm thuộc tính";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+    if (Model.Options.Count == 0)
+    {
+        Model.Options.Add(new AttributeOptionDraftViewModel());
+    }
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/attributes.css" asp-append-version="true" />
 }
 
-@* Breadcrumb + Header *@
 <div class="mb-6 attr-anim" style="animation-delay:0.04s">
     <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
         <a asp-action="Index" class="hover:text-teal-600 transition-colors">Thuộc tính</a>
@@ -16,14 +21,96 @@
         <span class="text-slate-600 font-medium">Thêm mới</span>
     </nav>
     <h1 class="text-2xl font-bold text-slate-800">Thêm thuộc tính mới</h1>
-    <p class="text-slate-500 text-sm mt-0.5">Tạo nhóm thuộc tính dùng cho biến thể sản phẩm (ví dụ: Màu sắc, Kích cỡ)</p>
+    <p class="text-slate-500 text-sm mt-0.5">Tạo nhóm thuộc tính và các giá trị bắt buộc dùng cho biến thể sản phẩm.</p>
 </div>
 
 <form asp-action="Create" method="post" class="attr-anim" style="animation-delay:0.1s">
     @Html.AntiForgeryToken()
     <partial name="_Form" model="Model" />
-</form>
 
-@section Scripts {
-    <script src="~/js/attributes.js" asp-append-version="true"></script>
-}
+    <div class="mt-6 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div
+            class="px-5 py-4 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <i data-lucide="tags" class="w-4 h-4 text-violet-600"></i>
+                    Giá trị thuộc tính <span class="text-red-500">*</span>
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">Cần có ít nhất một giá trị để thuộc tính có thể dùng cho biến thể
+                    sản phẩm.</p>
+                </div>
+                <button type="button"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-2 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-100"
+                        data-add-create-option>
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    Thêm option
+                </button>
+            </div>
+
+            <div
+                class="grid grid-cols-[1fr_1fr_44px] gap-3 px-5 py-3 bg-slate-50/80 border-b border-slate-100 max-md:hidden">
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Mã giá trị</span>
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tên hiển thị</span>
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center">Xóa</span>
+            </div>
+
+            <div class="divide-y divide-slate-100" data-create-option-list>
+                @for (var i = 0; i < Model.Options.Count; i++)
+                {
+                    <div class="create-option-row" data-create-option-row>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1 md:hidden">Mã giá trị</label>
+                            <input asp-for="Options[i].Value" maxlength="120" placeholder="ví dụ: red, size_xl" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 font-mono
+                            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+                                   data-create-option-value />
+                            <span asp-validation-for="Options[i].Value" class="text-xs text-red-500 mt-1 block"></span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1 md:hidden">Tên hiển thị</label>
+                            <input asp-for="Options[i].Label" maxlength="255" placeholder="ví dụ: Đỏ, Size XL" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800
+                            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+                                   data-create-option-label />
+                            <span asp-validation-for="Options[i].Label" class="text-xs text-red-500 mt-1 block"></span>
+                        </div>
+                        <button type="button" class="attr-action-icon attr-action-delete create-option-remove"
+                                title="Xóa dòng option" data-remove-create-option>
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <div class="px-5 py-3 bg-slate-50/70">
+                <span asp-validation-for="Options" class="text-xs text-red-500 block"></span>
+            </div>
+        </div>
+
+        <template id="createOptionRowTemplate">
+            <div class="create-option-row" data-create-option-row>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1 md:hidden">Mã giá trị</label>
+                    <input name="Options[__index__].Value" maxlength="120" placeholder="ví dụ: red, size_xl" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 font-mono
+                    focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+                           data-create-option-value />
+                    <span class="text-xs text-red-500 mt-1 block" data-valmsg-for="Options[__index__].Value"
+                          data-valmsg-replace="true"></span>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1 md:hidden">Tên hiển thị</label>
+                    <input name="Options[__index__].Label" maxlength="255" placeholder="ví dụ: Đỏ, Size XL" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800
+                    focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+                           data-create-option-label />
+                    <span class="text-xs text-red-500 mt-1 block" data-valmsg-for="Options[__index__].Label"
+                          data-valmsg-replace="true"></span>
+                </div>
+                <button type="button" class="attr-action-icon attr-action-delete create-option-remove"
+                        title="Xóa dòng option" data-remove-create-option>
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </template>
+    </form>
+
+    @section Scripts {
+        <script src="~/js/attributes.js" asp-append-version="true"></script>
+    }

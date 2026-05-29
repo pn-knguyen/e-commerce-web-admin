@@ -157,13 +157,13 @@
     else
     {
         @* Table header *@
-        <div class="px-6 py-3.5 bg-gradient-to-r from-slate-50 to-slate-50/50 border-b border-slate-100
-                    grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center">
+        <div class="category-index-grid px-6 py-3.5 bg-gradient-to-r from-slate-50 to-slate-50/50 border-b border-slate-100">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Danh mục</span>
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center w-20">Thứ tự</span>
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center w-24">Sản phẩm</span>
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center w-28">Trạng thái</span>
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-36">Thao tác</span>
+            <div class="category-order-cell text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Thứ tự</div>
+            <div class="category-product-cell text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Sản phẩm</div>
+            <div class="category-status-cell text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Trạng thái</div>
+            <div class="category-config-cell text-center text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">Cấu hình</div>
+            <div class="category-actions-cell text-right text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">Thao tác</div>
         </div>
 
         @* Rows *@
@@ -171,8 +171,7 @@
             @foreach (var cat in Model.Categories)
             {
                 bool isParent = cat.Depth == 0;
-                <div class="cat-row @(isParent ? "cat-row-parent" : "cat-row-child")
-                            grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center
+                <div class="cat-row category-index-grid @(isParent ? "cat-row-parent" : "cat-row-child")
                             px-6 @(isParent ? "py-4" : "py-3") @(isParent ? "" : "bg-slate-50/40")"
                      data-id="@cat.Id">
 
@@ -239,7 +238,7 @@
                     </div>
 
                     @* ─ Thứ tự ─ *@
-                    <div class="w-20 text-center">
+                    <div class="category-order-cell text-center">
                         <span class="inline-block text-xs font-semibold rounded-lg px-2.5 py-1
                                      @(isParent ? "text-teal-700 bg-teal-50" : "text-slate-500 bg-slate-100")">
                             @cat.Position
@@ -247,7 +246,7 @@
                     </div>
 
                     @* ─ Số sản phẩm ─ *@
-                    <div class="w-24 text-center">
+                    <div class="category-product-cell text-center">
                         @if (isParent)
                         {
                             @* Cha: tổng gồm cả con → màu amber nổi bật *@
@@ -270,7 +269,7 @@
                     </div>
 
                     @* ─ Trạng thái toggle ─ *@
-                    <div class="w-28 text-center">
+                    <div class="category-status-cell text-center">
                         <button type="button"
                                 data-category-toggle
                                 data-category-id="@cat.Id"
@@ -286,24 +285,29 @@
                         </button>
                     </div>
 
-                    @* ─ Action buttons (luôn hiển thị) ─ *@
-                    <div class="w-36 flex items-center justify-end gap-1">
-                        @* Thông số — icon + label nhỏ *@
+                    @* ─ Cấu hình (Thông số + Thuộc tính biến thể) ─ *@
+                    <div class="category-config-cell flex items-center gap-1.5 justify-center">
                         <a asp-controller="CategorySpecifications" asp-action="Index" asp-route-categoryId="@cat.Id"
-                           title="Thông số kỹ thuật"
+                           title="Thông số kỹ thuật — mô tả đặc điểm sản phẩm"
                            class="cat-action-btn cat-action-spec">
-                            <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                            <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 flex-shrink-0"></i>
                             <span>Thông số</span>
                         </a>
+                        <a asp-controller="CategoryVariantAttributes" asp-action="Index" asp-route-categoryId="@cat.Id"
+                           title="Thuộc tính biến thể — xác định trục biến thể (Màu sắc, Kích cỡ…)"
+                           class="cat-action-btn cat-action-attr">
+                            <i data-lucide="list-filter" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                            <span>Thuộc tính</span>
+                        </a>
+                    </div>
 
-                        @* Sửa — icon only *@
+                    @* ─ Thao tác (Sửa + Xoá) ─ *@
+                    <div class="category-actions-cell flex items-center justify-end gap-1">
                         <a asp-action="Edit" asp-route-id="@cat.Id"
                            title="Chỉnh sửa"
                            class="cat-action-icon cat-action-edit">
                             <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                         </a>
-
-                        @* Xoá — icon only *@
                         <form asp-action="Delete"
                               asp-route-id="@cat.Id"
                               method="post"

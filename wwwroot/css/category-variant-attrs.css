@@ -1,0 +1,68 @@
+/* ══════════════════════════════════════════════════════════════════════
+   Category Variant Attributes — CSS (teal theme)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Animations ──────────────────────────────────────────────────────── */
+@keyframes cva-fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.cva-anim {
+    animation: cva-fade-in 0.35s ease both;
+}
+
+/* ── Code badge ──────────────────────────────────────────────────────── */
+.cva-code-badge {
+    display: inline-block;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #0f766e;
+    background: #f0fdfa;
+    border: 1px solid #99f6e4;
+    border-radius: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Table row hover ─────────────────────────────────────────────────── */
+.cva-row {
+    transition: background-color 0.15s ease;
+}
+
+.cva-row:hover {
+    background-color: #f0fdfa;
+}
+
+/* ── Assign panel ────────────────────────────────────────────────────── */
+.cva-assign-panel {
+    background: linear-gradient(135deg, #f0fdfa 0%, #f0fdf4 100%);
+    border: 1px solid #99f6e4;
+}
+
+/* ── Remove button ───────────────────────────────────────────────────── */
+.cva-btn-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #ef4444;
+    background: #fef2f2;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.cva-btn-remove:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}

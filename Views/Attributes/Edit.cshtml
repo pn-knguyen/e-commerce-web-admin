@@ -20,7 +20,8 @@
     </nav>
     <div class="flex items-center justify-between gap-4">
         <div class="flex items-center gap-3 min-w-0">
-            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-sm flex-shrink-0">
+            <div
+                class="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-sm flex-shrink-0">
                 <i data-lucide="list-filter" class="w-4 h-4 text-white"></i>
             </div>
             <div class="min-w-0">
@@ -28,11 +29,10 @@
                 <p class="text-slate-400 text-xs font-mono">code: @Model.Form.Code</p>
             </div>
         </div>
-        <a asp-action="Index"
-           class="inline-flex items-center gap-2 text-sm font-medium flex-shrink-0
-                  text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-800
-                  border border-slate-200 hover:border-slate-300
-                  px-4 py-2 rounded-xl transition-all shadow-sm">
+        <a asp-action="Index" class="inline-flex items-center gap-2 text-sm font-medium flex-shrink-0
+            text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-800
+            border border-slate-200 hover:border-slate-300
+            px-4 py-2 rounded-xl transition-all shadow-sm">
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             Quay lại
         </a>
@@ -46,7 +46,8 @@
         <i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>
     </div>
     <span class="flex-1" data-toast-text></span>
-    <button type="button" data-dismiss-target="toastSuccess" class="text-emerald-400 hover:text-emerald-600 transition-colors">
+    <button type="button" data-dismiss-target="toastSuccess"
+            class="text-emerald-400 hover:text-emerald-600 transition-colors">
         <i data-lucide="x" class="w-4 h-4"></i>
     </button>
 </div>
@@ -64,14 +65,16 @@
 @* TempData server-side *@
 @if (TempData["Success"] != null)
 {
-    <div class="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm shadow-sm">
+    <div
+        class="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm shadow-sm">
         <i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>
         <span>@TempData["Success"]</span>
     </div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm shadow-sm">
+    <div
+        class="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm shadow-sm">
         <i data-lucide="alert-circle" class="w-4 h-4 text-red-500"></i>
         <span>@TempData["Error"]</span>
     </div>
@@ -90,34 +93,38 @@
             <i data-lucide="tag" class="w-3.5 h-3.5 text-violet-600"></i>
         </div>
         <h2 class="text-lg font-bold text-slate-800">Giá trị (Options)</h2>
-        <span class="inline-flex items-center justify-center text-xs font-bold bg-violet-100 text-violet-700 rounded-full px-2 py-0.5"
-              id="optionCount">—</span>
+        <span
+        class="inline-flex items-center justify-center text-xs font-bold bg-violet-100 text-violet-700 rounded-full px-2 py-0.5"
+        id="optionCount">—</span>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         @* Options list *@
         <div class="lg:col-span-2">
-            <div id="optionsPanel"
-                 class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
+            <div id="optionsPanel" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
                  data-attribute-id="@Model.Form.Id">
 
-                <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-violet-50/60 to-transparent">
+                <div
+                    class="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-violet-50/60 to-transparent">
                     <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Danh sách giá trị</p>
                     <div class="relative">
-                        <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none"></i>
-                        <input id="optionFilter" type="text"
-                               placeholder="Lọc nhanh..."
+                        <i data-lucide="search"
+                           class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none"></i>
+                        <input id="optionFilter" type="text" placeholder="Lọc nhanh..."
                                class="pl-7 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-700
-                                      focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition w-36" />
+                        focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition w-36" />
                     </div>
                 </div>
 
-                <div class="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-4 py-2 bg-slate-50/80 border-b border-slate-100">
-                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Value (code)</span>
-                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Label (hiển thị)</span>
-                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center w-12">Dùng</span>
-                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-right w-16">Xoá</span>
+                <div
+                    class="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-4 py-2 bg-slate-50/80 border-b border-slate-100">
+                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Mã giá trị</span>
+                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Tên hiển thị</span>
+                    <span
+                    class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center w-12">Dùng</span>
+                    <span
+                    class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-right w-16">Xoá</span>
                 </div>
 
                 <div id="optionsList" class="divide-y divide-slate-50 max-h-96 overflow-y-auto"></div>
@@ -134,27 +141,23 @@
                 <form id="addOptionForm" class="space-y-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-                            Value <span class="text-red-500">*</span>
+                            Mã giá trị <span class="text-red-500">*</span>
                             <span class="font-normal text-slate-400">(snake_case)</span>
                         </label>
-                        <input type="text" name="value"
-                               placeholder="ví dụ: red, size_xl"
-                               class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 font-mono
-                                      focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <input type="text" name="value" placeholder="ví dụ: red, size_xl" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 font-mono
+                        focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-                            Label <span class="text-red-500">*</span>
+                            Tên hiển thị <span class="text-red-500">*</span>
                         </label>
-                        <input type="text" name="label"
-                               placeholder="ví dụ: Đỏ, Size XL"
-                               class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800
-                                      focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <input type="text" name="label" placeholder="ví dụ: Đỏ, Size XL" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800
+                        focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
                     </div>
                     <button type="submit"
                             class="w-full flex items-center justify-center gap-2
-                                   bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700
-                                   text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md">
+                        bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700
+                        text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md">
                         <i data-lucide="plus" class="w-4 h-4"></i>
                         Thêm
                     </button>

@@ -36,6 +36,9 @@ public sealed class AttributesController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(AttributeFormViewModel form, CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+            return View(form);
+
         var result = await _service.CreateAsync(form, ct);
         if (!result.Succeeded)
         {
@@ -58,6 +61,14 @@ public sealed class AttributesController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(long id, AttributeFormViewModel form, CancellationToken ct)
     {
+        if (!ModelState.IsValid)
+        {
+            var invalidVm = await _service.GetEditViewAsync(id, ct);
+            if (invalidVm is null) return NotFound();
+            invalidVm.Form = form;
+            return View(invalidVm);
+        }
+
         var result = await _service.UpdateAsync(id, form, ct);
         if (!result.Succeeded)
         {

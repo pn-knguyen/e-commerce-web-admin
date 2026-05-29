@@ -45,14 +45,27 @@ public sealed class AttributeFormViewModel
 {
     public long? Id { get; set; }
 
-    [Required(ErrorMessage = "Code là bắt buộc.")]
-    [StringLength(80, ErrorMessage = "Code tối đa 80 ký tự.")]
-    [RegularExpression(@"^[a-z0-9_]+$", ErrorMessage = "Code chỉ gồm chữ thường, số và dấu gạch dưới.")]
+    [Required(ErrorMessage = "Mã thuộc tính là bắt buộc.")]
+    [StringLength(80, ErrorMessage = "Mã thuộc tính tối đa 80 ký tự.")]
+    [RegularExpression(@"^[a-z0-9_]+$", ErrorMessage = "Mã thuộc tính chỉ gồm chữ thường a-z, số và dấu gạch dưới (_).")]
     public string Code { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Tên thuộc tính là bắt buộc.")]
     [StringLength(255, ErrorMessage = "Tên tối đa 255 ký tự.")]
     public string Name { get; set; } = string.Empty;
+
+    public List<AttributeOptionDraftViewModel> Options { get; set; } = [];
+}
+
+public sealed class AttributeOptionDraftViewModel
+{
+    [Required(ErrorMessage = "Mã giá trị là bắt buộc.")]
+    [StringLength(120, ErrorMessage = "Mã giá trị tối đa 120 ký tự.")]
+    public string Value { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Tên hiển thị là bắt buộc.")]
+    [StringLength(255, ErrorMessage = "Tên hiển thị tối đa 255 ký tự.")]
+    public string Label { get; set; } = string.Empty;
 }
 
 // ── Options ────────────────────────────────────────────────────────────────
@@ -78,12 +91,12 @@ public sealed class AttributeOptionFormViewModel
 {
     public long AttributeId { get; set; }
 
-    [Required(ErrorMessage = "Value là bắt buộc.")]
-    [StringLength(120, ErrorMessage = "Value tối đa 120 ký tự.")]
+    [Required(ErrorMessage = "Mã giá trị là bắt buộc.")]
+    [StringLength(120, ErrorMessage = "Mã giá trị tối đa 120 ký tự.")]
     public string Value { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Label là bắt buộc.")]
-    [StringLength(255, ErrorMessage = "Label tối đa 255 ký tự.")]
+    [Required(ErrorMessage = "Tên hiển thị là bắt buộc.")]
+    [StringLength(255, ErrorMessage = "Tên hiển thị tối đa 255 ký tự.")]
     public string Label { get; set; } = string.Empty;
 }
 
@@ -91,8 +104,8 @@ public sealed class AttributeOptionUpdateViewModel
 {
     public long Id { get; set; }
 
-    [Required(ErrorMessage = "Label là bắt buộc.")]
-    [StringLength(255, ErrorMessage = "Label tối đa 255 ký tự.")]
+    [Required(ErrorMessage = "Tên hiển thị là bắt buộc.")]
+    [StringLength(255, ErrorMessage = "Tên hiển thị tối đa 255 ký tự.")]
     public string Label { get; set; } = string.Empty;
 }
 

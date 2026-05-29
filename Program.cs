@@ -3,8 +3,10 @@ using e_commerce_web_admin.Services.Attributes;
 using e_commerce_web_admin.Services.Brands;
 using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.Services.CategorySpecifications;
+using e_commerce_web_admin.Services.CategoryVariantAttributes;
 using e_commerce_web_admin.Services.Specifications;
 using e_commerce_web_admin.Services.Uploads;
+using e_commerce_web_admin.Services.Vouchers;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +20,8 @@ builder.Services.AddScoped<IBrandAdminService, BrandAdminService>();
 builder.Services.AddScoped<ISpecificationAdminService, SpecificationAdminService>();
 builder.Services.AddScoped<ICategorySpecAdminService, CategorySpecAdminService>();
 builder.Services.AddScoped<IAttributeAdminService, AttributeAdminService>();
+builder.Services.AddScoped<ICvaAdminService, CvaAdminService>();
+builder.Services.AddScoped<IVoucherAdminService, VoucherAdminService>();
 builder.Services.Configure<CloudinaryOptions>(
     builder.Configuration.GetSection(CloudinaryOptions.SectionName));
 builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();

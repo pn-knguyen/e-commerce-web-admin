@@ -50,13 +50,86 @@ document.addEventListener('submit', e => {
     const optionCount = parseInt(form.dataset.optionCount ?? '0', 10);
     const categoryCount = parseInt(form.dataset.categoryCount ?? '0', 10);
 
-    let warn = '';
-    if (categoryCount > 0) warn += `\n⚠️ Đang gán cho ${categoryCount} danh mục.`;
-    if (optionCount > 0)   warn += `\n⚠️ Còn ${optionCount} giá trị (option).`;
+    if (categoryCount > 0 || optionCount > 0) {
+        e.preventDefault();
 
-    const msg = `Xoá thuộc tính "${name}"?${warn}\n\nHành động này không thể hoàn tác.`;
-    if (!confirm(msg)) e.preventDefault();
+        const blockers = [];
+        if (categoryCount > 0) blockers.push(`${categoryCount} danh mục`);
+        if (optionCount > 0) blockers.push(`${optionCount} giá trị`);
+
+        alert(`Không thể xoá "${name}" vì đang được dùng (${blockers.join(', ')}).`);
+        return;
+    }
+
+    if (!confirm(`Bạn có chắc muốn xoá thuộc tính "${name}"?`)) {
+        e.preventDefault();
+    }
 });
+
+/* ── Create page option drafts ──────────────────────────────────────────── */
+
+const createOptionList = document.querySelector('[data-create-option-list]');
+if (createOptionList) {
+    const createOptionTemplate = document.getElementById('createOptionRowTemplate');
+    const createOptionAddBtn = document.querySelector('[data-add-create-option]');
+    const createAttributeForm = createOptionList.closest('form');
+
+    function getCreateOptionRows() {
+        return [...createOptionList.querySelectorAll('[data-create-option-row]')];
+    }
+
+    function reindexCreateOptionRows() {
+        getCreateOptionRows().forEach((row, index) => {
+            const valueInput = row.querySelector('[data-create-option-value]');
+            const labelInput = row.querySelector('[data-create-option-label]');
+            const valueError = row.querySelector('[data-valmsg-for$=".Value"]');
+            const labelError = row.querySelector('[data-valmsg-for$=".Label"]');
+
+            if (valueInput) valueInput.name = `Options[${index}].Value`;
+            if (labelInput) labelInput.name = `Options[${index}].Label`;
+            if (valueError) valueError.dataset.valmsgFor = `Options[${index}].Value`;
+            if (labelError) labelError.dataset.valmsgFor = `Options[${index}].Label`;
+        });
+    }
+
+    function appendCreateOptionRow() {
+        if (!createOptionTemplate) return;
+
+        const index = getCreateOptionRows().length;
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = createOptionTemplate.innerHTML.replaceAll('__index__', String(index)).trim();
+
+        const row = wrapper.firstElementChild;
+        if (!row) return;
+
+        createOptionList.appendChild(row);
+        row.querySelector('[data-create-option-value]')?.focus();
+        lucide.createIcons({ nodes: [row] });
+    }
+
+    createOptionAddBtn?.addEventListener('click', appendCreateOptionRow);
+
+    createOptionList.addEventListener('click', e => {
+        const removeBtn = e.target.closest('[data-remove-create-option]');
+        if (!removeBtn) return;
+
+        const rows = getCreateOptionRows();
+        const row = removeBtn.closest('[data-create-option-row]');
+        if (!row) return;
+
+        if (rows.length === 1) {
+            row.querySelectorAll('input').forEach(input => {
+                input.value = '';
+            });
+            return;
+        }
+
+        row.remove();
+        reindexCreateOptionRows();
+    });
+
+    createAttributeForm?.addEventListener('submit', reindexCreateOptionRows);
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    OPTIONS PANEL  (chỉ hoạt động trên trang Edit)
@@ -144,7 +217,7 @@ if (optionsPanel) {
         } catch (err) {
             optionsList.innerHTML = `
                 <div class="p-4 text-center text-sm text-red-500">
-                    Không tải được danh sách. <button class="underline" onclick="loadOptions()">Thử lại</button>
+                    Không tải được danh sách. <button type="button" class="underline" data-retry-options>Thử lại</button>
                 </div>`;
         }
     }
@@ -161,6 +234,12 @@ if (optionsPanel) {
     });
 
     optionsList?.addEventListener('click', async e => {
+        const retryBtn = e.target.closest('[data-retry-options]');
+        if (retryBtn) {
+            await loadOptions();
+            return;
+        }
+
         /* Save button */
         const saveBtn = e.target.closest('[data-save-btn]');
         if (saveBtn) {
@@ -199,8 +278,12 @@ if (optionsPanel) {
             const row     = deleteBtn.closest('.option-row');
             const optionId = row.dataset.optionId;
 
-            const warn = usage > 0 ? `\n⚠️ Đang dùng bởi ${usage} biến thể sản phẩm.` : '';
-            if (!confirm(`Xoá option "${label}"?${warn}`)) return;
+            if (usage > 0) {
+                alert(`Không thể xoá option "${label}" vì đang được dùng bởi ${usage} biến thể sản phẩm.`);
+                return;
+            }
+
+            if (!confirm(`Bạn có chắc muốn xoá option "${label}"?`)) return;
 
             try {
                 const data = await apiPost(`/Attributes/Options/${optionId}/Delete`, {});
@@ -233,7 +316,7 @@ if (optionsPanel) {
         };
 
         if (!payload.value || !payload.label) {
-            showBanner('Vui lòng nhập đầy đủ Value và Label.', 'error');
+            showBanner('Vui lòng nhập đầy đủ mã giá trị và tên hiển thị.', 'error');
             return;
         }
 

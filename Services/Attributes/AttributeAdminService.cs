@@ -2,6 +2,7 @@ using e_commerce_web_admin.Data;
 using e_commerce_web_admin.ViewModels.Attributes;
 using Microsoft.EntityFrameworkCore;
 using AttributeEntity = e_commerce_web_admin.Models.Entities.Attribute;
+using AttributeOptionEntity = e_commerce_web_admin.Models.Entities.AttributeOption;
 
 namespace e_commerce_web_admin.Services.Attributes;
 
@@ -30,11 +31,14 @@ public sealed class AttributeAdminService : IAttributeAdminService
 
         var totalCount = await baseQuery.CountAsync(ct);
 
-        // Stats (single pass via SQL aggregation, not in-memory)
-        var stats = await _db.Attributes.AsNoTracking().Select(a => new
+        // Stats follow the same filtered dataset as the list, but ignore pagination.
+        var stats = await baseQuery.Select(a => new
         {
-            TotalOptions  = (int)_db.AttributeOptions.Count(o => o.AttributeId == a.Id),
-            TotalCategory = (int)_db.CategoryVariantAttributes.Count(c => c.AttributeId == a.Id),
+            TotalOptions = a.AttributeOptions.Count(),
+            TotalCategory = a.CategoryVariantAttributes.Count(),
+            TotalVariantUsage = a.AttributeOptions
+                .SelectMany(o => o.VariantAttributes)
+                .Count(),
         }).ToListAsync(ct);
 
         // Paginated rows with lightweight projection
@@ -62,28 +66,51 @@ public sealed class AttributeAdminService : IAttributeAdminService
             Page                  = page,
             PageSize              = DefaultPageSize,
             TotalCount            = totalCount,
-            TotalOptionCount      = stats.Sum(s => s.TotalOptions),
+            TotalOptionCount        = stats.Sum(s => s.TotalOptions),
             TotalCategoryUsageCount = stats.Sum(s => s.TotalCategory),
-            TotalVariantUsageCount = rows.Sum(r => r.VariantUsageCount),
+            TotalVariantUsageCount  = stats.Sum(s => s.TotalVariantUsage),
         };
     }
 
     // ── Create ─────────────────────────────────────────────────────────────
 
     public Task<AttributeFormViewModel> GetCreateFormAsync(CancellationToken ct = default)
-        => Task.FromResult(new AttributeFormViewModel());
+        => Task.FromResult(new AttributeFormViewModel
+        {
+            Options = [new AttributeOptionDraftViewModel()]
+        });
 
     public async Task<AttrSaveResult> CreateAsync(
         AttributeFormViewModel form, CancellationToken ct = default)
     {
         NormalizeForm(form);
+
         var errors = await ValidateFormAsync(form, existingId: null, ct);
+        errors.AddRange(NormalizeAndValidateCreateOptions(form));
+
         if (errors.Count > 0) return AttrSaveResult.Failed(errors);
 
-        var entity = new AttributeEntity { Code = form.Code, Name = form.Name };
+        var entity = new AttributeEntity
+        {
+            Code = form.Code,
+            Name = form.Name,
+            AttributeOptions = form.Options
+                .Select(o => new AttributeOptionEntity
+                {
+                    Value = o.Value,
+                    Label = o.Label,
+                })
+                .ToList(),
+        };
+
         _db.Attributes.Add(entity);
         await _db.SaveChangesAsync(ct);
-        return AttrSaveResult.Success($"Đã tạo thuộc tính \"{entity.Name}\" thành công.");
+
+        var optionMessage = entity.AttributeOptions.Count > 0
+            ? $" cùng {entity.AttributeOptions.Count} giá trị"
+            : string.Empty;
+
+        return AttrSaveResult.Success($"Đã tạo thuộc tính \"{entity.Name}\"{optionMessage} thành công.");
     }
 
     // ── Edit ───────────────────────────────────────────────────────────────
@@ -174,7 +201,7 @@ public sealed class AttributeAdminService : IAttributeAdminService
         var duplicate = await _db.AttributeOptions.AnyAsync(
             o => o.AttributeId == form.AttributeId && o.Value == form.Value, ct);
         if (duplicate)
-            return AttrOptionSaveResult.Failed($"Giá trị \"{form.Value}\" đã tồn tại trong thuộc tính này.");
+            return AttrOptionSaveResult.Failed($"Mã giá trị \"{form.Value}\" đã tồn tại trong thuộc tính này.");
 
         var option = new Models.Entities.AttributeOption
         {
@@ -226,7 +253,7 @@ public sealed class AttributeAdminService : IAttributeAdminService
         if (await _db.Attributes.AnyAsync(
                 a => a.Code == form.Code && (!existingId.HasValue || a.Id != existingId.Value), ct))
         {
-            errors.Add(new AttrValidationError(nameof(form.Code), $"Code \"{form.Code}\" đã tồn tại."));
+            errors.Add(new AttrValidationError(nameof(form.Code), $"Mã thuộc tính \"{form.Code}\" đã tồn tại."));
         }
 
         return errors;
@@ -241,9 +268,74 @@ public sealed class AttributeAdminService : IAttributeAdminService
 
     private static void NormalizeOptionForm(AttributeOptionFormViewModel form)
     {
-        form.Value = form.Value.Trim().ToLowerInvariant().Replace(' ', '_');
+        form.Value = NormalizeOptionValue(form.Value);
         form.Label = form.Label.Trim();
     }
+
+    private static List<AttrValidationError> NormalizeAndValidateCreateOptions(AttributeFormViewModel form)
+    {
+        var errors = new List<AttrValidationError>();
+        var normalizedOptions = new List<AttributeOptionDraftViewModel>();
+
+        foreach (var option in form.Options)
+        {
+            var value = NormalizeOptionValue(option.Value);
+            var label = (option.Label ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(label))
+                continue;
+
+            var normalizedOption = new AttributeOptionDraftViewModel
+            {
+                Value = value,
+                Label = label,
+            };
+
+            var index = normalizedOptions.Count;
+            if (string.IsNullOrWhiteSpace(normalizedOption.Value))
+            {
+                errors.Add(new AttrValidationError(
+                    $"{nameof(form.Options)}[{index}].Value",
+                    "Mã giá trị là bắt buộc khi đã nhập tên hiển thị."));
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedOption.Label))
+            {
+                errors.Add(new AttrValidationError(
+                    $"{nameof(form.Options)}[{index}].Label",
+                    "Tên hiển thị là bắt buộc khi đã nhập mã giá trị."));
+            }
+
+            normalizedOptions.Add(normalizedOption);
+        }
+
+        if (normalizedOptions.Count == 0)
+        {
+            errors.Add(new AttrValidationError(
+                nameof(form.Options),
+                "Vui lòng thêm ít nhất một giá trị cho thuộc tính."));
+        }
+
+        var duplicatedOptions = normalizedOptions
+            .Select((option, index) => new { option.Value, Index = index })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Value))
+            .GroupBy(x => x.Value)
+            .Where(group => group.Count() > 1)
+            .SelectMany(group => group.Skip(1).Select(x => new { Value = group.Key, x.Index }));
+
+        foreach (var duplicated in duplicatedOptions)
+        {
+            errors.Add(new AttrValidationError(
+                $"{nameof(form.Options)}[{duplicated.Index}].Value",
+                $"Mã giá trị \"{duplicated.Value}\" bị trùng trong danh sách giá trị."));
+        }
+
+        form.Options = normalizedOptions;
+        return errors;
+    }
+
+    private static string NormalizeOptionValue(string? value)
+        => (value ?? string.Empty).Trim().ToLowerInvariant().Replace(' ', '_');
 
     private static AttributeOptionsViewModel MapToOptionsViewModel(AttributeEntity entity)
         => new()

@@ -58,6 +58,35 @@
 .option-row:last-child { border-bottom: none; }
 .option-row:hover { background: #f8fafc; }
 
+/* ── Create form option rows ────────────────────────────────────────────── */
+.create-option-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px 20px;
+}
+
+.create-option-row:hover {
+    background: #f8fafc;
+}
+
+.create-option-remove {
+    margin-top: 1px;
+}
+
+@media (max-width: 767px) {
+    .create-option-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .create-option-remove {
+        margin-top: 0;
+        width: 100%;
+    }
+}
+
 /* ── Inline edit input ──────────────────────────────────────────────────── */
 .option-label-input {
     font-size: 13px;
