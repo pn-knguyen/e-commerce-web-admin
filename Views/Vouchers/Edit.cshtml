@@ -1,0 +1,38 @@
+@model e_commerce_web_admin.ViewModels.Vouchers.VoucherFormViewModel
+@{
+    ViewData["Title"] = $"Sửa voucher - {Model.Code}";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/vouchers.css" asp-append-version="true" />
+}
+
+<div class="mb-6 voucher-anim" style="animation-delay:0.04s">
+    <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+        <a asp-action="Index" class="hover:text-teal-600 transition-colors">Voucher</a>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        <span class="text-slate-600 font-medium">@Model.Code</span>
+    </nav>
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Chỉnh sửa voucher</h1>
+            <p class="text-slate-500 text-sm mt-0.5 font-mono">@Model.Code</p>
+        </div>
+        <span class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full
+            @(Model.IsActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500")">
+            <span class="w-1.5 h-1.5 rounded-full @(Model.IsActive ? "bg-emerald-500" : "bg-slate-400")"></span>
+            @(Model.IsActive ? "Đang bật" : "Tạm tắt")
+        </span>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="voucher-anim" style="animation-delay:0.1s">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <partial name="_Form" model="Model" />
+</form>
+
+@section Scripts {
+    <script src="~/js/vouchers.js" asp-append-version="true"></script>
+}

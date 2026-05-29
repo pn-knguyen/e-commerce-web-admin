@@ -1,0 +1,307 @@
+@model e_commerce_web_admin.ViewModels.Vouchers.VoucherIndexViewModel
+@{
+    ViewData["Title"] = "Voucher";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/vouchers.css" asp-append-version="true" />
+}
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 voucher-anim" style="animation-delay:0.04s">
+    <div>
+        <div class="flex items-center gap-2 mb-1">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-sm">
+                <i data-lucide="ticket" class="w-4 h-4 text-white"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800">Voucher</h1>
+        </div>
+        <p class="text-slate-500 text-sm">Quản lý mã giảm giá và điều kiện áp dụng</p>
+    </div>
+    <a asp-action="Create"
+       class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700
+              text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        Thêm voucher
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div id="toastSuccess"
+         class="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm shadow-sm voucher-anim"
+         style="animation-delay:0.04s">
+        <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>
+        </div>
+        <span class="flex-1">@TempData["Success"]</span>
+        <button type="button" data-dismiss-target="toastSuccess" class="text-emerald-400 hover:text-emerald-600 transition-colors">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div id="toastError"
+         class="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm shadow-sm voucher-anim"
+         style="animation-delay:0.04s">
+        <div class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-red-500"></i>
+        </div>
+        <span class="flex-1">@TempData["Error"]</span>
+        <button type="button" data-dismiss-target="toastError" class="text-red-400 hover:text-red-600 transition-colors">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+}
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 voucher-anim" style="animation-delay:0.08s">
+    <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="ticket" class="w-5 h-5 text-teal-500"></i>
+        </div>
+        <div>
+            <p class="text-xl font-bold text-slate-800">@Model.TotalCount</p>
+            <p class="text-xs text-slate-400">Tổng voucher</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>
+        </div>
+        <div>
+            <p class="text-xl font-bold text-emerald-600">@Model.RunningCount</p>
+            <p class="text-xs text-slate-400">Đang chạy</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="receipt-text" class="w-5 h-5 text-sky-500"></i>
+        </div>
+        <div>
+            <p class="text-xl font-bold text-sky-600">@Model.TotalUsedCount</p>
+            <p class="text-xs text-slate-400">Lượt đã dùng</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+        <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="calendar-x" class="w-5 h-5 text-red-500"></i>
+        </div>
+        <div>
+            <p class="text-xl font-bold text-red-600">@Model.ExpiredCount</p>
+            <p class="text-xs text-slate-400">Hết hạn</p>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-100 p-4 mb-4 shadow-sm voucher-anim" style="animation-delay:0.12s">
+    <form method="get" asp-action="Index" class="flex flex-col lg:flex-row gap-3">
+        <div class="relative flex-1">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+            <input type="text" name="search" value="@Model.Search"
+                   placeholder="Tìm theo mã hoặc mô tả..."
+                   class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+                          focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+        </div>
+        <select name="status"
+                class="border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 bg-white
+                       focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
+            <option value="" selected="@(string.IsNullOrEmpty(Model.Status))">Tất cả</option>
+            <option value="running" selected="@(Model.Status == "running")">Đang chạy</option>
+            <option value="upcoming" selected="@(Model.Status == "upcoming")">Sắp diễn ra</option>
+            <option value="expired" selected="@(Model.Status == "expired")">Hết hạn</option>
+            <option value="exhausted" selected="@(Model.Status == "exhausted")">Hết lượt</option>
+            <option value="active" selected="@(Model.Status == "active")">Đang bật</option>
+            <option value="inactive" selected="@(Model.Status == "inactive")">Tạm tắt</option>
+        </select>
+        <button type="submit"
+                class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700
+                       text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            Tìm kiếm
+        </button>
+        @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.Status))
+        {
+            <a asp-action="Index"
+               class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
+                <i data-lucide="x-circle" class="w-4 h-4"></i>
+                Xoá lọc
+            </a>
+        }
+    </form>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm voucher-anim" style="animation-delay:0.16s">
+    @if (!Model.Vouchers.Any())
+    {
+        <div class="py-24 text-center">
+            <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-100 to-teal-50
+                        flex items-center justify-center mx-auto mb-5 shadow-sm">
+                <i data-lucide="ticket" class="w-10 h-10 text-teal-300"></i>
+            </div>
+            <p class="text-slate-600 font-semibold text-lg">Không tìm thấy voucher</p>
+            <p class="text-slate-400 text-sm mt-2">
+                @if (!string.IsNullOrEmpty(Model.Search))
+                {<span>Thử từ khoá khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xoá bộ lọc</a></span>}
+                else
+                {<span>Nhấn <strong class="text-slate-600">Thêm voucher</strong> để bắt đầu</span>}
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <div class="min-w-[1040px]">
+                <div class="px-6 py-3.5 bg-gradient-to-r from-slate-50 to-slate-50/50 border-b border-slate-100
+                            grid grid-cols-[1.25fr_0.85fr_0.9fr_0.9fr_0.75fr_auto] gap-4 items-center">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Voucher</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Giảm giá</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Điều kiện</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Lượt dùng</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Trạng thái</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-28">Thao tác</span>
+                </div>
+
+                <div class="divide-y divide-slate-50">
+                    @{int animIdx = 0;}
+                    @foreach (var voucher in Model.Vouchers)
+                    {
+                        <div class="voucher-row grid grid-cols-[1.25fr_0.85fr_0.9fr_0.9fr_0.75fr_auto] gap-4 items-center px-6 py-4 voucher-anim"
+                             style="animation-delay:@(0.16 + animIdx++ * 0.03)s"
+                             data-id="@voucher.Id">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="voucher-code inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold">
+                                        <i data-lucide="ticket" class="w-3.5 h-3.5"></i>
+                                        @voucher.Code
+                                    </span>
+                                    <span class="inline-flex items-center rounded-full bg-slate-100 text-slate-500 text-[11px] font-semibold px-2 py-0.5">
+                                        Ưu tiên @voucher.Priority
+                                    </span>
+                                </div>
+                                <p class="text-sm text-slate-600 mt-2 truncate">
+                                    @(string.IsNullOrWhiteSpace(voucher.Description) ? "Chưa có mô tả" : voucher.Description)
+                                </p>
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    @voucher.StartDate.ToString("dd/MM/yyyy HH:mm") - @voucher.EndDate.ToString("dd/MM/yyyy HH:mm")
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-sm font-bold text-teal-700">@voucher.DiscountDisplay</p>
+                                <p class="text-xs text-slate-400 mt-0.5">@voucher.DiscountTypeLabel</p>
+                                <p class="text-[11px] text-slate-400 mt-1">Tối đa: @voucher.MaxDiscountDisplay</p>
+                            </div>
+
+                            <div>
+                                <p class="text-xs text-slate-400">Đơn tối thiểu</p>
+                                <p class="text-sm font-semibold text-slate-700 mt-0.5">@voucher.MinOrderDisplay</p>
+                                <div class="mt-2 flex items-center gap-1.5 text-[11px] text-slate-400">
+                                    <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                                    <span>@voucher.AssignedUserCount khách</span>
+                                    <span>·</span>
+                                    <span>@voucher.TargetCount phạm vi</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="text-sm font-semibold text-slate-700">@voucher.UsageDisplay</span>
+                                    @if (voucher.MaxUsesPerUser.HasValue)
+                                    {
+                                        <span class="text-[11px] text-slate-400">@voucher.MaxUsesPerUser/lượt khách</span>
+                                    }
+                                </div>
+                                <div class="usage-track mt-2">
+                                    <div class="usage-fill" style="width:@voucher.UsagePercent%"></div>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1">@voucher.OrderCount đơn hàng</p>
+                            </div>
+
+                            <div class="text-center">
+                                <button type="button"
+                                        data-voucher-toggle
+                                        data-voucher-id="@voucher.Id"
+                                        class="voucher-status-pill voucher-status-@voucher.StatusKey inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer transition-all duration-200"
+                                        data-active="@voucher.IsActive.ToString().ToLower()">
+                                    <span class="dot w-1.5 h-1.5 rounded-full flex-shrink-0"></span>
+                                    <span class="status-label">@voucher.StatusLabel</span>
+                                </button>
+                            </div>
+
+                            <div class="w-28 flex items-center justify-end gap-1.5">
+                                <a asp-action="Edit" asp-route-id="@voucher.Id"
+                                   title="Chỉnh sửa"
+                                   class="voucher-action-icon voucher-action-edit">
+                                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                </a>
+
+                                <form asp-action="Delete"
+                                      asp-route-id="@voucher.Id"
+                                      method="post"
+                                      data-voucher-delete
+                                      data-voucher-code="@voucher.Code"
+                                      data-used-count="@voucher.UsedCount"
+                                      data-usage-count="@voucher.UsageCount"
+                                      data-order-count="@voucher.OrderCount">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit"
+                                            title="Xoá voucher"
+                                            class="voucher-action-icon voucher-action-delete">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <p class="text-xs text-slate-400">
+                    Trang <span class="font-semibold text-slate-600">@Model.Page</span> / @Model.TotalPages
+                    &nbsp;·&nbsp;
+                    <span class="font-semibold text-slate-600">@Model.TotalCount</span> voucher
+                </p>
+                <div class="flex items-center gap-1">
+                    @if (Model.HasPrev)
+                    {
+                        <a asp-action="Index" asp-route-page="@(Model.Page - 1)"
+                           asp-route-search="@Model.Search" asp-route-status="@Model.Status"
+                           class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50
+                                  flex items-center justify-center text-slate-600 transition-colors shadow-sm">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </a>
+                    }
+                    @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                    {
+                        <a asp-action="Index" asp-route-page="@p"
+                           asp-route-search="@Model.Search" asp-route-status="@Model.Status"
+                           class="w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all
+                                  @(p == Model.Page
+                                      ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
+                                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50")">
+                            @p
+                        </a>
+                    }
+                    @if (Model.HasNext)
+                    {
+                        <a asp-action="Index" asp-route-page="@(Model.Page + 1)"
+                           asp-route-search="@Model.Search" asp-route-status="@Model.Status"
+                           class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50
+                                  flex items-center justify-center text-slate-600 transition-colors shadow-sm">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/vouchers.js" asp-append-version="true"></script>
+}
