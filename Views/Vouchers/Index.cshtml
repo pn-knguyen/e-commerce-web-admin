@@ -222,6 +222,7 @@
                                 <button type="button"
                                         data-voucher-toggle
                                         data-voucher-id="@voucher.Id"
+                                        data-voucher-toggle-url="@Url.Action("ToggleActive", "Vouchers", new { id = voucher.Id })"
                                         class="voucher-status-pill voucher-status-@voucher.StatusKey inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer transition-all duration-200"
                                         data-active="@voucher.IsActive.ToString().ToLower()">
                                     <span class="dot w-1.5 h-1.5 rounded-full flex-shrink-0"></span>

@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     bindCodeFormatter();
     bindDiscountType();
+    bindVoucherFormValidation();
     bindStatusToggles();
     bindDeleteConfirmation();
     bindToastDismiss();
@@ -15,9 +16,6 @@ function toVoucherCode(value) {
         .replace(/[đĐ]/g, 'd')
         .replace(/\s+/g, '-')
         .replace(/[^A-Za-z0-9_-]/g, '')
-        .replace(/-+/g, '-')
-        .replace(/_+/g, '_')
-        .replace(/^[-_]+|[-_]+$/g, '')
         .toUpperCase();
 }
 
@@ -28,11 +26,12 @@ function bindCodeFormatter() {
     }
 
     codeInput.addEventListener('input', () => {
-        const cursor = codeInput.selectionStart;
-        codeInput.value = toVoucherCode(codeInput.value);
-        if (cursor !== null) {
-            codeInput.setSelectionRange(cursor, cursor);
-        }
+        const cursor = codeInput.selectionStart ?? codeInput.value.length;
+        const nextValue = toVoucherCode(codeInput.value);
+        const nextCursor = toVoucherCode(codeInput.value.slice(0, cursor)).length;
+
+        codeInput.value = nextValue;
+        codeInput.setSelectionRange(nextCursor, nextCursor);
     });
 
     codeInput.addEventListener('blur', () => {
@@ -65,6 +64,318 @@ function bindDiscountType() {
     syncDiscountInput();
 }
 
+function bindVoucherFormValidation() {
+    const form = document.querySelector('[data-voucher-form]');
+    if (!form) {
+        return;
+    }
+
+    const touchedFields = new Set();
+    const watchedFields = [
+        'Code',
+        'DiscountType',
+        'DiscountValue',
+        'MaxDiscountValue',
+        'MinOrderValue',
+        'MaxUses',
+        'MaxUsesPerUser',
+        'StartDate',
+        'EndDate',
+        'Priority',
+    ];
+
+    watchedFields.forEach(fieldName => {
+        const field = getVoucherField(form, fieldName);
+        if (!field) {
+            return;
+        }
+
+        ['input', 'change', 'blur'].forEach(eventName => {
+            field.addEventListener(eventName, () => {
+                touchedFields.add(fieldName);
+                touchDependentFields(touchedFields, fieldName);
+                validateVoucherForm(form, touchedFields, false);
+            });
+        });
+    });
+
+    form.addEventListener('submit', event => {
+        watchedFields.forEach(fieldName => touchedFields.add(fieldName));
+        const isValid = validateVoucherForm(form, touchedFields, true);
+
+        if (!isValid) {
+            event.preventDefault();
+            form.querySelector('.voucher-field-invalid')?.focus();
+        }
+    });
+}
+
+function touchDependentFields(touchedFields, fieldName) {
+    if (fieldName === 'DiscountType' || fieldName === 'DiscountValue') {
+        touchedFields.add('DiscountValue');
+        touchedFields.add('MaxDiscountValue');
+    }
+
+    if (fieldName === 'MaxUses') {
+        touchedFields.add('MaxUsesPerUser');
+    }
+
+    if (fieldName === 'StartDate') {
+        touchedFields.add('EndDate');
+    }
+}
+
+function validateVoucherForm(form, touchedFields, showAll) {
+    let isValid = true;
+    const discountType = getVoucherField(form, 'DiscountType')?.value ?? 'FixedAmount';
+    const discountValue = validateNumberField(form, 'DiscountValue', { required: true });
+    const maxDiscountValue = validateNumberField(form, 'MaxDiscountValue');
+    const minOrderValue = validateNumberField(form, 'MinOrderValue', { required: true });
+    const maxUses = validateNumberField(form, 'MaxUses', { integer: true });
+    const maxUsesPerUser = validateNumberField(form, 'MaxUsesPerUser', { integer: true });
+    const priority = validateNumberField(form, 'Priority', { required: true, integer: true });
+
+    isValid = applyVoucherFieldError(
+        form,
+        'Code',
+        validateCodeField(form),
+        touchedFields,
+        showAll) && isValid;
+
+    const percentageMax = readFormNumber(form, 'percentageDiscountMax');
+    if (!discountValue.error &&
+        discountType === 'Percentage' &&
+        percentageMax !== null &&
+        discountValue.value !== null &&
+        discountValue.value > percentageMax) {
+        discountValue.error = form.dataset.percentageDiscountMaxMessage || getRangeMessage(getVoucherField(form, 'DiscountValue'));
+    }
+
+    if (!maxDiscountValue.error &&
+        discountType === 'FixedAmount' &&
+        discountValue.value !== null &&
+        maxDiscountValue.value !== null &&
+        maxDiscountValue.value < discountValue.value) {
+        maxDiscountValue.error = form.dataset.fixedMaxDiscountMessage || getRangeMessage(getVoucherField(form, 'MaxDiscountValue'));
+    }
+
+    if (!maxUsesPerUser.error &&
+        maxUses.value !== null &&
+        maxUsesPerUser.value !== null &&
+        maxUsesPerUser.value > maxUses.value) {
+        maxUsesPerUser.error = form.dataset.maxUsesPerUserMessage || getRangeMessage(getVoucherField(form, 'MaxUsesPerUser'));
+    }
+
+    const dateErrors = validateDateFields(form);
+
+    isValid = applyVoucherFieldError(form, 'DiscountValue', discountValue.error, touchedFields, showAll) && isValid;
+    isValid = applyVoucherFieldError(form, 'MaxDiscountValue', maxDiscountValue.error, touchedFields, showAll) && isValid;
+    isValid = applyVoucherFieldError(form, 'MinOrderValue', minOrderValue.error, touchedFields, showAll) && isValid;
+    isValid = applyVoucherFieldError(form, 'MaxUses', maxUses.error, touchedFields, showAll) && isValid;
+    isValid = applyVoucherFieldError(form, 'MaxUsesPerUser', maxUsesPerUser.error, touchedFields, showAll) && isValid;
+    isValid = applyVoucherFieldError(form, 'StartDate', dateErrors.startDate, touchedFields, showAll) && isValid;
+    isValid = applyVoucherFieldError(form, 'EndDate', dateErrors.endDate, touchedFields, showAll) && isValid;
+    isValid = applyVoucherFieldError(form, 'Priority', priority.error, touchedFields, showAll) && isValid;
+
+    return isValid;
+}
+
+function validateCodeField(form) {
+    const field = getVoucherField(form, 'Code');
+    const code = field?.value.trim() ?? '';
+
+    if (!field) {
+        return '';
+    }
+
+    if (code.length === 0) {
+        return field.dataset.valRequired || 'Mã voucher là bắt buộc.';
+    }
+
+    const maxLength = Number(field.dataset.valLengthMax || field.getAttribute('maxlength') || 0);
+    if (maxLength > 0 && code.length > maxLength) {
+        return field.dataset.valLength || `Mã voucher tối đa ${maxLength} ký tự.`;
+    }
+
+    const pattern = field.dataset.valRegexPattern;
+    if (pattern && !matchesPattern(code, pattern)) {
+        return field.dataset.valRegex || 'Mã voucher không hợp lệ.';
+    }
+
+    return '';
+}
+
+function validateNumberField(form, fieldName, options = {}) {
+    const field = getVoucherField(form, fieldName);
+    const parsed = readNumber(field);
+    let error = '';
+
+    if (!field) {
+        return { error, value: null };
+    }
+
+    if (!parsed.hasValue) {
+        error = options.required ? getRequiredMessage(field) : '';
+    } else if (!parsed.isValid) {
+        error = `${getFieldLabel(form, field)} phải là một số hợp lệ.`;
+    } else if (options.integer && !Number.isInteger(parsed.value)) {
+        error = `${getFieldLabel(form, field)} phải là số nguyên.`;
+    } else {
+        error = validateRange(field, parsed.value);
+    }
+
+    return {
+        error,
+        value: error ? null : parsed.value,
+    };
+}
+
+function validateDateFields(form) {
+    const startField = getVoucherField(form, 'StartDate');
+    const endField = getVoucherField(form, 'EndDate');
+    const startDate = readDate(startField);
+    const endDate = readDate(endField);
+    let startError = '';
+    let endError = '';
+
+    if (!startDate.hasValue) {
+        startError = getRequiredMessage(startField);
+    } else if (!startDate.isValid) {
+        startError = `${getFieldLabel(form, startField)} không hợp lệ.`;
+    }
+
+    if (!endDate.hasValue) {
+        endError = getRequiredMessage(endField);
+    } else if (!endDate.isValid) {
+        endError = `${getFieldLabel(form, endField)} không hợp lệ.`;
+    } else if (startDate.value && endDate.value <= startDate.value) {
+        endError = form.dataset.endAfterStartMessage || getRangeMessage(endField);
+    }
+
+    return {
+        startDate: startError,
+        endDate: endError,
+    };
+}
+
+function readNumber(field) {
+    const rawValue = field?.value.trim() ?? '';
+
+    if (rawValue === '') {
+        return { hasValue: false, isValid: true, value: null };
+    }
+
+    const value = Number(rawValue.replace(',', '.'));
+    return {
+        hasValue: true,
+        isValid: Number.isFinite(value),
+        value,
+    };
+}
+
+function readDate(field) {
+    const rawValue = field?.value ?? '';
+    if (!rawValue) {
+        return { hasValue: false, isValid: true, value: null };
+    }
+
+    const value = new Date(rawValue);
+    return {
+        hasValue: true,
+        isValid: !Number.isNaN(value.getTime()),
+        value,
+    };
+}
+
+function readFormNumber(form, dataKey) {
+    const rawValue = form.dataset[dataKey];
+    if (!rawValue) {
+        return null;
+    }
+
+    const value = Number(rawValue);
+    return Number.isFinite(value) ? value : null;
+}
+
+function validateRange(field, value) {
+    const min = readConstraintNumber(field, 'valRangeMin', 'min');
+    const max = readConstraintNumber(field, 'valRangeMax', 'max');
+
+    if (min !== null && value < min) {
+        return getRangeMessage(field);
+    }
+
+    if (max !== null && value > max) {
+        return getRangeMessage(field);
+    }
+
+    return '';
+}
+
+function readConstraintNumber(field, dataKey, attributeName) {
+    const rawValue = field?.dataset[dataKey] || field?.getAttribute(attributeName);
+    if (!rawValue) {
+        return null;
+    }
+
+    const value = Number(rawValue);
+    return Number.isFinite(value) ? value : null;
+}
+
+function getRequiredMessage(field) {
+    return field?.dataset.valRequired || `${getFieldLabel(field?.form, field)} là bắt buộc.`;
+}
+
+function getRangeMessage(field) {
+    return field?.dataset.valRange || `${getFieldLabel(field?.form, field)} không hợp lệ.`;
+}
+
+function getFieldLabel(form, field) {
+    if (!form || !field) {
+        return 'Giá trị';
+    }
+
+    const label = field.id ? form.querySelector(`label[for="${field.id}"]`) : null;
+    return (label?.textContent || field.name || 'Giá trị').replace('*', '').replace(/\s+/g, ' ').trim();
+}
+
+function matchesPattern(value, pattern) {
+    try {
+        return new RegExp(pattern).test(value);
+    } catch {
+        return false;
+    }
+}
+
+function applyVoucherFieldError(form, fieldName, message, touchedFields, showAll) {
+    const shouldShow = showAll || touchedFields.has(fieldName);
+    const visibleMessage = shouldShow ? message : '';
+    const field = getVoucherField(form, fieldName);
+    const messageElement = getVoucherValidationMessage(form, fieldName);
+
+    if (field) {
+        field.setCustomValidity(message || '');
+        field.setAttribute('aria-invalid', message ? 'true' : 'false');
+        field.classList.toggle('voucher-field-invalid', Boolean(visibleMessage));
+    }
+
+    if (messageElement) {
+        messageElement.textContent = visibleMessage;
+        messageElement.classList.toggle('field-validation-error', Boolean(visibleMessage));
+        messageElement.classList.toggle('field-validation-valid', !visibleMessage);
+    }
+
+    return message === '';
+}
+
+function getVoucherField(form, fieldName) {
+    return form.querySelector(`[name="${fieldName}"]`);
+}
+
+function getVoucherValidationMessage(form, fieldName) {
+    return form.querySelector(`[data-valmsg-for="${fieldName}"]`);
+}
+
 function bindStatusToggles() {
     document.querySelectorAll('[data-voucher-toggle]').forEach(button => {
         button.addEventListener('click', () => toggleVoucherStatus(button));
@@ -72,8 +383,8 @@ function bindStatusToggles() {
 }
 
 async function toggleVoucherStatus(button) {
-    const id = button.dataset.voucherId;
-    if (!id) {
+    const url = button.dataset.voucherToggleUrl;
+    if (!url) {
         return;
     }
 
@@ -81,7 +392,7 @@ async function toggleVoucherStatus(button) {
 
     try {
         const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
-        const response = await fetch(`/Vouchers/ToggleActive/${id}`, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 RequestVerificationToken: token,

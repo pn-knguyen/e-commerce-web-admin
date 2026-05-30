@@ -18,7 +18,17 @@
     <p class="text-slate-500 text-sm mt-0.5">Thiết lập mã giảm giá, giới hạn sử dụng và thời gian áp dụng</p>
 </div>
 
-<form asp-action="Create" method="post" class="voucher-anim" style="animation-delay:0.1s">
+<form asp-action="Create"
+      method="post"
+      class="voucher-anim"
+      style="animation-delay:0.1s"
+      data-voucher-form
+      data-percentage-discount-max="@Model.PercentageDiscountMax"
+      data-percentage-discount-max-message="@Model.PercentageDiscountMaxMessage"
+      data-fixed-max-discount-message="@Model.FixedMaxDiscountMessage"
+      data-max-uses-per-user-message="@Model.MaxUsesPerUserExceedsMaxUsesMessage"
+      data-end-after-start-message="@Model.EndDateAfterStartMessage"
+      novalidate>
     @Html.AntiForgeryToken()
     <partial name="_Form" model="Model" />
 </form>

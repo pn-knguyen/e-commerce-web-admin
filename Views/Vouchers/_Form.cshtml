@@ -10,10 +10,11 @@
                     <label asp-for="Code" class="block text-xs font-semibold text-slate-600 mb-1.5">
                         Mã voucher <span class="text-red-500">*</span>
                     </label>
-                    <input asp-for="Code" id="voucherCode"
+                    <input asp-for="Code"
+                           id="voucherCode"
                            autocomplete="off"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 font-mono uppercase
-                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+                           maxlength="@Model.CodeInputMaxLength"
+                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
                            placeholder="SUMMER2026" />
                     <span asp-validation-for="Code" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
@@ -22,12 +23,14 @@
                     <label asp-for="DiscountType" class="block text-xs font-semibold text-slate-600 mb-1.5">
                         Loại giảm giá
                     </label>
-                    <select asp-for="DiscountType" id="discountType"
-                            class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white
-                                   focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
+                    <select asp-for="DiscountType"
+                            id="discountType"
+                            class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
                         @foreach (var option in Model.DiscountTypeOptions)
                         {
-                            <option value="@option.Value" selected="@(Model.DiscountType.ToString() == option.Value)">@option.Label</option>
+                            <option value="@option.Value" selected="@(Model.DiscountType.ToString() == option.Value)">
+                                @option.Label
+                            </option>
                         }
                     </select>
                     <span asp-validation-for="DiscountType" class="text-xs text-red-500 mt-1 block"></span>
@@ -38,10 +41,14 @@
                         Giá trị giảm <span class="text-red-500">*</span>
                     </label>
                     <div class="relative">
-                        <input asp-for="DiscountValue" id="discountValue" type="number" min="0" step="1000"
-                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800
-                                      focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                        <span id="discountUnit" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">đ</span>
+                        <input asp-for="DiscountValue"
+                               id="discountValue"
+                               type="number"
+                               min="0.01"
+                               step="1000"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <span id="discountUnit"
+                              class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">đ</span>
                     </div>
                     <span asp-validation-for="DiscountValue" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
@@ -51,19 +58,23 @@
                         Mức giảm tối đa
                     </label>
                     <div class="relative">
-                        <input asp-for="MaxDiscountValue" type="number" min="0" step="1000"
-                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800
-                                      focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <input asp-for="MaxDiscountValue"
+                               type="number"
+                               min="0.01"
+                               step="1000"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
                         <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">đ</span>
                     </div>
                     <span asp-validation-for="MaxDiscountValue" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
 
                 <div class="md:col-span-2">
-                    <label asp-for="Description" class="block text-xs font-semibold text-slate-600 mb-1.5">Mô tả</label>
-                    <textarea asp-for="Description" rows="3"
-                              class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
-                                     focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition resize-none"
+                    <label asp-for="Description" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                        Mô tả
+                    </label>
+                    <textarea asp-for="Description"
+                              rows="3"
+                              class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition resize-none"
                               placeholder="Mô tả ngắn về voucher..."></textarea>
                     <span asp-validation-for="Description" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
@@ -79,9 +90,11 @@
                         Đơn tối thiểu
                     </label>
                     <div class="relative">
-                        <input asp-for="MinOrderValue" type="number" min="0" step="1000"
-                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800
-                                      focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <input asp-for="MinOrderValue"
+                               type="number"
+                               min="0"
+                               step="1000"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
                         <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">đ</span>
                     </div>
                     <span asp-validation-for="MinOrderValue" class="text-xs text-red-500 mt-1 block"></span>
@@ -91,9 +104,10 @@
                     <label asp-for="MaxUses" class="block text-xs font-semibold text-slate-600 mb-1.5">
                         Tổng lượt dùng
                     </label>
-                    <input asp-for="MaxUses" type="number" min="1"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
-                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+                    <input asp-for="MaxUses"
+                           type="number"
+                           min="1"
+                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
                            placeholder="Không giới hạn" />
                     <span asp-validation-for="MaxUses" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
@@ -102,9 +116,10 @@
                     <label asp-for="MaxUsesPerUser" class="block text-xs font-semibold text-slate-600 mb-1.5">
                         Lượt dùng mỗi khách
                     </label>
-                    <input asp-for="MaxUsesPerUser" type="number" min="1"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
-                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+                    <input asp-for="MaxUsesPerUser"
+                           type="number"
+                           min="1"
+                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
                            placeholder="Không giới hạn" />
                     <span asp-validation-for="MaxUsesPerUser" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
@@ -121,9 +136,10 @@
                     <label asp-for="StartDate" class="block text-xs font-semibold text-slate-600 mb-1.5">
                         Bắt đầu <span class="text-red-500">*</span>
                     </label>
-                    <input asp-for="StartDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
-                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                    <input asp-for="StartDate"
+                           type="datetime-local"
+                           asp-format="{0:yyyy-MM-ddTHH:mm}"
+                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
                     <span asp-validation-for="StartDate" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
 
@@ -131,17 +147,22 @@
                     <label asp-for="EndDate" class="block text-xs font-semibold text-slate-600 mb-1.5">
                         Kết thúc <span class="text-red-500">*</span>
                     </label>
-                    <input asp-for="EndDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
-                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                    <input asp-for="EndDate"
+                           type="datetime-local"
+                           asp-format="{0:yyyy-MM-ddTHH:mm}"
+                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
                     <span asp-validation-for="EndDate" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
 
                 <div>
-                    <label asp-for="Priority" class="block text-xs font-semibold text-slate-600 mb-1.5">Độ ưu tiên</label>
-                    <input asp-for="Priority" type="number" min="0" max="9999"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
-                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                    <label asp-for="Priority" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                        Độ ưu tiên
+                    </label>
+                    <input asp-for="Priority"
+                           type="number"
+                           min="0"
+                           max="9999"
+                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
                     <span asp-validation-for="Priority" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
             </div>
@@ -158,7 +179,9 @@
                 </div>
                 <span class="text-sm text-slate-700 group-hover:text-slate-900">Bật voucher</span>
             </label>
-            <p class="text-xs text-slate-400 mt-2">Voucher chỉ có hiệu lực khi được bật và nằm trong thời gian áp dụng.</p>
+            <p class="text-xs text-slate-400 mt-2">
+                Voucher chỉ có hiệu lực khi được bật và nằm trong thời gian áp dụng.
+            </p>
         </div>
 
         @if (Model.Id > 0)
@@ -179,15 +202,12 @@
 
         <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
             <button type="submit"
-                    class="w-full flex items-center justify-center gap-2
-                           bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700
-                           text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md">
+                    class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md">
                 <i data-lucide="save" class="w-4 h-4"></i>
                 Lưu voucher
             </button>
             <a asp-action="Index"
-               class="w-full flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50
-                      text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+               class="w-full flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
                 Huỷ bỏ
             </a>
         </div>

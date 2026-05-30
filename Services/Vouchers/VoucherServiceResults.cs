@@ -1,5 +1,3 @@
-using e_commerce_web_admin.ViewModels.Vouchers;
-
 namespace e_commerce_web_admin.Services.Vouchers;
 
 public sealed record VoucherValidationError(string FieldName, string Message);
@@ -8,10 +6,10 @@ public sealed class VoucherSaveResult
 {
     public bool Succeeded { get; init; }
     public string? Message { get; init; }
-    public VoucherFormViewModel Form { get; init; } = new();
+    public VoucherFormData Form { get; init; } = new();
     public IReadOnlyCollection<VoucherValidationError> Errors { get; init; } = Array.Empty<VoucherValidationError>();
 
-    public static VoucherSaveResult Success(VoucherFormViewModel form, string message)
+    public static VoucherSaveResult Success(VoucherFormData form, string message)
     {
         return new VoucherSaveResult
         {
@@ -22,7 +20,7 @@ public sealed class VoucherSaveResult
     }
 
     public static VoucherSaveResult Failed(
-        VoucherFormViewModel form,
+        VoucherFormData form,
         IReadOnlyCollection<VoucherValidationError> errors)
     {
         return new VoucherSaveResult

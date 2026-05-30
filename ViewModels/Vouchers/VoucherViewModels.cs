@@ -1,15 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using e_commerce_web_admin.Models.Enums;
+using e_commerce_web_admin.Models.Validation;
 
 namespace e_commerce_web_admin.ViewModels.Vouchers;
-
-public sealed class VoucherIndexQuery
-{
-    public string? Search { get; set; }
-    public string? Status { get; set; }
-    public int Page { get; set; } = 1;
-}
 
 public sealed class VoucherIndexViewModel
 {
@@ -94,45 +88,56 @@ public sealed class VoucherFormViewModel
 {
     public long Id { get; set; }
 
-    [Required(ErrorMessage = "Mã voucher là bắt buộc.")]
-    [StringLength(80, ErrorMessage = "Mã voucher tối đa 80 ký tự.")]
-    [RegularExpression(@"^[A-Za-z0-9][A-Za-z0-9_-]*$",
-        ErrorMessage = "Mã voucher chỉ gồm chữ cái, số, dấu gạch ngang hoặc gạch dưới.")]
+    [Required(ErrorMessage = VoucherValidationMessages.CodeRequired)]
+    [StringLength(VoucherValidationRules.CodeMaxLength, ErrorMessage = VoucherValidationMessages.CodeMaxLength)]
+    [RegularExpression(VoucherValidationRules.CodePattern, ErrorMessage = VoucherValidationMessages.CodePattern)]
     public string Code { get; set; } = string.Empty;
 
-    [StringLength(1000, ErrorMessage = "Mô tả tối đa 1000 ký tự.")]
+    [StringLength(1000, ErrorMessage = VoucherValidationMessages.DescriptionMaxLength)]
     public string? Description { get; set; }
 
+    [Required(ErrorMessage = VoucherValidationMessages.DiscountTypeRequired)]
     public DiscountType DiscountType { get; set; } = DiscountType.FixedAmount;
 
-    [Range(0.01, double.MaxValue, ErrorMessage = "Giá trị giảm phải lớn hơn 0.")]
+    [Required(ErrorMessage = VoucherValidationMessages.DiscountValueRequired)]
+    [Range(VoucherValidationRules.PositiveAmountMin, double.MaxValue, ErrorMessage = VoucherValidationMessages.DiscountValuePositive)]
     public decimal DiscountValue { get; set; }
 
-    [Range(0, double.MaxValue, ErrorMessage = "Giá trị đơn tối thiểu không được âm.")]
+    [Required(ErrorMessage = VoucherValidationMessages.MinOrderRequired)]
+    [Range(0, double.MaxValue, ErrorMessage = VoucherValidationMessages.MinOrderNonNegative)]
     public decimal MinOrderValue { get; set; }
 
-    [Range(0.01, double.MaxValue, ErrorMessage = "Mức giảm tối đa phải lớn hơn 0.")]
+    [Range(VoucherValidationRules.PositiveAmountMin, double.MaxValue, ErrorMessage = VoucherValidationMessages.MaxDiscountPositive)]
     public decimal? MaxDiscountValue { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "Tổng lượt dùng phải lớn hơn 0.")]
+    [Range(VoucherValidationRules.PositiveIntegerMin, int.MaxValue, ErrorMessage = VoucherValidationMessages.MaxUsesPositive)]
     public int? MaxUses { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "Lượt dùng mỗi khách phải lớn hơn 0.")]
+    [Range(VoucherValidationRules.PositiveIntegerMin, int.MaxValue, ErrorMessage = VoucherValidationMessages.MaxUsesPerUserPositive)]
     public int? MaxUsesPerUser { get; set; }
 
-    [Required(ErrorMessage = "Ngày bắt đầu là bắt buộc.")]
+    [Required(ErrorMessage = VoucherValidationMessages.StartDateRequired)]
     public DateTime StartDate { get; set; }
 
-    [Required(ErrorMessage = "Ngày kết thúc là bắt buộc.")]
+    [Required(ErrorMessage = VoucherValidationMessages.EndDateRequired)]
     public DateTime EndDate { get; set; }
 
-    [Range(0, 9999, ErrorMessage = "Độ ưu tiên phải từ 0 đến 9999.")]
+    [Required(ErrorMessage = VoucherValidationMessages.PriorityRequired)]
+    [Range(VoucherValidationRules.PriorityMin, VoucherValidationRules.PriorityMax, ErrorMessage = VoucherValidationMessages.PriorityRange)]
     public int Priority { get; set; }
 
     public bool IsActive { get; set; } = true;
     public int UsedCount { get; set; }
 
     public List<VoucherDiscountTypeOption> DiscountTypeOptions { get; set; } = new();
+
+    public int CodeInputMaxLength => VoucherValidationRules.CodeInputMaxLength;
+    public int CodeMaxLength => VoucherValidationRules.CodeMaxLength;
+    public int PercentageDiscountMax => VoucherValidationRules.PercentageDiscountMax;
+    public string PercentageDiscountMaxMessage => VoucherValidationMessages.PercentageDiscountMax;
+    public string FixedMaxDiscountMessage => VoucherValidationMessages.FixedMaxDiscount;
+    public string MaxUsesPerUserExceedsMaxUsesMessage => VoucherValidationMessages.MaxUsesPerUserExceedsMaxUses;
+    public string EndDateAfterStartMessage => VoucherValidationMessages.EndDateAfterStart;
 }
 
 public sealed class VoucherDiscountTypeOption

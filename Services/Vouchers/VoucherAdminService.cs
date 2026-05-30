@@ -1,7 +1,8 @@
+using System.Text.RegularExpressions;
 using e_commerce_web_admin.Data;
 using e_commerce_web_admin.Models.Entities;
 using e_commerce_web_admin.Models.Enums;
-using e_commerce_web_admin.ViewModels.Vouchers;
+using e_commerce_web_admin.Models.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace e_commerce_web_admin.Services.Vouchers;
@@ -9,6 +10,10 @@ namespace e_commerce_web_admin.Services.Vouchers;
 public sealed class VoucherAdminService : IVoucherAdminService
 {
     private const int DefaultPageSize = 30;
+
+    private static readonly Regex CodeRegex = new(
+        VoucherValidationRules.CodePattern,
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly ApplicationDbContext _db;
 
@@ -39,29 +44,49 @@ public sealed class VoucherAdminService : IVoucherAdminService
         public int TargetCount { get; init; }
     }
 
-    public async Task<VoucherIndexViewModel> GetIndexAsync(
-        VoucherIndexQuery query,
+    public async Task<VoucherIndexResult> GetIndexAsync(
+        VoucherIndexRequest query,
         CancellationToken cancellationToken = default)
     {
         var page = Math.Max(1, query.Page);
-        var now = DateTime.UtcNow;
-        var dbQuery = _db.Vouchers.AsNoTracking();
+        var now = VoucherDateTime.UtcNow();
+        var searchQuery = _db.Vouchers.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var search = query.Search.Trim();
-            dbQuery = dbQuery.Where(voucher =>
+            searchQuery = searchQuery.Where(voucher =>
                 voucher.Code.Contains(search) ||
                 (voucher.Description != null && voucher.Description.Contains(search)));
         }
 
-        dbQuery = ApplyStatusFilter(dbQuery, query.Status, now);
+        var filteredQuery = ApplyStatusFilter(searchQuery, query.Status, now);
 
-        var all = await dbQuery
+        var totalCount = await filteredQuery.CountAsync(cancellationToken);
+        var activeCount = await filteredQuery.CountAsync(voucher => voucher.IsActive, cancellationToken);
+        var inactiveCount = await filteredQuery.CountAsync(voucher => !voucher.IsActive, cancellationToken);
+        var runningCount = await filteredQuery.CountAsync(voucher =>
+            voucher.IsActive &&
+            voucher.StartDate <= now &&
+            voucher.EndDate >= now &&
+            (!voucher.MaxUses.HasValue || voucher.UsedCount < voucher.MaxUses.Value),
+            cancellationToken);
+        var upcomingCount = await filteredQuery.CountAsync(
+            voucher => voucher.IsActive && voucher.StartDate > now,
+            cancellationToken);
+        var expiredCount = await filteredQuery.CountAsync(voucher => voucher.EndDate < now, cancellationToken);
+        var exhaustedCount = await filteredQuery.CountAsync(
+            voucher => voucher.MaxUses.HasValue && voucher.UsedCount >= voucher.MaxUses.Value,
+            cancellationToken);
+        var totalUsedCount = await filteredQuery.SumAsync(voucher => (int?)voucher.UsedCount, cancellationToken) ?? 0;
+
+        var pageItems = await filteredQuery
             .OrderByDescending(voucher => voucher.IsActive)
             .ThenByDescending(voucher => voucher.Priority)
             .ThenByDescending(voucher => voucher.StartDate)
             .ThenBy(voucher => voucher.Code)
+            .Skip((page - 1) * DefaultPageSize)
+            .Take(DefaultPageSize)
             .Select(voucher => new VoucherIndexItem
             {
                 Id = voucher.Id,
@@ -85,12 +110,9 @@ public sealed class VoucherAdminService : IVoucherAdminService
             })
             .ToListAsync(cancellationToken);
 
-        var totalCount = all.Count;
-        var pageItems = all.Skip((page - 1) * DefaultPageSize).Take(DefaultPageSize).ToList();
         var rows = pageItems.Select(item =>
         {
-            var status = ResolveStatus(item, now);
-            return new VoucherRowViewModel
+            return new VoucherListItem
             {
                 Id = item.Id,
                 Code = item.Code,
@@ -102,20 +124,19 @@ public sealed class VoucherAdminService : IVoucherAdminService
                 MaxUses = item.MaxUses,
                 MaxUsesPerUser = item.MaxUsesPerUser,
                 UsedCount = item.UsedCount,
-                StartDate = item.StartDate,
-                EndDate = item.EndDate,
+                StartDateUtc = item.StartDate,
+                EndDateUtc = item.EndDate,
                 Priority = item.Priority,
                 IsActive = item.IsActive,
                 OrderCount = item.OrderCount,
                 UsageCount = item.UsageCount,
                 AssignedUserCount = item.AssignedUserCount,
                 TargetCount = item.TargetCount,
-                StatusKey = status.Key,
-                StatusLabel = status.Label,
+                StatusKey = ResolveStatusKey(item, now),
             };
         }).ToList();
 
-        return new VoucherIndexViewModel
+        return new VoucherIndexResult
         {
             Vouchers = rows,
             Search = query.Search,
@@ -123,33 +144,43 @@ public sealed class VoucherAdminService : IVoucherAdminService
             Page = page,
             PageSize = DefaultPageSize,
             TotalCount = totalCount,
-            ActiveCount = all.Count(item => item.IsActive),
-            InactiveCount = all.Count(item => !item.IsActive),
-            RunningCount = all.Count(item => IsRunning(item, now)),
-            UpcomingCount = all.Count(item => item.IsActive && item.StartDate > now),
-            ExpiredCount = all.Count(item => item.EndDate < now),
-            ExhaustedCount = all.Count(IsExhausted),
-            TotalUsedCount = all.Sum(item => item.UsedCount),
+            ActiveCount = activeCount,
+            InactiveCount = inactiveCount,
+            RunningCount = runningCount,
+            UpcomingCount = upcomingCount,
+            ExpiredCount = expiredCount,
+            ExhaustedCount = exhaustedCount,
+            TotalUsedCount = totalUsedCount,
         };
     }
 
-    public Task<VoucherFormViewModel> GetCreateFormAsync(CancellationToken cancellationToken = default)
+    public VoucherFormData GetCreateForm()
     {
-        var now = DateTime.UtcNow;
-        return Task.FromResult(PrepareForm(new VoucherFormViewModel
+        var localNow = VoucherDateTime.ToAdminLocal(VoucherDateTime.UtcNow());
+        var startLocal = new DateTime(
+            localNow.Year,
+            localNow.Month,
+            localNow.Day,
+            localNow.Hour,
+            0,
+            0,
+            DateTimeKind.Unspecified);
+        var endLocal = startLocal.Date.AddDays(30).AddHours(23).AddMinutes(59);
+
+        return new VoucherFormData
         {
             DiscountType = DiscountType.FixedAmount,
             DiscountValue = 100000m,
             MinOrderValue = 0m,
             MaxDiscountValue = 100000m,
-            StartDate = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(now.Year, now.Month, now.Day, 23, 59, 0, DateTimeKind.Utc).AddDays(30),
+            StartDateUtc = VoucherDateTime.FromAdminLocal(startLocal),
+            EndDateUtc = VoucherDateTime.FromAdminLocal(endLocal),
             Priority = 0,
             IsActive = true,
-        }));
+        };
     }
 
-    public async Task<VoucherFormViewModel?> GetEditFormAsync(
+    public async Task<VoucherFormData?> GetEditFormAsync(
         long id,
         CancellationToken cancellationToken = default)
     {
@@ -162,7 +193,7 @@ public sealed class VoucherAdminService : IVoucherAdminService
             return null;
         }
 
-        return PrepareForm(new VoucherFormViewModel
+        return new VoucherFormData
         {
             Id = entity.Id,
             Code = entity.Code,
@@ -174,22 +205,15 @@ public sealed class VoucherAdminService : IVoucherAdminService
             MaxUses = entity.MaxUses,
             MaxUsesPerUser = entity.MaxUsesPerUser,
             UsedCount = entity.UsedCount,
-            StartDate = entity.StartDate,
-            EndDate = entity.EndDate,
+            StartDateUtc = entity.StartDate,
+            EndDateUtc = entity.EndDate,
             Priority = entity.Priority,
             IsActive = entity.IsActive,
-        });
-    }
-
-    public Task<VoucherFormViewModel> PrepareFormAsync(
-        VoucherFormViewModel form,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(PrepareForm(form));
+        };
     }
 
     public async Task<VoucherSaveResult> CreateAsync(
-        VoucherFormViewModel form,
+        VoucherFormData form,
         CancellationToken cancellationToken = default)
     {
         NormalizeForm(form);
@@ -197,7 +221,7 @@ public sealed class VoucherAdminService : IVoucherAdminService
         var errors = await ValidateFormAsync(form, existingId: null, usedCount: 0, cancellationToken);
         if (errors.Count > 0)
         {
-            return VoucherSaveResult.Failed(PrepareForm(form), errors);
+            return VoucherSaveResult.Failed(form, errors);
         }
 
         var entity = new Voucher
@@ -210,11 +234,11 @@ public sealed class VoucherAdminService : IVoucherAdminService
             MaxDiscountValue = form.MaxDiscountValue,
             MaxUses = form.MaxUses,
             MaxUsesPerUser = form.MaxUsesPerUser,
-            StartDate = form.StartDate,
-            EndDate = form.EndDate,
+            StartDate = form.StartDateUtc,
+            EndDate = form.EndDateUtc,
             Priority = form.Priority,
             IsActive = form.IsActive,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = VoucherDateTime.UtcNow(),
         };
 
         _db.Vouchers.Add(entity);
@@ -226,7 +250,7 @@ public sealed class VoucherAdminService : IVoucherAdminService
 
     public async Task<VoucherSaveResult> UpdateAsync(
         long id,
-        VoucherFormViewModel form,
+        VoucherFormData form,
         CancellationToken cancellationToken = default)
     {
         NormalizeForm(form);
@@ -235,7 +259,7 @@ public sealed class VoucherAdminService : IVoucherAdminService
         if (entity is null)
         {
             return VoucherSaveResult.Failed(
-                PrepareForm(form),
+                form,
                 new[] { new VoucherValidationError(string.Empty, "Không tìm thấy voucher.") });
         }
 
@@ -243,7 +267,7 @@ public sealed class VoucherAdminService : IVoucherAdminService
         if (errors.Count > 0)
         {
             form.UsedCount = entity.UsedCount;
-            return VoucherSaveResult.Failed(PrepareForm(form), errors);
+            return VoucherSaveResult.Failed(form, errors);
         }
 
         entity.Code = form.Code;
@@ -254,11 +278,11 @@ public sealed class VoucherAdminService : IVoucherAdminService
         entity.MaxDiscountValue = form.MaxDiscountValue;
         entity.MaxUses = form.MaxUses;
         entity.MaxUsesPerUser = form.MaxUsesPerUser;
-        entity.StartDate = form.StartDate;
-        entity.EndDate = form.EndDate;
+        entity.StartDate = form.StartDateUtc;
+        entity.EndDate = form.EndDateUtc;
         entity.Priority = form.Priority;
         entity.IsActive = form.IsActive;
-        entity.UpdatedAt = DateTime.UtcNow;
+        entity.UpdatedAt = VoucherDateTime.UtcNow();
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -319,7 +343,7 @@ public sealed class VoucherAdminService : IVoucherAdminService
         }
 
         entity.IsActive = !entity.IsActive;
-        entity.UpdatedAt = DateTime.UtcNow;
+        entity.UpdatedAt = VoucherDateTime.UtcNow();
         await _db.SaveChangesAsync(cancellationToken);
 
         return new VoucherToggleResult(entity.IsActive);
@@ -347,50 +371,72 @@ public sealed class VoucherAdminService : IVoucherAdminService
     }
 
     private async Task<List<VoucherValidationError>> ValidateFormAsync(
-        VoucherFormViewModel form,
+        VoucherFormData form,
         long? existingId,
         int usedCount,
         CancellationToken cancellationToken)
     {
         var errors = new List<VoucherValidationError>();
+        var isCodeValid = ValidateCode(form, errors);
 
         if (!Enum.IsDefined(form.DiscountType))
         {
-            errors.Add(new VoucherValidationError(nameof(form.DiscountType), "Loại giảm giá không hợp lệ."));
+            errors.Add(new VoucherValidationError(nameof(form.DiscountType), VoucherValidationMessages.DiscountTypeInvalid));
         }
 
-        if (await _db.Vouchers.AnyAsync(voucher =>
-                voucher.Code == form.Code &&
-                (!existingId.HasValue || voucher.Id != existingId.Value),
-                cancellationToken))
+        if (form.DiscountValue <= 0)
         {
-            errors.Add(new VoucherValidationError(nameof(form.Code), "Mã voucher đã tồn tại, hãy dùng mã khác."));
+            errors.Add(new VoucherValidationError(nameof(form.DiscountValue), VoucherValidationMessages.DiscountValuePositive));
         }
 
-        if (form.EndDate <= form.StartDate)
+        if (form.MinOrderValue < 0)
         {
-            errors.Add(new VoucherValidationError(nameof(form.EndDate), "Ngày kết thúc phải sau ngày bắt đầu."));
+            errors.Add(new VoucherValidationError(nameof(form.MinOrderValue), VoucherValidationMessages.MinOrderNonNegative));
         }
 
-        if (form.DiscountType == DiscountType.Percentage && form.DiscountValue > 100)
+        if (form.MaxDiscountValue.HasValue && form.MaxDiscountValue.Value <= 0)
         {
-            errors.Add(new VoucherValidationError(nameof(form.DiscountValue), "Giảm theo phần trăm không được vượt quá 100%."));
+            errors.Add(new VoucherValidationError(nameof(form.MaxDiscountValue), VoucherValidationMessages.MaxDiscountPositive));
+        }
+
+        if (form.MaxUses.HasValue && form.MaxUses.Value <= 0)
+        {
+            errors.Add(new VoucherValidationError(nameof(form.MaxUses), VoucherValidationMessages.MaxUsesPositive));
+        }
+
+        if (form.MaxUsesPerUser.HasValue && form.MaxUsesPerUser.Value <= 0)
+        {
+            errors.Add(new VoucherValidationError(nameof(form.MaxUsesPerUser), VoucherValidationMessages.MaxUsesPerUserPositive));
+        }
+
+        if (form.Priority < VoucherValidationRules.PriorityMin || form.Priority > VoucherValidationRules.PriorityMax)
+        {
+            errors.Add(new VoucherValidationError(nameof(form.Priority), VoucherValidationMessages.PriorityRange));
+        }
+
+        if (form.EndDateUtc <= form.StartDateUtc)
+        {
+            errors.Add(new VoucherValidationError(nameof(form.EndDateUtc), VoucherValidationMessages.EndDateAfterStart));
+        }
+
+        if (form.DiscountType == DiscountType.Percentage &&
+            form.DiscountValue > VoucherValidationRules.PercentageDiscountMax)
+        {
+            errors.Add(new VoucherValidationError(nameof(form.DiscountValue), VoucherValidationMessages.PercentageDiscountMax));
         }
 
         if (form.DiscountType == DiscountType.FixedAmount &&
             form.MaxDiscountValue.HasValue &&
             form.MaxDiscountValue.Value < form.DiscountValue)
         {
-            errors.Add(new VoucherValidationError(
-                nameof(form.MaxDiscountValue),
-                "Mức giảm tối đa không được nhỏ hơn giá trị giảm cố định."));
+            errors.Add(new VoucherValidationError(nameof(form.MaxDiscountValue), VoucherValidationMessages.FixedMaxDiscount));
         }
 
         if (form.MaxUses.HasValue && form.MaxUses.Value < usedCount)
         {
             errors.Add(new VoucherValidationError(
                 nameof(form.MaxUses),
-                $"Tổng lượt dùng không được nhỏ hơn số lượt đã dùng ({usedCount})."));
+                string.Format(VoucherValidationMessages.MaxUsesLessThanUsed, usedCount)));
         }
 
         if (form.MaxUses.HasValue &&
@@ -399,74 +445,75 @@ public sealed class VoucherAdminService : IVoucherAdminService
         {
             errors.Add(new VoucherValidationError(
                 nameof(form.MaxUsesPerUser),
-                "Lượt dùng mỗi khách không được lớn hơn tổng lượt dùng."));
+                VoucherValidationMessages.MaxUsesPerUserExceedsMaxUses));
+        }
+
+        if (isCodeValid &&
+            await _db.Vouchers.AnyAsync(voucher =>
+                voucher.Code == form.Code &&
+                (!existingId.HasValue || voucher.Id != existingId.Value),
+                cancellationToken))
+        {
+            errors.Add(new VoucherValidationError(nameof(form.Code), VoucherValidationMessages.DuplicateCode));
         }
 
         return errors;
     }
 
-    private static VoucherFormViewModel PrepareForm(VoucherFormViewModel form)
+    private static bool ValidateCode(VoucherFormData form, ICollection<VoucherValidationError> errors)
     {
-        form.DiscountTypeOptions = BuildDiscountTypeOptions();
-        return form;
-    }
-
-    private static List<VoucherDiscountTypeOption> BuildDiscountTypeOptions()
-    {
-        return new List<VoucherDiscountTypeOption>
+        if (string.IsNullOrWhiteSpace(form.Code))
         {
-            new()
-            {
-                Value = DiscountType.FixedAmount.ToString(),
-                Label = "Số tiền cố định",
-                Hint = "Giảm trực tiếp theo VND",
-            },
-            new()
-            {
-                Value = DiscountType.Percentage.ToString(),
-                Label = "Theo phần trăm",
-                Hint = "Giảm theo phần trăm giá trị đơn hàng",
-            },
-        };
+            errors.Add(new VoucherValidationError(nameof(form.Code), VoucherValidationMessages.CodeRequired));
+            return false;
+        }
+
+        if (form.Code.Length > VoucherValidationRules.CodeMaxLength)
+        {
+            errors.Add(new VoucherValidationError(nameof(form.Code), VoucherValidationMessages.CodeMaxLength));
+            return false;
+        }
+
+        if (!CodeRegex.IsMatch(form.Code))
+        {
+            errors.Add(new VoucherValidationError(nameof(form.Code), VoucherValidationMessages.CodePattern));
+            return false;
+        }
+
+        return true;
     }
 
-    private static void NormalizeForm(VoucherFormViewModel form)
+    private static void NormalizeForm(VoucherFormData form)
     {
         form.Code = form.Code.Trim().ToUpperInvariant();
         form.Description = string.IsNullOrWhiteSpace(form.Description) ? null : form.Description.Trim();
+        form.StartDateUtc = DateTime.SpecifyKind(form.StartDateUtc, DateTimeKind.Utc);
+        form.EndDateUtc = DateTime.SpecifyKind(form.EndDateUtc, DateTimeKind.Utc);
     }
 
-    private static (string Key, string Label) ResolveStatus(VoucherIndexItem voucher, DateTime now)
+    private static string ResolveStatusKey(VoucherIndexItem voucher, DateTime now)
     {
         if (!voucher.IsActive)
         {
-            return ("inactive", "Tạm tắt");
+            return "inactive";
         }
 
         if (IsExhausted(voucher))
         {
-            return ("exhausted", "Hết lượt");
+            return "exhausted";
         }
 
         if (voucher.StartDate > now)
         {
-            return ("upcoming", "Sắp diễn ra");
+            return "upcoming";
         }
 
         if (voucher.EndDate < now)
         {
-            return ("expired", "Hết hạn");
+            return "expired";
         }
 
-        return ("running", "Đang chạy");
-    }
-
-    private static bool IsRunning(VoucherIndexItem voucher, DateTime now)
-    {
-        return voucher.IsActive &&
-            voucher.StartDate <= now &&
-            voucher.EndDate >= now &&
-            !IsExhausted(voucher);
+        return "running";
     }
 
     private static bool IsExhausted(VoucherIndexItem voucher)
