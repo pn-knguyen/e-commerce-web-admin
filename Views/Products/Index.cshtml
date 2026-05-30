@@ -1,0 +1,355 @@
+@model e_commerce_web_admin.ViewModels.Products.ProductIndexViewModel
+@{
+    ViewData["Title"] = "Sản phẩm";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
+}
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 product-anim"
+     style="animation-delay:0.04s">
+    <div>
+        <div class="flex items-center gap-2 mb-1">
+            <div
+                class="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-sm">
+                <i data-lucide="package" class="w-4 h-4 text-white"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800">Sản phẩm</h1>
+        </div>
+        <p class="text-slate-500 text-sm">Quản lý thông tin sản phẩm chính trước khi cấu hình biến thể và thông số</p>
+    </div>
+    <a asp-action="Create"
+       class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700
+        text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        Thêm sản phẩm
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div id="toastSuccess"
+         class="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm shadow-sm product-anim"
+         style="animation-delay:0.04s">
+        <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>
+        </div>
+        <span class="flex-1">@TempData["Success"]</span>
+        <button type="button" data-dismiss-target="toastSuccess"
+                class="text-emerald-400 hover:text-emerald-600 transition-colors">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div id="toastError"
+         class="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm shadow-sm product-anim"
+         style="animation-delay:0.04s">
+        <div class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-red-500"></i>
+        </div>
+        <span class="flex-1">@TempData["Error"]</span>
+        <button type="button" data-dismiss-target="toastError" class="text-red-400 hover:text-red-600 transition-colors">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+}
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 product-anim" style="animation-delay:0.08s">
+    <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="package" class="w-5 h-5 text-teal-500"></i>
+        </div>
+        <div>
+            <p class="text-xl font-bold text-slate-800">@Model.TotalCount</p>
+            <p class="text-xs text-slate-400">Tổng sản phẩm</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>
+        </div>
+        <div>
+            <p class="text-xl font-bold text-emerald-600">@Model.ActiveCount</p>
+            <p class="text-xs text-slate-400">Đang bật</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="star" class="w-5 h-5 text-amber-500"></i>
+        </div>
+        <div>
+            <p class="text-xl font-bold text-amber-600">@Model.FeaturedCount</p>
+            <p class="text-xs text-slate-400">Nổi bật</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="layers" class="w-5 h-5 text-violet-500"></i>
+        </div>
+        <div>
+            <p class="text-xl font-bold text-violet-600">@Model.TotalVariantCount</p>
+            <p class="text-xs text-slate-400">Biến thể</p>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-100 p-4 mb-4 shadow-sm product-anim" style="animation-delay:0.12s">
+    <form method="get" asp-action="Index" class="product-filter-grid">
+        <div class="relative product-filter-search">
+            <i data-lucide="search"
+               class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+            <input type="text" name="search" value="@Model.Search"
+                   placeholder="Tìm theo tên, slug, thương hiệu, danh mục..." class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+        </div>
+
+        <select name="brandId" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white
+            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
+            <option value="">Tất cả thương hiệu</option>
+            @foreach (var brand in Model.BrandOptions)
+            {
+                <option value="@brand.Id" selected="@(Model.BrandId == brand.Id)">
+                    @brand.Label@(brand.IsActive ? string.Empty : " (tắt)")
+                </option>
+            }
+        </select>
+
+        <select name="categoryId" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white
+            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
+            <option value="">Tất cả danh mục</option>
+            @foreach (var category in Model.CategoryOptions)
+            {
+                <option value="@category.Id" selected="@(Model.CategoryId == category.Id)">
+                    @category.Label@(category.IsActive ? string.Empty : " (tắt)")
+                </option>
+            }
+        </select>
+
+        <select name="status" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white
+            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
+            <option value="" selected="@(string.IsNullOrEmpty(Model.Status))">Tất cả trạng thái</option>
+            <option value="active" selected="@(Model.Status == "active")">Đang bật</option>
+            <option value="inactive" selected="@(Model.Status == "inactive")">Đã tắt</option>
+        </select>
+
+        <select name="featured" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white
+            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
+            <option value="" selected="@(string.IsNullOrEmpty(Model.Featured))">Tất cả nổi bật</option>
+            <option value="featured" selected="@(Model.Featured == "featured")">Nổi bật</option>
+            <option value="normal" selected="@(Model.Featured == "normal")">Không nổi bật</option>
+        </select>
+
+        <button type="submit" class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700
+            text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            Tìm
+        </button>
+
+        @if (!string.IsNullOrEmpty(Model.Search) ||
+             !string.IsNullOrEmpty(Model.Status) ||
+             !string.IsNullOrEmpty(Model.Featured) ||
+             Model.BrandId.HasValue ||
+             Model.CategoryId.HasValue)
+        {
+            <a asp-action="Index"
+               class="inline-flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
+                <i data-lucide="x-circle" class="w-4 h-4"></i>
+                Xoá lọc
+            </a>
+        }
+    </form>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm product-anim"
+     style="animation-delay:0.16s">
+    @if (!Model.Products.Any())
+    {
+        <div class="py-24 text-center">
+            <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-100 to-teal-50
+                flex items-center justify-center mx-auto mb-5 shadow-sm">
+                <i data-lucide="package-open" class="w-10 h-10 text-teal-300"></i>
+            </div>
+            <p class="text-slate-600 font-semibold text-lg">Không tìm thấy sản phẩm</p>
+            <p class="text-slate-400 text-sm mt-2">
+                @if (!string.IsNullOrEmpty(Model.Search))
+                {
+                    <span>Thử từ khoá khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xoá bộ
+                        lọc</a></span>
+                    }
+                else
+                    {
+
+                        <span>Nhấn <strong class="text-slate-600">Thêm sản phẩm</strong> để bắt đầu</span>
+                    }
+                </p>
+            </div>
+        }
+    else
+        {
+            <div class="product-table-scroll">
+                <div
+                    class="product-index-grid px-6 py-3.5 bg-gradient-to-r from-slate-50 to-slate-50/50 border-b border-slate-100">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sản phẩm</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Phân loại</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Biến thể</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Lượt xem</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Bán</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Rating</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Trạng thái</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Thao tác</span>
+                </div>
+
+                <div class="divide-y divide-slate-50">
+                    @{
+                        int animIdx = 0;
+                    }
+                    @foreach (var product in Model.Products)
+                    {
+                        <div class="product-row product-index-grid px-6 py-3.5 product-anim"
+                             style="animation-delay:@(0.16 + animIdx++ * 0.025)s" data-id="@product.Id">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="product-icon w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <i data-lucide="package" class="w-4 h-4 text-teal-600"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <p class="font-semibold text-slate-800 text-sm truncate">@product.Name</p>
+                                        @if (product.IsFeatured)
+                                        {
+                                            <span class="inline-flex items-center justify-center text-amber-500"
+                                                  title="Sản phẩm nổi bật">
+                                                <i data-lucide="star" class="w-3.5 h-3.5 fill-current"></i>
+                                            </span>
+                                        }
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 font-mono truncate">/products/@product.Slug</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">Tạo ngày @product.CreatedAt.ToString("dd/MM/yyyy")
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="min-w-0">
+                                <p class="text-xs font-semibold text-slate-700 truncate">@product.BrandName</p>
+                                <p class="text-[11px] text-slate-400 truncate">@product.CategoryName</p>
+                            </div>
+
+                            <div class="text-center">
+                                <span
+                                    class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
+                                    @(product.VariantCount > 0 ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-400")">
+                                    <i data-lucide="layers" class="w-3 h-3"></i>
+                                    @product.VariantCount
+                                </span>
+                            </div>
+
+                            <div class="text-center">
+                                <span
+                                    class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
+                                    @(product.ViewsCount > 0 ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-400")">
+                                    <i data-lucide="eye" class="w-3 h-3"></i>
+                                    @product.ViewsCount
+                                </span>
+                            </div>
+
+                            <div class="text-center">
+                                <span
+                                    class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
+                                    @(product.TotalSoldCount > 0 ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-400")">
+                                    <i data-lucide="shopping-bag" class="w-3 h-3"></i>
+                                    @product.TotalSoldCount
+                                </span>
+                            </div>
+
+                            <div class="text-center">
+                                <span
+                                    class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
+                                    @(product.RatingCount > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400")">
+                                    <i data-lucide="star" class="w-3 h-3"></i>
+                                    @product.RatingAverage.ToString("0.0") (@product.RatingCount)
+                                </span>
+                            </div>
+
+                            <div class="flex items-center justify-center gap-1.5">
+                                <button type="button" data-product-toggle data-product-id="@product.Id"
+                                        class="product-status-btn @(product.IsActive ? "is-active" : "is-inactive")"
+                                        data-active="@product.IsActive.ToString().ToLower()">
+                                    <span class="dot"></span>
+                                    <span class="status-label">@(product.IsActive ? "Bật" : "Tắt")</span>
+                                </button>
+                                <button type="button" data-featured-toggle data-product-id="@product.Id"
+                                        class="product-feature-btn @(product.IsFeatured ? "is-featured" : "")" title="Bật/tắt nổi bật">
+                                    <i data-lucide="star" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-1.5">
+                                <a asp-action="Edit" asp-route-id="@product.Id" title="Chỉnh sửa"
+                                   class="product-action-btn product-action-edit">
+                                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                    Sửa
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@product.Id" method="post" data-product-delete
+                                      data-product-id="@product.Id" data-product-name="@product.Name">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" title="Xoá" class="product-action-btn product-action-delete">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        Xoá
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <p class="text-xs text-slate-400">
+                        Trang <span class="font-semibold text-slate-600">@Model.Page</span> / @Model.TotalPages
+                        &nbsp;·&nbsp;
+                        <span class="font-semibold text-slate-600">@Model.TotalCount</span> sản phẩm
+                    </p>
+                    <div class="flex items-center gap-1">
+                        @if (Model.HasPrev)
+                        {
+                            <a asp-action="Index" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status" asp-route-featured="@Model.Featured" asp-route-brandId="@Model.BrandId"
+                               asp-route-categoryId="@Model.CategoryId" class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50
+                                flex items-center justify-center text-slate-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                        {
+                            <a asp-action="Index" asp-route-page="@p" asp-route-search="@Model.Search" asp-route-status="@Model.Status"
+                               asp-route-featured="@Model.Featured" asp-route-brandId="@Model.BrandId"
+                               asp-route-categoryId="@Model.CategoryId" class="w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all
+                                @(p == Model.Page
+                            ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
+                            : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50")">
+                                @p
+                            </a>
+                        }
+                        @if (Model.HasNext)
+                        {
+                            <a asp-action="Index" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status" asp-route-featured="@Model.Featured" asp-route-brandId="@Model.BrandId"
+                               asp-route-categoryId="@Model.CategoryId" class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50
+                                flex items-center justify-center text-slate-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    @section Scripts {
+        <script src="~/js/products.js" asp-append-version="true"></script>
+    }
