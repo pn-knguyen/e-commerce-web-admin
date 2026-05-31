@@ -72,3 +72,11 @@ public enum PromotionActionType
     BuyXGetY = 2,
     GiftProduct = 3
 }
+
+public enum GoodsReceiptStatus
+{
+    Draft = 0,
+    Pending = 1,
+    Approved = 2,
+    Cancelled = 3
+}

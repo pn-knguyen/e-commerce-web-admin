@@ -41,6 +41,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<Promotion> Promotions => Set<Promotion>();
     public DbSet<PromotionTarget> PromotionTargets => Set<PromotionTarget>();
     public DbSet<PromotionRule> PromotionRules => Set<PromotionRule>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<GoodsReceipt> GoodsReceipts => Set<GoodsReceipt>();
+    public DbSet<GoodReceiptItem> GoodReceiptItems => Set<GoodReceiptItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,6 +53,7 @@ public class ApplicationDbContext : DbContext
         ConfigureCatalog(modelBuilder);
         ConfigureOrders(modelBuilder);
         ConfigureMarketing(modelBuilder);
+        ConfigureInventory(modelBuilder);
         modelBuilder.SeedEcommerceData();
 
         foreach (var foreignKey in modelBuilder.Model.GetEntityTypes().SelectMany(entity => entity.GetForeignKeys()))
@@ -434,6 +438,48 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(rule => rule.GiftProductVariant)
                 .WithMany(variant => variant.GiftPromotionRules)
                 .HasForeignKey(rule => rule.GiftProductVariantId);
+        });
+    }
+
+    private static void ConfigureInventory(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Supplier>(entity =>
+        {
+            entity.ToTable("suppliers");
+            entity.Property(supplier => supplier.Name).HasMaxLength(255).IsRequired();
+            entity.Property(supplier => supplier.Phone).HasMaxLength(30);
+            entity.Property(supplier => supplier.Email).HasMaxLength(100);
+            entity.Property(supplier => supplier.Address).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<GoodsReceipt>(entity =>
+        {
+            entity.ToTable("goods_receipts");
+            entity.HasIndex(receipt => receipt.ReceiptCode).IsUnique();
+            entity.Property(receipt => receipt.ReceiptCode).HasMaxLength(50).IsRequired();
+            entity.Property(receipt => receipt.TotalAmount).HasPrecision(18, 2);
+            entity.Property(receipt => receipt.Status).HasConversion<string>().HasMaxLength(30);
+            entity.HasOne(receipt => receipt.Supplier)
+                .WithMany(supplier => supplier.GoodsReceipts)
+                .HasForeignKey(receipt => receipt.SupplierId);
+            entity.HasOne(receipt => receipt.CreatedByUser)
+                .WithMany(user => user.CreatedGoodsReceipts)
+                .HasForeignKey(receipt => receipt.CreatedBy);
+            entity.HasOne(receipt => receipt.ApprovedByUser)
+                .WithMany(user => user.ApprovedGoodsReceipts)
+                .HasForeignKey(receipt => receipt.ApprovedBy);
+        });
+
+        modelBuilder.Entity<GoodReceiptItem>(entity =>
+        {
+            entity.ToTable("good_receipt_items");
+            entity.Property(item => item.ImportPrice).HasPrecision(18, 2);
+            entity.HasOne(item => item.GoodsReceipt)
+                .WithMany(receipt => receipt.GoodReceiptItems)
+                .HasForeignKey(item => item.GoodsReceiptId);
+            entity.HasOne(item => item.ProductVariant)
+                .WithMany(variant => variant.GoodReceiptItems)
+                .HasForeignKey(item => item.ProductVariantId);
         });
     }
 }

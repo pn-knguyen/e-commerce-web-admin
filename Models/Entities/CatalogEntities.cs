@@ -79,6 +79,7 @@ public class ProductVariant
     public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
     public ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+    public ICollection<GoodReceiptItem> GoodReceiptItems { get; set; } = new List<GoodReceiptItem>();
     public ICollection<PromotionRule> GiftPromotionRules { get; set; } = new List<PromotionRule>();
 }
 
