@@ -7,6 +7,7 @@ using e_commerce_web_admin.Services.CategoryVariantAttributes;
 using e_commerce_web_admin.Services.PaymentMethods;
 using e_commerce_web_admin.Services.Products;
 using e_commerce_web_admin.Services.Specifications;
+using e_commerce_web_admin.Services.Suppliers;
 using e_commerce_web_admin.Services.Uploads;
 using e_commerce_web_admin.Services.Vouchers;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,7 @@ builder.Services.AddScoped<IAttributeAdminService, AttributeAdminService>();
 builder.Services.AddScoped<ICvaAdminService, CvaAdminService>();
 builder.Services.AddScoped<IProductAdminService, ProductAdminService>();
 builder.Services.AddScoped<IPaymentMethodAdminService, PaymentMethodAdminService>();
+builder.Services.AddScoped<ISupplierAdminService, SupplierAdminService>();
 builder.Services.AddScoped<IVoucherAdminService, VoucherAdminService>();
 builder.Services.Configure<CloudinaryOptions>(
     builder.Configuration.GetSection(CloudinaryOptions.SectionName));

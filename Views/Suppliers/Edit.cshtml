@@ -1,0 +1,29 @@
+@model e_commerce_web_admin.ViewModels.Suppliers.SupplierFormViewModel
+@{
+    ViewData["Title"] = $"Sửa nhà cung cấp - {Model.Name}";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/suppliers.css" asp-append-version="true" />
+}
+
+<div class="mb-6 supplier-anim" style="animation-delay:0.04s">
+    <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+        <a asp-action="Index" class="hover:text-teal-600 transition-colors">Nhà cung cấp</a>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        <span class="text-slate-600 font-medium">@Model.Name</span>
+    </nav>
+    <h1 class="text-2xl font-bold text-slate-800">Chỉnh sửa nhà cung cấp</h1>
+    <p class="text-slate-500 text-sm mt-0.5">Cập nhật thông tin liên hệ và trạng thái hợp tác của <strong class="text-slate-700">@Model.Name</strong>.</p>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="supplier-anim" style="animation-delay:0.1s" novalidate>
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <partial name="_Form" model="Model" />
+</form>
+
+@section Scripts {
+    <script src="~/js/suppliers.js" asp-append-version="true"></script>
+}
