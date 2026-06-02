@@ -1,6 +1,106 @@
-﻿@{
-    ViewData["Title"] = "Privacy Policy";
+@{
+    ViewData["Title"] = "Chính sách";
+    Layout = "_Layout";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+@section Styles {
+    <style>
+        body {
+            background:
+                radial-gradient(circle at 96% 12%, rgba(15, 23, 42, 0.08), transparent 28rem),
+                linear-gradient(180deg, #f8fbfd 0%, #f6fbfb 100%);
+        }
+
+        .surface-page {
+            display: grid;
+            gap: 1rem;
+            color: #172033;
+        }
+
+        .surface-hero {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+            overflow: visible;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .surface-hero::after {
+            display: none;
+        }
+
+        .surface-hero > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .surface-hero h1 {
+            margin: 0;
+            color: #0f172a;
+            font-size: clamp(1.35rem, 1.8vw, 1.7rem);
+            font-weight: 850;
+            line-height: 1.05;
+        }
+
+        .surface-hero p {
+            max-width: 43rem;
+            margin: 0.45rem 0 0;
+            color: #64748b;
+            font-size: 0.8125rem;
+            line-height: 1.55;
+        }
+
+        .surface-hero > a {
+            display: inline-flex;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            gap: 0.625rem;
+            min-height: 2.85rem;
+            border-radius: 999px;
+            background: #0f766e;
+            color: #ffffff;
+            font-size: 0.875rem;
+            font-weight: 800;
+            padding: 0.4rem 0.95rem;
+            text-decoration: none;
+        }
+
+        .surface-hero > a:hover {
+            background: #115e59;
+            color: #ffffff;
+        }
+
+        @@media (max-width: 900px) {
+            .surface-hero {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .surface-hero > a {
+                width: 100%;
+            }
+        }
+    </style>
+}
+
+<main class="surface-page">
+    <section class="surface-hero surface-anim" style="animation-delay:0.04s">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <h1>Chính sách hệ thống</h1>
+            </div>
+            <p>Trang tĩnh dùng cho nội dung chính sách nội bộ của khu vực quản trị.</p>
+        </div>
+        <a asp-controller="Dashboard" asp-action="Index">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Quay lại
+        </a>
+    </section>
+</main>

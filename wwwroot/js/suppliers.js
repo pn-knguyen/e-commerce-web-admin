@@ -16,8 +16,8 @@ function bindSupplierFormValidation() {
     }
 
     const alertBox = document.querySelector('[data-supplier-form-alert]');
-    const requiredMessage = 'Số điện thoại là bắt buộc.';
-    const formatMessage = 'Số điện thoại phải gồm đúng 10 chữ số.';
+    const requiredPhoneMessage = 'Số điện thoại là bắt buộc.';
+    const formatPhoneMessage = 'Số điện thoại phải gồm đúng 10 chữ số.';
     let hasSubmitted = !alertBox?.classList.contains('hidden');
 
     const setFieldError = (field, message, showError) => {
@@ -25,6 +25,15 @@ function bindSupplierFormValidation() {
         const errorElement = targetId ? document.getElementById(targetId) : null;
         if (errorElement && showError) {
             errorElement.textContent = message;
+        }
+
+        const fieldGroup = field.closest('[data-supplier-field]');
+        if (fieldGroup && showError) {
+            fieldGroup.classList.toggle('has-error', Boolean(message));
+        }
+
+        if (showError) {
+            field.setAttribute('aria-invalid', message ? 'true' : 'false');
         }
     };
 
@@ -47,13 +56,12 @@ function bindSupplierFormValidation() {
         let message = '';
 
         if (!value) {
-            message = requiredMessage;
+            message = requiredPhoneMessage;
         } else if (!/^\d{10}$/.test(value)) {
-            message = formatMessage;
+            message = formatPhoneMessage;
         }
 
         setFieldError(phoneInput, message, showError);
-
         return message === '';
     };
 
@@ -81,6 +89,7 @@ function bindSupplierFormValidation() {
     });
 
     phoneInput?.addEventListener('input', () => {
+        phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
         validatePhone(true);
         if (hasSubmitted) {
             setAlertVisible(!validateForm(false));
@@ -129,13 +138,13 @@ async function toggleSupplier(button) {
         });
 
         if (!response.ok) {
-            throw new Error('Toggle failed');
+        throw new Error('Cập nhật trạng thái thất bại.');
         }
 
         await response.json();
         window.location.reload();
     } catch {
-        alert('Không thể cập nhật trạng thái nhà cung cấp. Vui lòng thử lại.');
+        showSupplierNotice('Không thể cập nhật trạng thái nhà cung cấp. Vui lòng thử lại.', 'error');
         button.disabled = false;
     }
 }
@@ -157,11 +166,11 @@ function bindDeleteConfirmation() {
                 const result = await checkSupplierDelete(form);
 
                 if (!result.canDelete) {
-                    alert(result.message || `Không thể xóa "${name}" vì còn dữ liệu liên quan.`);
+                    showSupplierNotice(result.message || `Không thể xóa "${name}" vì còn dữ liệu liên quan.`, 'error');
                     return;
                 }
 
-                if (!confirm(`Bạn có chắc muốn xóa nhà cung cấp "${name}"?\nHành động này không thể hoàn tác.`)) {
+                if (!window.confirm(`Bạn có chắc muốn xóa nhà cung cấp "${name}"?\nHành động này không thể hoàn tác.`)) {
                     return;
                 }
 
@@ -172,7 +181,7 @@ function bindDeleteConfirmation() {
                     form.submit();
                 }
             } catch {
-                alert('Không thể kiểm tra điều kiện xóa. Vui lòng thử lại.');
+                showSupplierNotice('Không thể kiểm tra điều kiện xóa. Vui lòng thử lại.', 'error');
             } finally {
                 if (form.dataset.deleteChecked !== 'true') {
                     submitButton?.removeAttribute('disabled');
@@ -185,7 +194,7 @@ function bindDeleteConfirmation() {
 async function checkSupplierDelete(form) {
     const id = form.dataset.supplierId;
     if (!id) {
-        throw new Error('Missing supplier id');
+        throw new Error('Thiếu mã nhà cung cấp.');
     }
 
     const response = await fetch(`/Suppliers/CheckDelete/${encodeURIComponent(id)}`, {
@@ -197,10 +206,33 @@ async function checkSupplierDelete(form) {
     });
 
     if (!response.ok) {
-        throw new Error('Delete check failed');
+        throw new Error('Kiểm tra điều kiện xóa thất bại.');
     }
 
     return response.json();
+}
+
+function showSupplierNotice(message, type = 'success') {
+    const root = document.querySelector('[data-supplier-toast-root]');
+    if (!root) {
+        return;
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `supplier-toast is-${type}`;
+
+    const marker = document.createElement('span');
+    marker.className = 'supplier-toast-marker';
+
+    const text = document.createElement('span');
+    text.textContent = message;
+
+    toast.append(marker, text);
+    root.appendChild(toast);
+
+    window.setTimeout(() => {
+        toast.remove();
+    }, 4200);
 }
 
 function bindToastDismiss() {

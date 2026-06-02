@@ -10,8 +10,121 @@
         document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
 
     bindAvailableSpecFilter();
+    bindAssignSpecificationValidation();
     bindInlineUpdates();
     bindToastDismiss();
+
+    function bindAssignSpecificationValidation() {
+        const assignForm = Array.from(document.querySelectorAll('form'))
+            .find(form => form.querySelector('[name="SpecificationId"]'));
+
+        if (!assignForm) {
+            return;
+        }
+
+        const alertBox = assignForm.closest('.surface-form-card')?.querySelector('[data-surface-form-alert]')
+            ?? assignForm.querySelector('[data-surface-form-alert]');
+        let hasSubmitted = !alertBox?.classList.contains('hidden');
+        const setAlertVisible = isVisible => {
+            alertBox?.classList.toggle('hidden', !isVisible);
+        };
+
+        const specificationSelect = assignForm.querySelector('[name="SpecificationId"]');
+        const groupNameInput = assignForm.querySelector('[name="GroupName"]');
+        const sortOrderInput = assignForm.querySelector('[name="SortOrder"]');
+
+        const validators = [
+            showErrors => validateRequiredSelect(specificationSelect, 'Vui lòng chọn thông số cần gán.', showErrors),
+            showErrors => validateMaxLength(groupNameInput, 120, 'Tên nhóm tối đa 120 ký tự.', showErrors),
+            showErrors => validateNumberRange(sortOrderInput, 0, 9999, 'Thứ tự phải từ 0 đến 9999.', showErrors),
+        ];
+
+        [specificationSelect, groupNameInput, sortOrderInput].filter(Boolean).forEach(field => {
+            ['input', 'change', 'blur'].forEach(eventName => {
+                field.addEventListener(eventName, () => {
+                    validateAssignForm(validators, true);
+                    if (hasSubmitted) {
+                        setAlertVisible(!validateAssignForm(validators, false));
+                    }
+                });
+            });
+        });
+
+        assignForm.addEventListener('submit', event => {
+            hasSubmitted = true;
+            const isValid = validateAssignForm(validators, true);
+            setAlertVisible(!isValid);
+
+            if (!isValid) {
+                event.preventDefault();
+                assignForm.querySelector('[aria-invalid="true"]')?.focus();
+            }
+        });
+    }
+
+    function validateAssignForm(validators, showErrors) {
+        return validators
+            .map(validate => validate(showErrors))
+            .every(Boolean);
+    }
+
+    function validateRequiredSelect(field, message, showError) {
+        if (!field) {
+            return true;
+        }
+
+        const error = field.value ? '' : message;
+        if (showError) {
+            setInlineError(field, error);
+        }
+
+        return error === '';
+    }
+
+    function validateMaxLength(field, maxLength, message, showError) {
+        if (!field) {
+            return true;
+        }
+
+        const error = field.value.trim().length > maxLength ? message : '';
+        if (showError) {
+            setInlineError(field, error);
+        }
+
+        return error === '';
+    }
+
+    function validateNumberRange(field, min, max, message, showError) {
+        if (!field) {
+            return true;
+        }
+
+        const rawValue = field.value.trim();
+        const value = Number(rawValue);
+        const error = rawValue !== '' && (!Number.isFinite(value) || value < min || value > max)
+            ? message
+            : '';
+
+        if (showError) {
+            setInlineError(field, error);
+        }
+
+        return error === '';
+    }
+
+    function setInlineError(field, message) {
+        let messageElement = field.parentElement?.querySelector('[data-client-error-for="' + field.name + '"]');
+        if (!messageElement) {
+            messageElement = document.createElement('span');
+            messageElement.dataset.clientErrorFor = field.name;
+            messageElement.className = 'text-xs text-red-500 mt-1 block';
+            field.insertAdjacentElement('afterend', messageElement);
+        }
+
+        messageElement.textContent = message;
+        field.setAttribute('aria-invalid', message ? 'true' : 'false');
+        field.classList.toggle('input-validation-error', Boolean(message));
+    }
 
     function bindAvailableSpecFilter() {
         const availableSearch = document.getElementById('availableSpecSearch');

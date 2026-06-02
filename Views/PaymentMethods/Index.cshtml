@@ -1,21 +1,18 @@
 @model e_commerce_web_admin.ViewModels.PaymentMethods.PaymentMethodIndexViewModel
 @{
     ViewData["Title"] = "Phương thức thanh toán";
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    Layout = "_Layout";
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/payment-methods.css" asp-append-version="true" />
 }
 
-<div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 payment-anim"
+<main class="surface-page">
+<div class="surface-hero payment-anim surface-anim"
      style="animation-delay:0.04s">
     <div>
         <div class="flex items-center gap-2 mb-1">
-            <div
-                class="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-sm">
-                <i data-lucide="credit-card" class="w-4 h-4 text-white"></i>
-            </div>
             <h1 class="text-2xl font-bold text-slate-800">Phương thức thanh toán</h1>
         </div>
         <p class="text-slate-500 text-sm">Quản lý các hình thức thanh toán được dùng khi tạo đơn hàng</p>
@@ -58,7 +55,7 @@
     </div>
 }
 
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 payment-anim" style="animation-delay:0.08s">
+<div class="surface-metrics payment-anim surface-anim" style="animation-delay:0.08s">
     <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
         <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0">
             <i data-lucide="credit-card" class="w-5 h-5 text-teal-500"></i>
@@ -97,7 +94,7 @@
     </div>
 </div>
 
-<div class="bg-white rounded-2xl border border-slate-100 p-4 mb-4 shadow-sm payment-anim" style="animation-delay:0.12s">
+<div class="surface-console surface-toolbar-panel payment-anim surface-anim" style="animation-delay:0.12s">
     <form method="get" asp-action="Index" class="payment-filter-grid">
         <div class="relative payment-filter-search">
             <i data-lucide="search"
@@ -130,11 +127,11 @@
     </form>
 </div>
 
-<div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm payment-anim"
+<div class="surface-console surface-table-card payment-anim surface-anim"
      style="animation-delay:0.16s">
     @if (!Model.PaymentMethods.Any())
     {
-        <div class="py-24 text-center">
+        <div class="surface-empty">
             <div
                 class="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
                 <i data-lucide="credit-card" class="w-10 h-10 text-teal-300"></i>
@@ -156,7 +153,7 @@
     {
         <div class="payment-table-scroll">
             <div
-                class="payment-index-grid px-6 py-3.5 bg-gradient-to-r from-slate-50 to-slate-50/50 border-b border-slate-100">
+                class="surface-table-head payment-index-grid px-6 py-3.5">
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Phương thức</span>
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Đơn hàng</span>
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Trạng thái</span>
@@ -169,7 +166,7 @@
                 }
                 @foreach (var method in Model.PaymentMethods)
                 {
-                    <div class="payment-row payment-index-grid px-6 py-3.5 payment-anim"
+                    <div class="surface-row payment-row payment-index-grid px-6 py-3.5 payment-anim"
                          style="animation-delay:@(0.16 + animIndex++ * 0.025)s" data-id="@method.Id">
                         <div class="flex items-center gap-3 min-w-0">
                             <div class="payment-icon w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -201,17 +198,17 @@
                             </button>
                         </div>
 
-                        <div class="flex items-center justify-end gap-1.5">
+                        <div class="w-36 index-actions">
                             <a asp-action="Edit" asp-route-id="@method.Id" title="Chỉnh sửa"
-                               class="payment-action-btn payment-action-edit">
-                                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                               class="payment-action-btn payment-action-edit index-action-btn index-action-edit">
+                                <i data-lucide="pencil" class="w-4 h-4 shrink-0"></i>
                                 Sửa
                             </a>
                             <form asp-action="Delete" asp-route-id="@method.Id" method="post" data-payment-delete
                                   data-payment-id="@method.Id" data-payment-name="@method.Name">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" title="Xóa" class="payment-action-btn payment-action-delete">
-                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                <button type="submit" title="Xóa" class="payment-action-btn payment-action-delete index-action-btn index-action-delete">
+                                    <i data-lucide="trash-2" class="w-4 h-4 shrink-0"></i>
                                     Xóa
                                 </button>
                             </form>
@@ -223,7 +220,7 @@
 
         @if (Model.TotalPages > 1)
         {
-            <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="surface-pagination px-6 py-4 flex items-center justify-between">
                 <p class="text-xs text-slate-400">
                     Trang <span class="font-semibold text-slate-600">@Model.Page</span> / @Model.TotalPages
                     &nbsp;·&nbsp;
@@ -261,6 +258,7 @@
         }
     }
 </div>
+</main>
 
 @section Scripts {
     <script src="~/js/payment-methods.js" asp-append-version="true"></script>

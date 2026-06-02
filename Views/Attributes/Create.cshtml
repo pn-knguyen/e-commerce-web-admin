@@ -2,7 +2,7 @@
 @model e_commerce_web_admin.ViewModels.Attributes.AttributeFormViewModel
 @{
     ViewData["Title"] = "Thêm thuộc tính";
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    Layout = "_Layout";
 
     if (Model.Options.Count == 0)
     {
@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="~/css/attributes.css" asp-append-version="true" />
 }
 
-<div class="mb-6 attr-anim" style="animation-delay:0.04s">
+<div class="surface-form-hero attr-anim surface-anim" style="animation-delay:0.04s">
     <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
         <a asp-action="Index" class="hover:text-teal-600 transition-colors">Thuộc tính</a>
         <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
@@ -24,11 +24,11 @@
     <p class="text-slate-500 text-sm mt-0.5">Tạo nhóm thuộc tính và các giá trị bắt buộc dùng cho biến thể sản phẩm.</p>
 </div>
 
-<form asp-action="Create" method="post" class="attr-anim" style="animation-delay:0.1s">
+<form asp-action="Create" method="post" class="attr-anim surface-anim" style="animation-delay:0.1s">
     @Html.AntiForgeryToken()
     <partial name="_Form" model="Model" />
 
-    <div class="mt-6 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+    <div class="mt-6 surface-console surface-table-card overflow-hidden">
         <div
             class="px-5 py-4 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -48,7 +48,7 @@
             </div>
 
             <div
-                class="grid grid-cols-[1fr_1fr_44px] gap-3 px-5 py-3 bg-slate-50/80 border-b border-slate-100 max-md:hidden">
+                class="surface-table-head grid grid-cols-[1fr_1fr_44px] gap-3 px-5 py-3 max-md:hidden">
                 <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Mã giá trị</span>
                 <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tên hiển thị</span>
                 <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center">Xóa</span>

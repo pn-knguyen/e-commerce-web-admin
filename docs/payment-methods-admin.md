@@ -26,7 +26,6 @@ Views/PaymentMethods/Edit.cshtml
 Views/PaymentMethods/_Form.cshtml
 wwwroot/js/payment-methods.js
 wwwroot/css/payment-methods.css
-Views/Shared/_AdminLayout.cshtml
 Views/Shared/_Layout.cshtml
 ```
 
@@ -41,7 +40,7 @@ Views/Shared/_Layout.cshtml
 - `Views/PaymentMethods/*`: giao diện danh sách, tạo mới, chỉnh sửa và form dùng chung.
 - `wwwroot/js/payment-methods.js`: xử lý toggle trạng thái, kiểm tra xóa, xác nhận xóa, đóng toast.
 - `wwwroot/css/payment-methods.css`: style riêng cho bảng, filter, nút trạng thái, nút thao tác và responsive.
-- `Views/Shared/_AdminLayout.cshtml`, `_Layout.cshtml`: nơi có link điều hướng tới `/PaymentMethods`.
+- `Views/Shared/_Layout.cshtml`: nơi có link điều hướng tới `/PaymentMethods`.
 
 ## 2. Đăng ký service trong Program
 
@@ -1258,7 +1257,7 @@ Khai báo model và layout:
 @model e_commerce_web_admin.ViewModels.PaymentMethods.PaymentMethodIndexViewModel
 @{
     ViewData["Title"] = "Phương thức thanh toán";
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 ```
 
@@ -1573,7 +1572,7 @@ Set title và layout:
 ```cshtml
 @{
     ViewData["Title"] = "Thêm phương thức thanh toán";
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 ```
 
@@ -1619,7 +1618,7 @@ Set title có tên phương thức:
 ```cshtml
 @{
     ViewData["Title"] = $"Sửa phương thức thanh toán - {Model.Name}";
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 ```
 
@@ -2256,7 +2255,7 @@ Mục đích:
 
 Admin layout đã có link tới module:
 
-File: `Views/Shared/_AdminLayout.cshtml`
+File: `Views/Shared/_Layout.cshtml`
 
 ```cshtml
 <a href="/PaymentMethods" class="nav-link ...">

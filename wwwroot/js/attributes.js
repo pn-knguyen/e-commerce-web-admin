@@ -34,6 +34,213 @@ function showBanner(message, type = 'success') {
 
 /* ── Toast dismiss ───────────────────────────────────────────────────────── */
 
+function bindAttributeFormValidation() {
+    const form = document.querySelector('.surface-form-grid')?.closest('form');
+    if (!form) {
+        return;
+    }
+
+    bindSurfaceFormClientValidation(form);
+}
+
+function bindSurfaceFormClientValidation(form) {
+    if (form.dataset.clientValidationBound === 'true') {
+        return;
+    }
+
+    form.dataset.clientValidationBound = 'true';
+    form.setAttribute('novalidate', 'novalidate');
+
+    const alertBox = form.querySelector('[data-surface-form-alert]')
+        ?? form.closest('.surface-form-grid')?.querySelector('[data-surface-form-alert]')
+        ?? form.closest('.surface-form-card')?.querySelector('[data-surface-form-alert]');
+    let hasSubmitted = !alertBox?.classList.contains('hidden');
+    const setAlertVisible = isVisible => {
+        alertBox?.classList.toggle('hidden', !isVisible);
+    };
+
+    const ignoredTypes = new Set(['hidden', 'button', 'submit', 'reset', 'image', 'checkbox', 'radio', 'file']);
+    const fallbackRequired = 'Trường này là bắt buộc.';
+    const fallbackInvalid = 'Giá trị không hợp lệ.';
+    const fallbackNumber = 'Giá trị phải là một số hợp lệ.';
+
+    const getFields = () => Array.from(form.querySelectorAll('input[name], select[name], textarea[name]'))
+        .filter(field => !field.disabled && !ignoredTypes.has((field.type || '').toLowerCase()))
+        .filter(field => field.dataset.val === 'true' || hasNativeRules(field));
+
+    const hasNativeRules = field =>
+        field.hasAttribute('required') ||
+        field.hasAttribute('min') ||
+        field.hasAttribute('max') ||
+        field.hasAttribute('minlength') ||
+        field.hasAttribute('maxlength') ||
+        field.hasAttribute('pattern');
+
+    const getValidationMessage = fieldName => Array.from(form.querySelectorAll('[data-valmsg-for]'))
+        .find(element => element.dataset.valmsgFor === fieldName) ?? null;
+
+    const getFieldValue = field => (typeof field.value === 'string' ? field.value.trim() : '');
+
+    const getNumber = rawValue => {
+        const value = Number(String(rawValue).replace(',', '.'));
+        return Number.isFinite(value) ? value : null;
+    };
+
+    const getConstraint = (field, dataKey, attrName) => {
+        const rawValue = field.dataset[dataKey] || field.getAttribute(attrName);
+        return rawValue ? getNumber(rawValue) : null;
+    };
+
+    const getFieldError = field => {
+        const value = getFieldValue(field);
+
+        if ((field.dataset.valRequired || field.required) && value === '') {
+            return field.dataset.valRequired || fallbackRequired;
+        }
+
+        if (value === '') {
+            return '';
+        }
+
+        const shouldBeNumber = field.type === 'number' || field.dataset.valNumber || field.dataset.valRange;
+        if (shouldBeNumber && getNumber(value) === null) {
+            return field.dataset.valNumber || fallbackNumber;
+        }
+
+        const min = getConstraint(field, 'valRangeMin', 'min');
+        const max = getConstraint(field, 'valRangeMax', 'max');
+        const numericValue = getNumber(value);
+        if (numericValue !== null && ((min !== null && numericValue < min) || (max !== null && numericValue > max))) {
+            return field.dataset.valRange || fallbackInvalid;
+        }
+
+        const minLength = getConstraint(field, 'valLengthMin', 'minlength');
+        const maxLength = getConstraint(field, 'valLengthMax', 'maxlength') ?? getConstraint(field, 'valMaxlengthMax', 'maxlength');
+        if (minLength !== null && value.length < minLength) {
+            return field.dataset.valLength || fallbackInvalid;
+        }
+
+        if (maxLength !== null && value.length > maxLength) {
+            return field.dataset.valLength || field.dataset.valMaxlength || fallbackInvalid;
+        }
+
+        const pattern = field.dataset.valRegexPattern || field.pattern;
+        if (pattern) {
+            try {
+                if (!new RegExp(pattern).test(value)) {
+                    return field.dataset.valRegex || fallbackInvalid;
+                }
+            } catch {
+                return '';
+            }
+        }
+
+        if (!field.validity.valid) {
+            return fallbackInvalid;
+        }
+
+        return '';
+    };
+
+    const setFieldError = (field, message) => {
+        const messageElement = getValidationMessage(field.name);
+        const hasError = Boolean(message);
+
+        field.setAttribute('aria-invalid', hasError ? 'true' : 'false');
+        field.classList.toggle('input-validation-error', hasError);
+
+        if (messageElement) {
+            messageElement.textContent = message;
+            messageElement.classList.toggle('field-validation-error', hasError);
+            messageElement.classList.toggle('field-validation-valid', !hasError);
+        }
+    };
+
+    const validateField = (field, showError) => {
+        const message = getFieldError(field);
+        if (showError) {
+            setFieldError(field, message);
+        }
+
+        return message === '';
+    };
+
+    const validateForm = showError => {
+        let firstInvalid = null;
+        const isValid = getFields()
+            .map(field => {
+                const fieldValid = validateField(field, showError);
+                if (!fieldValid) {
+                    firstInvalid ??= field;
+                }
+                return fieldValid;
+            })
+            .every(Boolean);
+
+        if (showError) {
+            setAlertVisible(!isValid);
+        }
+
+        return { isValid, firstInvalid };
+    };
+
+    const refreshAlertAfterFieldChange = () => {
+        if (!hasSubmitted) {
+            return;
+        }
+
+        const result = validateForm(false);
+        setAlertVisible(!result.isValid);
+    };
+
+    ['input', 'change'].forEach(eventName => {
+        form.addEventListener(eventName, event => {
+            const field = event.target.closest('input[name], select[name], textarea[name]');
+            if (field && form.contains(field)) {
+                validateField(field, true);
+                refreshAlertAfterFieldChange();
+            }
+        });
+    });
+
+    form.addEventListener('blur', event => {
+        const field = event.target.closest('input[name], select[name], textarea[name]');
+        if (field && form.contains(field)) {
+            validateField(field, true);
+        }
+    }, true);
+
+    form.addEventListener('submit', event => {
+        hasSubmitted = true;
+        const result = validateForm(true);
+        if (!result.isValid) {
+            event.preventDefault();
+            result.firstInvalid?.focus();
+        }
+    });
+}
+
+function applyCreateOptionValidationRules(row) {
+    const valueInput = row.querySelector('[data-create-option-value]');
+    const labelInput = row.querySelector('[data-create-option-label]');
+
+    if (valueInput) {
+        valueInput.dataset.val = 'true';
+        valueInput.dataset.valRequired = 'Mã giá trị là bắt buộc.';
+        valueInput.dataset.valLength = 'Mã giá trị tối đa 120 ký tự.';
+        valueInput.dataset.valLengthMax = '120';
+    }
+
+    if (labelInput) {
+        labelInput.dataset.val = 'true';
+        labelInput.dataset.valRequired = 'Tên hiển thị là bắt buộc.';
+        labelInput.dataset.valLength = 'Tên hiển thị tối đa 255 ký tự.';
+        labelInput.dataset.valLengthMax = '255';
+    }
+}
+
+bindAttributeFormValidation();
+
 document.addEventListener('click', e => {
     const btn = e.target.closest('[data-dismiss-target]');
     if (!btn) return;
@@ -102,6 +309,7 @@ if (createOptionList) {
         const row = wrapper.firstElementChild;
         if (!row) return;
 
+        applyCreateOptionValidationRules(row);
         createOptionList.appendChild(row);
         row.querySelector('[data-create-option-value]')?.focus();
         lucide.createIcons({ nodes: [row] });
@@ -304,6 +512,67 @@ if (optionsPanel) {
 
     /* ── Add option form ─────────────────────────────────────────────────── */
 
+    let hasSubmittedAddOption = false;
+
+    const setAddOptionAlertVisible = isVisible => {
+        addForm
+            ?.closest('.surface-form-card')
+            ?.querySelector('[data-surface-form-alert]')
+            ?.classList.toggle('hidden', !isVisible);
+    };
+
+    const setAddOptionFieldError = (field, message, showError) => {
+        if (!field || !showError) {
+            return;
+        }
+
+        let messageElement = field.parentElement?.querySelector('[data-client-error-for="' + field.name + '"]');
+        if (!messageElement) {
+            messageElement = document.createElement('span');
+            messageElement.dataset.clientErrorFor = field.name;
+            messageElement.className = 'text-xs text-red-500 mt-1 block';
+            field.insertAdjacentElement('afterend', messageElement);
+        }
+
+        messageElement.textContent = message;
+        field.setAttribute('aria-invalid', message ? 'true' : 'false');
+        field.classList.toggle('input-validation-error', Boolean(message));
+    };
+
+    const validateAddOptionField = (field, message, showError) => {
+        const error = field?.value.trim() ? '' : message;
+        setAddOptionFieldError(field, error, showError);
+        return error === '';
+    };
+
+    const validateAddOptionForm = showError => {
+        const valueInput = addForm?.querySelector('[name="value"]');
+        const labelInput = addForm?.querySelector('[name="label"]');
+        const isValid = [
+            validateAddOptionField(valueInput, 'Mã giá trị là bắt buộc.', showError),
+            validateAddOptionField(labelInput, 'Tên hiển thị là bắt buộc.', showError),
+        ].every(Boolean);
+
+        if (showError) {
+            setAddOptionAlertVisible(!isValid);
+        }
+
+        return isValid;
+    };
+
+    addForm?.querySelectorAll('[name="value"], [name="label"]').forEach(field => {
+        field.addEventListener('input', () => {
+            const message = field.name === 'value'
+                ? 'Mã giá trị là bắt buộc.'
+                : 'Tên hiển thị là bắt buộc.';
+            validateAddOptionField(field, message, true);
+
+            if (hasSubmittedAddOption) {
+                setAddOptionAlertVisible(!validateAddOptionForm(false));
+            }
+        });
+    });
+
     addForm?.addEventListener('submit', async e => {
         e.preventDefault();
         const valueInput = addForm.querySelector('[name="value"]');
@@ -315,8 +584,10 @@ if (optionsPanel) {
             label: labelInput.value.trim(),
         };
 
-        if (!payload.value || !payload.label) {
-            showBanner('Vui lòng nhập đầy đủ mã giá trị và tên hiển thị.', 'error');
+        hasSubmittedAddOption = true;
+
+        if (!validateAddOptionForm(true)) {
+            addForm.querySelector('[aria-invalid="true"]')?.focus();
             return;
         }
 
@@ -328,6 +599,10 @@ if (optionsPanel) {
             if (data.succeeded) {
                 valueInput.value = '';
                 labelInput.value = '';
+                hasSubmittedAddOption = false;
+                setAddOptionFieldError(valueInput, '', true);
+                setAddOptionFieldError(labelInput, '', true);
+                setAddOptionAlertVisible(false);
                 await loadOptions();
                 showBanner(data.message, 'success');
             } else {

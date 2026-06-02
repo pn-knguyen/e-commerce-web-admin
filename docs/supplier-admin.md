@@ -35,7 +35,7 @@ Module hien tai phu hop voi yeu cau code sach, de bao tri va frontend/backend du
 - `Views/Suppliers/_Form.cshtml`
 - `wwwroot/js/suppliers.js`
 - `wwwroot/css/suppliers.css`
-- `Views/Shared/_AdminLayout.cshtml`
+- `Views/Shared/_Layout.cshtml`
 
 ## 3. Cau truc database lien quan
 
@@ -1609,7 +1609,7 @@ Muc tieu la giu giao dien gon va nhat quan voi theme teal cua cac trang truoc.
 
 ## 16. Sidebar
 
-Trong `Views/Shared/_AdminLayout.cshtml`, sidebar da them nhom quan ly kho hang.
+Trong `Views/Shared/_Layout.cshtml`, sidebar da them nhom quan ly kho hang.
 
 Muc nha cung cap:
 

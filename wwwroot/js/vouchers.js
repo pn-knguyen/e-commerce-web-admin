@@ -71,11 +71,17 @@ function bindVoucherFormValidation() {
     }
 
     const touchedFields = new Set();
+    const alertBox = form.querySelector('[data-surface-form-alert]');
+    let hasSubmitted = !alertBox?.classList.contains('hidden');
+    const setAlertVisible = isVisible => {
+        alertBox?.classList.toggle('hidden', !isVisible);
+    };
     const watchedFields = [
         'Code',
         'DiscountType',
         'DiscountValue',
         'MaxDiscountValue',
+        'Description',
         'MinOrderValue',
         'MaxUses',
         'MaxUsesPerUser',
@@ -94,14 +100,19 @@ function bindVoucherFormValidation() {
             field.addEventListener(eventName, () => {
                 touchedFields.add(fieldName);
                 touchDependentFields(touchedFields, fieldName);
-                validateVoucherForm(form, touchedFields, false);
+                const isValid = validateVoucherForm(form, touchedFields, false);
+                if (hasSubmitted) {
+                    setAlertVisible(!isValid);
+                }
             });
         });
     });
 
     form.addEventListener('submit', event => {
+        hasSubmitted = true;
         watchedFields.forEach(fieldName => touchedFields.add(fieldName));
         const isValid = validateVoucherForm(form, touchedFields, true);
+        setAlertVisible(!isValid);
 
         if (!isValid) {
             event.preventDefault();
@@ -134,6 +145,7 @@ function validateVoucherForm(form, touchedFields, showAll) {
     const maxUses = validateNumberField(form, 'MaxUses', { integer: true });
     const maxUsesPerUser = validateNumberField(form, 'MaxUsesPerUser', { integer: true });
     const priority = validateNumberField(form, 'Priority', { required: true, integer: true });
+    const description = validateTextField(form, 'Description');
 
     isValid = applyVoucherFieldError(
         form,
@@ -170,6 +182,7 @@ function validateVoucherForm(form, touchedFields, showAll) {
 
     isValid = applyVoucherFieldError(form, 'DiscountValue', discountValue.error, touchedFields, showAll) && isValid;
     isValid = applyVoucherFieldError(form, 'MaxDiscountValue', maxDiscountValue.error, touchedFields, showAll) && isValid;
+    isValid = applyVoucherFieldError(form, 'Description', description.error, touchedFields, showAll) && isValid;
     isValid = applyVoucherFieldError(form, 'MinOrderValue', minOrderValue.error, touchedFields, showAll) && isValid;
     isValid = applyVoucherFieldError(form, 'MaxUses', maxUses.error, touchedFields, showAll) && isValid;
     isValid = applyVoucherFieldError(form, 'MaxUsesPerUser', maxUsesPerUser.error, touchedFields, showAll) && isValid;
@@ -203,6 +216,24 @@ function validateCodeField(form) {
     }
 
     return '';
+}
+
+function validateTextField(form, fieldName) {
+    const field = getVoucherField(form, fieldName);
+    const value = field?.value ?? '';
+    const maxLength = Number(field?.dataset.valLengthMax || field?.getAttribute('maxlength') || 0);
+
+    if (!field) {
+        return { error: '' };
+    }
+
+    if (maxLength > 0 && value.length > maxLength) {
+        return {
+            error: field.dataset.valLength || `${getFieldLabel(form, field)} tối đa ${maxLength} ký tự.`,
+        };
+    }
+
+    return { error: '' };
 }
 
 function validateNumberField(form, fieldName, options = {}) {
@@ -401,7 +432,7 @@ async function toggleVoucherStatus(button) {
         });
 
         if (!response.ok) {
-            throw new Error('Server error');
+            throw new Error('Máy chủ trả về lỗi.');
         }
 
         await response.json();
