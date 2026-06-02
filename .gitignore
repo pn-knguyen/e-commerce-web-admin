@@ -6,3 +6,4 @@ appsettings.Local.json
 *.suo
 bin/
 obj/
+.agents/
