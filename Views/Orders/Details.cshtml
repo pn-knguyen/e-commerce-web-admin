@@ -1,0 +1,251 @@
+@model e_commerce_web_admin.ViewModels.Orders.OrderDetailsViewModel
+@using System.Globalization
+@using e_commerce_web_admin.ViewModels.Orders
+@{
+    ViewData["Title"] = $"Đơn hàng {Model.OrderCode}";
+    Layout = "_Layout";
+
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
+    string DateText(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", vi);
+    string DateTextNullable(DateTime? value) => value.HasValue ? DateText(value.Value) : "Chưa cập nhật";
+    var selectedOrderStatus = Model.StatusForm.OrderStatus.ToString();
+    var selectedPaymentStatus = Model.StatusForm.PaymentStatus.ToString();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+}
+
+<main class="order-page order-detail-page">
+    <section class="order-hero order-anim" style="animation-delay:0.04s">
+        <div>
+            <nav class="order-breadcrumb" aria-label="Điều hướng">
+                <a asp-action="Index">Quản lý đơn hàng</a>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                <span>@Model.OrderCode</span>
+            </nav>
+            <div class="order-title-row">
+                <div>
+                    <h1>@Model.OrderCode</h1>
+                    <p>Tạo lúc @DateText(Model.CreatedAt) · Cập nhật @DateTextNullable(Model.UpdatedAt)</p>
+                </div>
+                <a asp-action="Index" class="order-secondary-action">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>Danh sách</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div id="toastSuccess" class="order-flash order-flash-success order-anim" style="animation-delay:0.06s">
+            <span class="order-flash-icon">
+                <i data-lucide="check" class="w-4 h-4"></i>
+            </span>
+            <span>@TempData["Success"]</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <section class="order-detail-grid">
+        <div class="order-detail-main">
+            <section class="order-panel order-anim" style="animation-delay:0.08s">
+                <header class="order-panel-header">
+                    <span class="order-panel-icon">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h2>Sản phẩm trong đơn</h2>
+                        <p>@Model.TotalQuantity sản phẩm từ @Model.Items.Count dòng hàng</p>
+                    </div>
+                </header>
+
+                <div class="order-items-table">
+                    <div class="order-items-head">
+                        <span>Sản phẩm</span>
+                        <span class="text-center">SL</span>
+                        <span class="text-right">Đơn giá</span>
+                        <span class="text-right">Thành tiền</span>
+                    </div>
+                    @foreach (var item in Model.Items)
+                    {
+                        <article class="order-item-row">
+                            <div>
+                                <h3>@item.ProductName</h3>
+                                <p>SKU @item.VariantCode</p>
+                            </div>
+                            <span class="order-quantity-pill">@item.Quantity</span>
+                            <span class="text-right">@Money(item.UnitPrice)</span>
+                            <strong class="text-right">@Money(item.LineTotal)</strong>
+                        </article>
+                    }
+                </div>
+            </section>
+
+            <section class="order-panel order-anim" style="animation-delay:0.12s">
+                <header class="order-panel-header">
+                    <span class="order-panel-icon">
+                        <i data-lucide="map-pin" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h2>Thông tin giao hàng</h2>
+                        <p>@Model.ShippingContactName · @Model.ShippingPhone</p>
+                    </div>
+                </header>
+
+                <dl class="order-info-list">
+                    <div>
+                        <dt>Người nhận</dt>
+                        <dd>@Model.ShippingContactName</dd>
+                    </div>
+                    <div>
+                        <dt>Số điện thoại</dt>
+                        <dd>@Model.ShippingPhone</dd>
+                    </div>
+                    <div>
+                        <dt>Địa chỉ</dt>
+                        <dd>@Model.ShippingAddress</dd>
+                    </div>
+                </dl>
+            </section>
+        </div>
+
+        <aside class="order-detail-side">
+            <section class="order-panel order-anim" style="animation-delay:0.1s">
+                <header class="order-panel-header">
+                    <span class="order-panel-icon">
+                        <i data-lucide="user-round" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h2>Khách hàng</h2>
+                        <p>@Model.CustomerName</p>
+                    </div>
+                </header>
+
+                <dl class="order-info-list compact">
+                    <div>
+                        <dt>Email</dt>
+                        <dd>@(string.IsNullOrWhiteSpace(Model.CustomerEmail) ? "Chưa có email" : Model.CustomerEmail)</dd>
+                    </div>
+                    <div>
+                        <dt>Số điện thoại</dt>
+                        <dd>@(string.IsNullOrWhiteSpace(Model.CustomerPhone) ? Model.ShippingPhone : Model.CustomerPhone)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="order-panel order-anim" style="animation-delay:0.14s">
+                <header class="order-panel-header">
+                    <span class="order-panel-icon">
+                        <i data-lucide="receipt-text" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h2>Thanh toán</h2>
+                        <p>@Model.PaymentMethodName</p>
+                    </div>
+                </header>
+
+                <dl class="order-money-list">
+                    <div>
+                        <dt>Tạm tính</dt>
+                        <dd>@Money(Model.SubtotalAmount)</dd>
+                    </div>
+                    <div>
+                        <dt>Phí giao hàng</dt>
+                        <dd>@Money(Model.ShippingFee)</dd>
+                    </div>
+                    <div>
+                        <dt>Giảm giá</dt>
+                        <dd>-@Money(Model.VoucherDiscount)</dd>
+                    </div>
+                    <div class="is-total">
+                        <dt>Tổng cộng</dt>
+                        <dd>@Money(Model.TotalAmount)</dd>
+                    </div>
+                </dl>
+
+                @if (!string.IsNullOrWhiteSpace(Model.VoucherCode))
+                {
+                    <p class="order-voucher-line">
+                        <i data-lucide="ticket" class="w-3.5 h-3.5"></i>
+                        <span>@Model.VoucherCode</span>
+                    </p>
+                }
+            </section>
+
+            <section class="order-panel order-anim" style="animation-delay:0.18s">
+                <header class="order-panel-header">
+                    <span class="order-panel-icon">
+                        <i data-lucide="workflow" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h2>Trạng thái</h2>
+                        <p>
+                            <span class="order-badge @OrderDisplay.GetOrderStatusClass(Model.OrderStatus)">
+                                @OrderDisplay.GetOrderStatusLabel(Model.OrderStatus)
+                            </span>
+                        </p>
+                    </div>
+                </header>
+
+                <form asp-action="UpdateStatus"
+                      asp-route-id="@Model.Id"
+                      method="post"
+                      class="order-status-form"
+                      data-order-status-form
+                      data-current-order-status="@Model.OrderStatus"
+                      data-current-payment-status="@Model.PaymentStatus">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Id" value="@Model.Id" />
+
+                    <div data-order-form-alert class="order-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                        <div>
+                            <p>Vui lòng kiểm tra lại trạng thái.</p>
+                            <div asp-validation-summary="ModelOnly"></div>
+                        </div>
+                    </div>
+
+                    <label class="order-field">
+                        <span>Trạng thái đơn</span>
+                        <select name="OrderStatus" data-order-status-select>
+                            @foreach (var option in Model.OrderStatusOptions)
+                            {
+                                <option value="@option.Value" selected="@(option.Value == selectedOrderStatus ? "selected" : null)">
+                                    @option.Text
+                                </option>
+                            }
+                        </select>
+                        @Html.ValidationMessage("OrderStatus", null, new { @class = "order-field-error" })
+                    </label>
+
+                    <label class="order-field">
+                        <span>Trạng thái thanh toán</span>
+                        <select name="PaymentStatus" data-payment-status-select>
+                            @foreach (var option in Model.PaymentStatusOptions)
+                            {
+                                <option value="@option.Value" selected="@(option.Value == selectedPaymentStatus ? "selected" : null)">
+                                    @option.Text
+                                </option>
+                            }
+                        </select>
+                        @Html.ValidationMessage("PaymentStatus", null, new { @class = "order-field-error" })
+                    </label>
+
+                    <button type="submit" class="order-submit-btn">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        <span>Cập nhật trạng thái</span>
+                    </button>
+                </form>
+            </section>
+        </aside>
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/orders.js" asp-append-version="true"></script>
+}

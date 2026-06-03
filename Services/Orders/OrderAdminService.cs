@@ -1,0 +1,400 @@
+using e_commerce_web_admin.Data;
+using e_commerce_web_admin.Models.Entities;
+using e_commerce_web_admin.Models.Enums;
+using e_commerce_web_admin.ViewModels.Orders;
+using Microsoft.EntityFrameworkCore;
+
+namespace e_commerce_web_admin.Services.Orders;
+
+public sealed class OrderAdminService : IOrderAdminService
+{
+    private const int DefaultPageSize = 20;
+
+    private readonly ApplicationDbContext _db;
+
+    public OrderAdminService(ApplicationDbContext db) => _db = db;
+
+    public async Task<OrderIndexViewModel> GetIndexAsync(
+        OrderIndexQuery query,
+        CancellationToken ct = default)
+    {
+        var page = Math.Max(1, query.Page);
+        var dbQuery = ApplyFilters(_db.Orders.AsNoTracking(), query);
+
+        var totalCount = await dbQuery.CountAsync(ct);
+        var pendingCount = await _db.Orders.AsNoTracking().CountAsync(order => order.OrderStatus == OrderStatus.Pending, ct);
+        var shippingCount = await _db.Orders.AsNoTracking().CountAsync(order => order.OrderStatus == OrderStatus.Shipping, ct);
+        var completedCount = await _db.Orders.AsNoTracking().CountAsync(order => order.OrderStatus == OrderStatus.Completed, ct);
+        var completedRevenue = await _db.Orders
+            .AsNoTracking()
+            .Where(order => order.OrderStatus == OrderStatus.Completed && order.PaymentStatus == PaymentStatus.Paid)
+            .SumAsync(order => (decimal?)order.TotalAmount, ct) ?? 0m;
+
+        var rows = await dbQuery
+            .OrderByDescending(order => order.CreatedAt)
+            .ThenByDescending(order => order.Id)
+            .Skip((page - 1) * DefaultPageSize)
+            .Take(DefaultPageSize)
+            .Select(order => new OrderRowViewModel
+            {
+                Id = order.Id,
+                OrderCode = order.OrderCode,
+                CustomerName = order.User != null ? order.User.FullName : order.ShippingContactName,
+                CustomerEmail = order.User != null ? order.User.Email : null,
+                ShippingPhone = order.ShippingPhone,
+                PaymentMethodName = order.PaymentMethod != null ? order.PaymentMethod.Name : "Không rõ",
+                ItemCount = order.OrderItems.Sum(item => item.Quantity),
+                TotalAmount = order.TotalAmount,
+                OrderStatus = order.OrderStatus,
+                PaymentStatus = order.PaymentStatus,
+                CreatedAt = order.CreatedAt,
+            })
+            .ToListAsync(ct);
+
+        return new OrderIndexViewModel
+        {
+            Orders = rows,
+            Search = query.Search,
+            DateRange = NormalizeDateRange(query.DateRange),
+            OrderStatus = query.OrderStatus,
+            PaymentStatus = query.PaymentStatus,
+            PaymentMethodId = query.PaymentMethodId,
+            Page = page,
+            PageSize = DefaultPageSize,
+            TotalCount = totalCount,
+            PendingCount = pendingCount,
+            ShippingCount = shippingCount,
+            CompletedCount = completedCount,
+            CompletedRevenue = completedRevenue,
+            DateRangeOptions = BuildDateRangeOptions(query.DateRange),
+            OrderStatusOptions = BuildOrderStatusOptions(query.OrderStatus),
+            PaymentStatusOptions = BuildPaymentStatusOptions(query.PaymentStatus),
+            PaymentMethodOptions = await BuildPaymentMethodOptionsAsync(query.PaymentMethodId, ct),
+        };
+    }
+
+    public async Task<OrderDetailsViewModel?> GetDetailsAsync(long id, CancellationToken ct = default)
+    {
+        var viewModel = await _db.Orders
+            .AsNoTracking()
+            .Where(order => order.Id == id)
+            .Select(order => new OrderDetailsViewModel
+            {
+                Id = order.Id,
+                OrderCode = order.OrderCode,
+                CustomerName = order.User != null ? order.User.FullName : order.ShippingContactName,
+                CustomerEmail = order.User != null ? order.User.Email : null,
+                CustomerPhone = order.User != null ? order.User.Phone : null,
+                PaymentMethodName = order.PaymentMethod != null ? order.PaymentMethod.Name : "Không rõ",
+                VoucherCode = order.Voucher != null ? order.Voucher.Code : null,
+                ShippingContactName = order.ShippingContactName,
+                ShippingPhone = order.ShippingPhone,
+                ShippingProvince = order.ShippingProvince,
+                ShippingWard = order.ShippingWard,
+                ShippingDetail = order.ShippingDetail,
+                SubtotalAmount = order.SubtotalAmount,
+                ShippingFee = order.ShippingFee,
+                VoucherDiscount = order.VoucherDiscount,
+                TotalAmount = order.TotalAmount,
+                OrderStatus = order.OrderStatus,
+                PaymentStatus = order.PaymentStatus,
+                CreatedAt = order.CreatedAt,
+                UpdatedAt = order.UpdatedAt,
+                Items = order.OrderItems
+                    .OrderBy(item => item.Id)
+                    .Select(item => new OrderItemViewModel
+                    {
+                        Id = item.Id,
+                        ProductName = item.ProductVariant != null && item.ProductVariant.Product != null
+                            ? item.ProductVariant.Product.Name
+                            : "Sản phẩm không xác định",
+                        VariantCode = item.ProductVariant != null ? item.ProductVariant.Code : "N/A",
+                        Quantity = item.Quantity,
+                        UnitPrice = item.UnitPrice,
+                        LineTotal = item.UnitPrice * item.Quantity,
+                    })
+                    .ToList(),
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (viewModel is null)
+        {
+            return null;
+        }
+
+        viewModel.OrderStatusOptions = BuildOrderStatusOptions(viewModel.OrderStatus.ToString());
+        viewModel.PaymentStatusOptions = BuildPaymentStatusOptions(viewModel.PaymentStatus.ToString());
+        viewModel.StatusForm = new OrderStatusUpdateViewModel
+        {
+            Id = viewModel.Id,
+            OrderStatus = viewModel.OrderStatus,
+            PaymentStatus = viewModel.PaymentStatus,
+        };
+
+        return viewModel;
+    }
+
+    public async Task<OrderStatusUpdateResult> UpdateStatusAsync(
+        long id,
+        OrderStatusUpdateViewModel form,
+        CancellationToken ct = default)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(item => item.Id == id, ct);
+        if (order is null)
+        {
+            return OrderStatusUpdateResult.NotFound();
+        }
+
+        var errors = ValidateStatusChange(order, form);
+        if (errors.Count > 0)
+        {
+            return OrderStatusUpdateResult.Failed(errors);
+        }
+
+        if (order.OrderStatus == form.OrderStatus && order.PaymentStatus == form.PaymentStatus)
+        {
+            return OrderStatusUpdateResult.Success("Đơn hàng chưa có thay đổi trạng thái.");
+        }
+
+        order.OrderStatus = form.OrderStatus;
+        order.PaymentStatus = form.PaymentStatus;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        return OrderStatusUpdateResult.Success(
+            $"Đã cập nhật đơn hàng {order.OrderCode} sang {OrderDisplay.GetOrderStatusLabel(order.OrderStatus).ToLowerInvariant()}.");
+    }
+
+    private static IQueryable<Order> ApplyFilters(IQueryable<Order> query, OrderIndexQuery filters)
+    {
+        if (!string.IsNullOrWhiteSpace(filters.Search))
+        {
+            var term = filters.Search.Trim();
+            query = query.Where(order =>
+                order.OrderCode.Contains(term) ||
+                order.ShippingContactName.Contains(term) ||
+                order.ShippingPhone.Contains(term) ||
+                    (order.User != null &&
+                    (order.User.FullName.Contains(term) || order.User.Email.Contains(term))));
+        }
+
+        var dateRange = GetDateRange(filters.DateRange);
+        if (dateRange is not null)
+        {
+            query = query.Where(order => order.CreatedAt >= dateRange.Value.StartUtc &&
+                order.CreatedAt < dateRange.Value.EndUtc);
+        }
+
+        if (TryParseOrderStatus(filters.OrderStatus, out var orderStatus))
+        {
+            query = query.Where(order => order.OrderStatus == orderStatus);
+        }
+
+        if (TryParsePaymentStatus(filters.PaymentStatus, out var paymentStatus))
+        {
+            query = query.Where(order => order.PaymentStatus == paymentStatus);
+        }
+
+        if (filters.PaymentMethodId is > 0)
+        {
+            query = query.Where(order => order.PaymentMethodId == filters.PaymentMethodId.Value);
+        }
+
+        return query;
+    }
+
+    private static List<OrderValidationError> ValidateStatusChange(
+        Order order,
+        OrderStatusUpdateViewModel form)
+    {
+        var errors = new List<OrderValidationError>();
+
+        if (!CanChangeOrderStatus(order.OrderStatus, form.OrderStatus))
+        {
+            errors.Add(new OrderValidationError(
+                nameof(form.OrderStatus),
+                $"Không thể chuyển đơn từ \"{OrderDisplay.GetOrderStatusLabel(order.OrderStatus)}\" sang \"{OrderDisplay.GetOrderStatusLabel(form.OrderStatus)}\"."));
+        }
+
+        if (!CanChangePaymentStatus(order.PaymentStatus, form.PaymentStatus))
+        {
+            errors.Add(new OrderValidationError(
+                nameof(form.PaymentStatus),
+                $"Không thể chuyển thanh toán từ \"{OrderDisplay.GetPaymentStatusLabel(order.PaymentStatus)}\" sang \"{OrderDisplay.GetPaymentStatusLabel(form.PaymentStatus)}\"."));
+        }
+
+        if (form.OrderStatus == OrderStatus.Completed && form.PaymentStatus != PaymentStatus.Paid)
+        {
+            errors.Add(new OrderValidationError(
+                nameof(form.PaymentStatus),
+                "Đơn hoàn tất phải có trạng thái thanh toán là đã thanh toán."));
+        }
+
+        if (form.PaymentStatus == PaymentStatus.Refunded &&
+            form.OrderStatus is not OrderStatus.Cancelled and not OrderStatus.Returned)
+        {
+            errors.Add(new OrderValidationError(
+                nameof(form.PaymentStatus),
+                "Chỉ hoàn tiền cho đơn đã hủy hoặc đã trả hàng."));
+        }
+
+        if (form.OrderStatus is OrderStatus.Cancelled or OrderStatus.Returned &&
+            form.PaymentStatus == PaymentStatus.Paid)
+        {
+            errors.Add(new OrderValidationError(
+                nameof(form.PaymentStatus),
+                "Đơn đã hủy hoặc trả hàng không thể giữ trạng thái đã thanh toán."));
+        }
+
+        if (form.OrderStatus is OrderStatus.Cancelled or OrderStatus.Returned &&
+            order.PaymentStatus == PaymentStatus.Paid &&
+            form.PaymentStatus != PaymentStatus.Refunded)
+        {
+            errors.Add(new OrderValidationError(
+                nameof(form.PaymentStatus),
+                "Đơn đã thanh toán khi hủy hoặc trả hàng phải chuyển sang đã hoàn tiền."));
+        }
+
+        return errors;
+    }
+
+    private static bool CanChangeOrderStatus(OrderStatus current, OrderStatus next) =>
+        current switch
+        {
+            OrderStatus.Pending => next is OrderStatus.Pending or OrderStatus.Confirmed or OrderStatus.Cancelled,
+            OrderStatus.Confirmed => next is OrderStatus.Confirmed or OrderStatus.Processing or OrderStatus.Cancelled,
+            OrderStatus.Processing => next is OrderStatus.Processing or OrderStatus.Shipping or OrderStatus.Cancelled,
+            OrderStatus.Shipping => next is OrderStatus.Shipping or OrderStatus.Completed or OrderStatus.Returned,
+            OrderStatus.Completed => next is OrderStatus.Completed or OrderStatus.Returned,
+            OrderStatus.Cancelled => next is OrderStatus.Cancelled,
+            OrderStatus.Returned => next is OrderStatus.Returned,
+            _ => false,
+        };
+
+    private static bool CanChangePaymentStatus(PaymentStatus current, PaymentStatus next) =>
+        current switch
+        {
+            PaymentStatus.Unpaid => next is PaymentStatus.Unpaid or PaymentStatus.Paid or PaymentStatus.Failed,
+            PaymentStatus.Failed => next is PaymentStatus.Failed or PaymentStatus.Unpaid or PaymentStatus.Paid,
+            PaymentStatus.Paid => next is PaymentStatus.Paid or PaymentStatus.Refunded,
+            PaymentStatus.Refunded => next is PaymentStatus.Refunded,
+            _ => false,
+        };
+
+    private static bool TryParseOrderStatus(string? value, out OrderStatus status) =>
+        Enum.TryParse(value, ignoreCase: true, out status) && Enum.IsDefined(status);
+
+    private static bool TryParsePaymentStatus(string? value, out PaymentStatus status) =>
+        Enum.TryParse(value, ignoreCase: true, out status) && Enum.IsDefined(status);
+
+    private static List<OrderFilterOption> BuildDateRangeOptions(string? selectedValue)
+    {
+        var selected = NormalizeDateRange(selectedValue);
+        return
+        [
+            new OrderFilterOption
+            {
+                Value = "today",
+                Text = "Hôm nay",
+                Selected = selected == "today",
+            },
+            new OrderFilterOption
+            {
+                Value = "last7days",
+                Text = "7 ngày qua",
+                Selected = selected == "last7days",
+            },
+        ];
+    }
+
+    private static List<OrderFilterOption> BuildOrderStatusOptions(string? selectedValue) =>
+        Enum.GetValues<OrderStatus>()
+            .Select(status => new OrderFilterOption
+            {
+                Value = status.ToString(),
+                Text = OrderDisplay.GetOrderStatusLabel(status),
+                Selected = string.Equals(selectedValue, status.ToString(), StringComparison.OrdinalIgnoreCase),
+            })
+            .ToList();
+
+    private static List<OrderFilterOption> BuildPaymentStatusOptions(string? selectedValue) =>
+        Enum.GetValues<PaymentStatus>()
+            .Select(status => new OrderFilterOption
+            {
+                Value = status.ToString(),
+                Text = OrderDisplay.GetPaymentStatusLabel(status),
+                Selected = string.Equals(selectedValue, status.ToString(), StringComparison.OrdinalIgnoreCase),
+            })
+            .ToList();
+
+    private static (DateTime StartUtc, DateTime EndUtc)? GetDateRange(string? value)
+    {
+        var normalizedValue = NormalizeDateRange(value);
+        if (normalizedValue is null)
+        {
+            return null;
+        }
+
+        var timeZone = GetVietnamTimeZone();
+        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone).Date;
+        var localStart = normalizedValue == "last7days"
+            ? today.AddDays(-6)
+            : today;
+        var localEnd = today.AddDays(1);
+
+        return (
+            TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localStart, DateTimeKind.Unspecified), timeZone),
+            TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localEnd, DateTimeKind.Unspecified), timeZone));
+    }
+
+    private static string? NormalizeDateRange(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "today" => "today",
+            "last7days" => "last7days",
+            _ => null,
+        };
+    }
+
+    private static TimeZoneInfo GetVietnamTimeZone()
+    {
+        foreach (var timeZoneId in new[] { "SE Asia Standard Time", "Asia/Ho_Chi_Minh" })
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+            }
+            catch (InvalidTimeZoneException)
+            {
+            }
+        }
+
+        return TimeZoneInfo.Utc;
+    }
+
+    private async Task<List<OrderFilterOption>> BuildPaymentMethodOptionsAsync(
+        long? selectedId,
+        CancellationToken ct)
+    {
+        return await _db.PaymentMethods
+            .AsNoTracking()
+            .OrderBy(method => method.Name)
+            .Select(method => new OrderFilterOption
+            {
+                Value = method.Id.ToString(),
+                Text = method.Name,
+                Selected = selectedId.HasValue && method.Id == selectedId.Value,
+            })
+            .ToListAsync(ct);
+    }
+}
