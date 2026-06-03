@@ -1,0 +1,292 @@
+@model e_commerce_web_admin.ViewModels.Ratings.RatingIndexViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Đánh giá";
+    Layout = "_Layout";
+
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string DateText(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", vi);
+    string StarsText(decimal value) => value.ToString("0.0", vi);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/ratings.css" asp-append-version="true" />
+}
+
+<main class="rating-page">
+    <section class="rating-hero rating-anim" style="animation-delay:0.04s">
+        <div class="rating-page-mark">
+            <span>Phản hồi khách hàng</span>
+        </div>
+        <div class="rating-title-row">
+            <div>
+                <h1>Đánh giá sản phẩm</h1>
+                <p>Kiểm duyệt nội dung đánh giá, theo dõi điểm sao và ngữ cảnh đơn hàng trong một màn hình.</p>
+            </div>
+        </div>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div id="toastSuccess" class="rating-flash rating-flash-success rating-anim" style="animation-delay:0.06s">
+            <span class="rating-flash-icon">
+                <i data-lucide="check" class="w-4 h-4"></i>
+            </span>
+            <span>@TempData["Success"]</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div id="toastError" class="rating-flash rating-flash-error rating-anim" style="animation-delay:0.06s">
+            <span class="rating-flash-icon">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i>
+            </span>
+            <span>@TempData["Error"]</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <div data-rating-toast-root class="rating-toast-root" aria-live="polite" aria-atomic="true"></div>
+
+    <section class="rating-metrics rating-anim" style="animation-delay:0.08s" aria-label="Thống kê đánh giá">
+        <article class="rating-metric">
+            <span class="rating-metric-icon">
+                <i data-lucide="message-square-star" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.TotalCount</p>
+                <span>Tổng đánh giá</span>
+            </div>
+        </article>
+        <article class="rating-metric">
+            <span class="rating-metric-icon is-approved">
+                <i data-lucide="badge-check" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.ApprovedCount</p>
+                <span>Đã duyệt</span>
+            </div>
+        </article>
+        <article class="rating-metric">
+            <span class="rating-metric-icon is-pending">
+                <i data-lucide="clock-3" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.PendingCount</p>
+                <span>Chờ duyệt</span>
+            </div>
+        </article>
+        <article class="rating-metric">
+            <span class="rating-metric-icon is-stars">
+                <i data-lucide="star" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@StarsText(Model.AverageStars)</p>
+                <span>Điểm trung bình</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="rating-console rating-anim" style="animation-delay:0.12s">
+        <div class="rating-toolbar">
+            <form method="get" asp-action="Index" class="rating-filter-grid">
+                <label class="rating-search-field">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <input type="text"
+                           name="search"
+                           value="@Model.Search"
+                           placeholder="Tìm theo khách hàng, sản phẩm, mã đơn hoặc nội dung..." />
+                </label>
+
+                <label class="rating-select-field">
+                    <span>Trạng thái</span>
+                    <select name="status">
+                        <option value="" selected="@(string.IsNullOrEmpty(Model.Status) ? "selected" : null)">Tất cả</option>
+                        <option value="pending" selected="@(Model.Status == "pending" ? "selected" : null)">Chờ duyệt</option>
+                        <option value="approved" selected="@(Model.Status == "approved" ? "selected" : null)">Đã duyệt</option>
+                    </select>
+                </label>
+
+                <label class="rating-select-field">
+                    <span>Số sao</span>
+                    <select name="stars">
+                        <option value="" selected="@(Model.Stars.HasValue ? null : "selected")">Tất cả</option>
+                        @for (var stars = 5; stars >= 1; stars--)
+                        {
+                            <option value="@stars" selected="@(Model.Stars == stars ? "selected" : null)">@stars sao</option>
+                        }
+                    </select>
+                </label>
+
+                <button type="submit" class="rating-filter-submit">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Lọc</span>
+                </button>
+
+                @if (Model.HasFilters)
+                {
+                    <a asp-action="Index" class="rating-filter-clear">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Xóa lọc</span>
+                    </a>
+                }
+            </form>
+        </div>
+
+        <form class="rating-token-form" aria-hidden="true">
+            @Html.AntiForgeryToken()
+        </form>
+
+        @if (!Model.Ratings.Any())
+        {
+            <div class="rating-empty">
+                <span class="rating-empty-icon">
+                    <i data-lucide="message-square-off" class="w-9 h-9"></i>
+                </span>
+                <h2>Không tìm thấy đánh giá</h2>
+                @if (Model.HasFilters)
+                {
+                    <p>Thử điều chỉnh bộ lọc hoặc xóa bộ lọc để xem lại toàn bộ đánh giá.</p>
+                    <a asp-action="Index" class="rating-empty-action">Xóa bộ lọc</a>
+                }
+                else
+                {
+                    <p>Chưa có đánh giá nào được ghi nhận trong hệ thống.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="rating-table-scroll">
+                <div class="rating-index-grid rating-table-head">
+                    <span>Đánh giá</span>
+                    <span>Sản phẩm</span>
+                    <span>Khách hàng</span>
+                    <span class="text-center">Trạng thái</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div class="rating-table-body">
+                    @{
+                        var animIndex = 0;
+                    }
+                    @foreach (var rating in Model.Ratings)
+                    {
+                        <article class="rating-row rating-index-grid rating-anim"
+                                 style="animation-delay:@(0.14 + animIndex++ * 0.025)s"
+                                 data-id="@rating.Id">
+                            <div class="rating-comment-cell">
+                                <div class="rating-stars" aria-label="@rating.StarsLabel">
+                                    @for (var star = 1; star <= 5; star++)
+                                    {
+                                        <i data-lucide="star"
+                                           class="w-3.5 h-3.5 @(star <= rating.Stars ? "is-filled" : "")"></i>
+                                    }
+                                    <strong>@rating.StarsLabel</strong>
+                                </div>
+                                <p>@rating.CommentDisplay</p>
+                                <small>
+                                    <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i>
+                                    @DateText(rating.CreatedAt)
+                                </small>
+                            </div>
+
+                            <div class="rating-product-cell">
+                                <h2>@rating.ProductName</h2>
+                                <p>SKU @rating.VariantCode</p>
+                                <p>Đơn @rating.OrderCode</p>
+                            </div>
+
+                            <div class="rating-customer-cell">
+                                <h3>@rating.CustomerName</h3>
+                                <p>@(string.IsNullOrWhiteSpace(rating.CustomerEmail) ? "Chưa có email" : rating.CustomerEmail)</p>
+                            </div>
+
+                            <div class="rating-status-cell">
+                                <button type="button"
+                                        data-rating-toggle
+                                        data-rating-toggle-url="@Url.Action("ToggleApproval", "Ratings", new { id = rating.Id })"
+                                        class="rating-status-btn is-@rating.StatusKey"
+                                        data-approved="@rating.IsApproved.ToString().ToLower()">
+                                    <span class="dot"></span>
+                                    <span class="status-label">@rating.StatusLabel</span>
+                                </button>
+                            </div>
+
+                            <div class="rating-actions">
+                                <form asp-action="Delete"
+                                      asp-route-id="@rating.Id"
+                                      method="post"
+                                      data-rating-delete
+                                      data-rating-name="@rating.ProductName">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="rating-action-btn rating-action-delete" title="Xóa đánh giá">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Xóa</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <footer class="rating-pagination">
+                    <p>
+                        Trang <strong>@Model.Page</strong> / @Model.TotalPages
+                        <span>@Model.TotalCount đánh giá</span>
+                    </p>
+                    <nav aria-label="Phân trang đánh giá">
+                        @if (Model.HasPrev)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@(Model.Page - 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-stars="@Model.Stars"
+                               class="rating-page-btn"
+                               aria-label="Trang trước">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@p"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-stars="@Model.Stars"
+                               class="rating-page-btn @(p == Model.Page ? "is-current" : "")"
+                               aria-current="@(p == Model.Page ? "page" : null)">
+                                @p
+                            </a>
+                        }
+                        @if (Model.HasNext)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@(Model.Page + 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-stars="@Model.Stars"
+                               class="rating-page-btn"
+                               aria-label="Trang sau">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </nav>
+                </footer>
+            }
+        }
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/ratings.js" asp-append-version="true"></script>
+}

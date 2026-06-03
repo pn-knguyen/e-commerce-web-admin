@@ -7,6 +7,8 @@ using e_commerce_web_admin.Services.CategoryVariantAttributes;
 using e_commerce_web_admin.Services.Orders;
 using e_commerce_web_admin.Services.PaymentMethods;
 using e_commerce_web_admin.Services.Products;
+using e_commerce_web_admin.Services.Promotions;
+using e_commerce_web_admin.Services.Ratings;
 using e_commerce_web_admin.Services.Specifications;
 using e_commerce_web_admin.Services.Suppliers;
 using e_commerce_web_admin.Services.Uploads;
