@@ -1,0 +1,303 @@
+@model e_commerce_web_admin.ViewModels.Promotions.PromotionIndexViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Khuyến mãi";
+    Layout = "_Layout";
+
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string DateText(DateTime value) => value.ToString("dd/MM/yyyy HH:mm", vi);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/promotions.css" asp-append-version="true" />
+}
+
+<main class="promotion-page">
+    <section class="promotion-hero promotion-anim" style="animation-delay:0.04s">
+        <div class="promotion-page-mark">
+            <span>Chiến dịch ưu đãi</span>
+        </div>
+        <div class="promotion-title-row">
+            <div>
+                <h1>Khuyến mãi</h1>
+                <p>Quản lý chương trình ưu đãi, thời gian áp dụng, giới hạn sử dụng và quy tắc nhận ưu đãi.</p>
+            </div>
+            <a asp-action="Create" class="promotion-primary-action">
+                <span>Thêm khuyến mãi</span>
+                <span class="promotion-action-icon">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                </span>
+            </a>
+        </div>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div id="toastSuccess" class="promotion-flash promotion-flash-success promotion-anim" style="animation-delay:0.06s">
+            <span class="promotion-flash-icon">
+                <i data-lucide="check" class="w-4 h-4"></i>
+            </span>
+            <span>@TempData["Success"]</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div id="toastError" class="promotion-flash promotion-flash-error promotion-anim" style="animation-delay:0.06s">
+            <span class="promotion-flash-icon">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i>
+            </span>
+            <span>@TempData["Error"]</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <div data-promotion-toast-root class="promotion-toast-root" aria-live="polite" aria-atomic="true"></div>
+
+    <section class="promotion-metrics promotion-anim" style="animation-delay:0.08s" aria-label="Thống kê khuyến mãi">
+        <article class="promotion-metric">
+            <span class="promotion-metric-icon">
+                <i data-lucide="badge-percent" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.TotalCount</p>
+                <span>Tổng khuyến mãi</span>
+            </div>
+        </article>
+        <article class="promotion-metric">
+            <span class="promotion-metric-icon is-running">
+                <i data-lucide="radio-tower" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.RunningCount</p>
+                <span>Đang chạy</span>
+            </div>
+        </article>
+        <article class="promotion-metric">
+            <span class="promotion-metric-icon is-used">
+                <i data-lucide="receipt-text" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.TotalUsedCount</p>
+                <span>Lượt đã dùng</span>
+            </div>
+        </article>
+        <article class="promotion-metric">
+            <span class="promotion-metric-icon is-expired">
+                <i data-lucide="calendar-x" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.ExpiredCount</p>
+                <span>Hết hạn</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="promotion-console promotion-anim" style="animation-delay:0.12s">
+        <div class="promotion-toolbar">
+            <form method="get" asp-action="Index" class="promotion-filter-grid">
+                <label class="promotion-search-field">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <input type="text"
+                           name="search"
+                           value="@Model.Search"
+                           placeholder="Tìm theo tên hoặc mô tả khuyến mãi..." />
+                </label>
+
+                <label class="promotion-select-field">
+                    <span>Trạng thái</span>
+                    <select name="status">
+                        <option value="" selected="@(string.IsNullOrEmpty(Model.Status) ? "selected" : null)">Tất cả</option>
+                        <option value="running" selected="@(Model.Status == "running" ? "selected" : null)">Đang chạy</option>
+                        <option value="upcoming" selected="@(Model.Status == "upcoming" ? "selected" : null)">Sắp diễn ra</option>
+                        <option value="expired" selected="@(Model.Status == "expired" ? "selected" : null)">Hết hạn</option>
+                        <option value="exhausted" selected="@(Model.Status == "exhausted" ? "selected" : null)">Hết lượt</option>
+                        <option value="active" selected="@(Model.Status == "active" ? "selected" : null)">Đang bật</option>
+                        <option value="inactive" selected="@(Model.Status == "inactive" ? "selected" : null)">Tạm tắt</option>
+                    </select>
+                </label>
+
+                <button type="submit" class="promotion-filter-submit">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Lọc</span>
+                </button>
+
+                @if (Model.HasFilters)
+                {
+                    <a asp-action="Index" class="promotion-filter-clear">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Xóa lọc</span>
+                    </a>
+                }
+            </form>
+        </div>
+
+        <form class="promotion-token-form" aria-hidden="true">
+            @Html.AntiForgeryToken()
+        </form>
+
+        @if (!Model.Promotions.Any())
+        {
+            <div class="promotion-empty">
+                <span class="promotion-empty-icon">
+                    <i data-lucide="badge-percent" class="w-9 h-9"></i>
+                </span>
+                <h2>Không tìm thấy khuyến mãi</h2>
+                @if (Model.HasFilters)
+                {
+                    <p>Điều chỉnh từ khóa hoặc xóa bộ lọc để xem lại toàn bộ danh sách.</p>
+                    <a asp-action="Index" class="promotion-empty-action">Xóa bộ lọc</a>
+                }
+                else
+                {
+                    <p>Chưa có chương trình khuyến mãi nào. Tạo khuyến mãi đầu tiên để bắt đầu áp dụng ưu đãi.</p>
+                    <a asp-action="Create" class="promotion-empty-action">Thêm khuyến mãi</a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="promotion-table-scroll">
+                <div class="promotion-index-grid promotion-table-head">
+                    <span>Khuyến mãi</span>
+                    <span>Quy tắc</span>
+                    <span>Điều kiện</span>
+                    <span>Lượt dùng</span>
+                    <span class="text-center">Trạng thái</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div class="promotion-table-body">
+                    @{
+                        var animIndex = 0;
+                    }
+                    @foreach (var promotion in Model.Promotions)
+                    {
+                        <article class="promotion-row promotion-index-grid promotion-anim"
+                                 style="animation-delay:@(0.14 + animIndex++ * 0.025)s"
+                                 data-id="@promotion.Id">
+                            <div class="promotion-identity">
+                                <h2>@promotion.Name</h2>
+                                <p>@(string.IsNullOrWhiteSpace(promotion.Description) ? "Chưa có mô tả" : promotion.Description)</p>
+                                <small>@DateText(promotion.StartDate) - @DateText(promotion.EndDate)</small>
+                            </div>
+
+                            <div class="promotion-rule-cell">
+                                <span class="promotion-rule-pill">@promotion.ActionLabel</span>
+                                <p>Giảm: @promotion.DiscountDisplay</p>
+                                <p>Mua @promotion.BuyQuantity / Nhận @promotion.GetQuantity</p>
+                                @if (!string.IsNullOrWhiteSpace(promotion.GiftVariantLabel))
+                                {
+                                    <small>@promotion.GiftVariantLabel</small>
+                                }
+                            </div>
+
+                            <div class="promotion-condition-cell">
+                                <p>Đơn tối thiểu: <strong>@promotion.MinOrderDisplay</strong></p>
+                                <p>Tối đa: <strong>@promotion.MaxDiscountDisplay</strong></p>
+                                <small>@promotion.TargetCount phạm vi · @promotion.RuleCount quy tắc · Ưu tiên @promotion.Priority</small>
+                            </div>
+
+                            <div class="promotion-usage-cell">
+                                <div class="promotion-usage-line">
+                                    <span>@promotion.UsageDisplay</span>
+                                </div>
+                                <div class="promotion-usage-track">
+                                    <div class="promotion-usage-fill" style="width:@promotion.UsagePercent%"></div>
+                                </div>
+                            </div>
+
+                            <div class="promotion-status-cell">
+                                <button type="button"
+                                        data-promotion-toggle
+                                        data-promotion-toggle-url="@Url.Action("ToggleActive", "Promotions", new { id = promotion.Id })"
+                                        class="promotion-status-btn is-@promotion.StatusKey"
+                                        data-active="@promotion.IsActive.ToString().ToLower()">
+                                    <span class="dot"></span>
+                                    <span class="status-label">@promotion.StatusLabel</span>
+                                </button>
+                            </div>
+
+                            <div class="promotion-actions">
+                                <a asp-action="Edit"
+                                   asp-route-id="@promotion.Id"
+                                   class="promotion-action-btn promotion-action-edit"
+                                   title="Chỉnh sửa">
+                                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                    <span>Sửa</span>
+                                </a>
+                                <form asp-action="Delete"
+                                      asp-route-id="@promotion.Id"
+                                      method="post"
+                                      data-promotion-delete
+                                      data-promotion-name="@promotion.Name"
+                                      data-used-count="@promotion.UsedCount">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit"
+                                            class="promotion-action-btn promotion-action-delete"
+                                            title="Xóa">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Xóa</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <footer class="promotion-pagination">
+                    <p>
+                        Trang <strong>@Model.Page</strong> / @Model.TotalPages
+                        <span>@Model.TotalCount khuyến mãi</span>
+                    </p>
+                    <nav aria-label="Phân trang khuyến mãi">
+                        @if (Model.HasPrev)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@(Model.Page - 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               class="promotion-page-btn"
+                               aria-label="Trang trước">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@p"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               class="promotion-page-btn @(p == Model.Page ? "is-current" : "")"
+                               aria-current="@(p == Model.Page ? "page" : null)">
+                                @p
+                            </a>
+                        }
+                        @if (Model.HasNext)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@(Model.Page + 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               class="promotion-page-btn"
+                               aria-label="Trang sau">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </nav>
+                </footer>
+            }
+        }
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/promotions.js" asp-append-version="true"></script>
+}

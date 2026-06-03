@@ -1,0 +1,45 @@
+@model e_commerce_web_admin.ViewModels.Promotions.PromotionFormViewModel
+@{
+    ViewData["Title"] = $"Sửa khuyến mãi - {Model.Name}";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/promotions.css" asp-append-version="true" />
+}
+
+<main class="promotion-crud-page">
+    <section class="promotion-form-hero promotion-anim" style="animation-delay:0.04s">
+        <div>
+            <nav class="promotion-breadcrumb" aria-label="Điều hướng">
+                <a asp-action="Index">Khuyến mãi</a>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                <span>@Model.Name</span>
+            </nav>
+            <h1>Chỉnh sửa khuyến mãi</h1>
+            <p>Cập nhật thông tin, thời gian, giới hạn sử dụng và quy tắc chính của khuyến mãi.</p>
+        </div>
+    </section>
+
+    <form asp-action="Edit"
+          asp-route-id="@Model.Id"
+          method="post"
+          data-promotion-form
+          data-used-count="@Model.UsedCount"
+          data-end-after-start-message="@Model.EndDateAfterStartMessage"
+          data-usage-limit-less-than-used-message="@Model.UsageLimitLessThanUsedMessage"
+          data-discount-positive-message="@Model.DiscountValuePositiveMessage"
+          data-gift-quantity-positive-message="@Model.GiftQuantityPositiveMessage"
+          data-gift-variant-required-message="@Model.GiftVariantRequiredMessage"
+          data-buyxgety-benefit-message="@Model.BuyXGetYRequiresBenefitMessage"
+          data-max-discount-less-message="@Model.MaxDiscountLessThanDiscountMessage"
+          data-target-required-message="@Model.TargetRequiredMessage"
+          novalidate>
+        @Html.AntiForgeryToken()
+        <partial name="_Form" model="Model" />
+    </form>
+</main>
+
+@section Scripts {
+    <script src="~/js/promotions.js" asp-append-version="true"></script>
+}

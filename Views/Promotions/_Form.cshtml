@@ -1,0 +1,376 @@
+@model e_commerce_web_admin.ViewModels.Promotions.PromotionFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+}
+
+<input type="hidden" asp-for="Id" />
+<input type="hidden" asp-for="RuleId" />
+<input type="hidden" asp-for="UsedCount" />
+
+<div class="promotion-form-grid">
+    <section class="promotion-form-card promotion-form-unified promotion-anim" style="animation-delay:0.1s">
+        <div class="promotion-form-card-head">
+            <span class="promotion-form-head-icon">
+                <i data-lucide="badge-percent" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <h2>Thông tin khuyến mãi</h2>
+                <p>Nhập đầy đủ thông tin, phạm vi, điều kiện và quy tắc áp dụng trong cùng một biểu mẫu.</p>
+            </div>
+        </div>
+
+        <div data-promotion-form-alert
+             class="promotion-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            <div>
+                <p>Vui lòng kiểm tra lại thông tin.</p>
+                <div asp-validation-summary="ModelOnly"></div>
+            </div>
+        </div>
+
+        <div class="promotion-form-fields promotion-form-stack">
+            <div class="promotion-form-section">
+                <div class="promotion-section-title">
+                    <span class="promotion-section-icon">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                    </span>
+                    <div>
+                        <h3>Tổng quan</h3>
+                        <p>Tên, mô tả và độ ưu tiên hiển thị của chương trình.</p>
+                    </div>
+                </div>
+
+                <div class="promotion-section-fields">
+                    <div class="promotion-field-row promotion-field-row-weighted">
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="Name" class="promotion-label">
+                                <span>Tên khuyến mãi</span>
+                                <strong>*</strong>
+                            </label>
+                            <input asp-for="Name"
+                                   class="promotion-input"
+                                   placeholder="Ví dụ: Flash Sale Smartphone" />
+                            <span asp-validation-for="Name" class="promotion-field-error"></span>
+                        </div>
+
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="Priority" class="promotion-label">
+                                <span>Độ ưu tiên</span>
+                                <strong>*</strong>
+                            </label>
+                            <input asp-for="Priority"
+                                   type="number"
+                                   min="0"
+                                   max="9999"
+                                   step="1"
+                                   class="promotion-input" />
+                            <span asp-validation-for="Priority" class="promotion-field-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="promotion-field" data-promotion-field>
+                        <label asp-for="Description" class="promotion-label">
+                            <span>Mô tả</span>
+                        </label>
+                        <textarea asp-for="Description"
+                                  rows="4"
+                                  class="promotion-input promotion-textarea"
+                                  placeholder="Mô tả ngắn về điều kiện hoặc phạm vi ưu đãi..."></textarea>
+                        <span asp-validation-for="Description" class="promotion-field-error"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="promotion-form-section">
+                <div class="promotion-section-title">
+                    <span class="promotion-section-icon">
+                        <i data-lucide="calendar-clock" class="w-4 h-4"></i>
+                    </span>
+                    <div>
+                        <h3>Thời gian & điều kiện</h3>
+                        <p>Khoảng chạy, trạng thái sử dụng, ngưỡng đơn hàng và giới hạn lượt dùng.</p>
+                    </div>
+                </div>
+
+                <div class="promotion-section-fields">
+                    <div class="promotion-field-row">
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="StartDate" class="promotion-label">
+                                <span>Bắt đầu</span>
+                                <strong>*</strong>
+                            </label>
+                            <input asp-for="StartDate"
+                                   type="datetime-local"
+                                   asp-format="{0:yyyy-MM-ddTHH:mm}"
+                                   class="promotion-input" />
+                            <span asp-validation-for="StartDate" class="promotion-field-error"></span>
+                        </div>
+
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="EndDate" class="promotion-label">
+                                <span>Kết thúc</span>
+                                <strong>*</strong>
+                            </label>
+                            <input asp-for="EndDate"
+                                   type="datetime-local"
+                                   asp-format="{0:yyyy-MM-ddTHH:mm}"
+                                   class="promotion-input" />
+                            <span asp-validation-for="EndDate" class="promotion-field-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="promotion-field-row">
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="MinOrderValue" class="promotion-label">
+                                <span>Đơn tối thiểu</span>
+                                <strong>*</strong>
+                            </label>
+                            <div class="promotion-input-wrap">
+                                <input asp-for="MinOrderValue"
+                                       type="number"
+                                       min="0"
+                                       step="1000"
+                                       class="promotion-input" />
+                                <span>đ</span>
+                            </div>
+                            <span asp-validation-for="MinOrderValue" class="promotion-field-error"></span>
+                        </div>
+
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="UsageLimit" class="promotion-label">
+                                <span>Giới hạn sử dụng</span>
+                            </label>
+                            <input asp-for="UsageLimit"
+                                   type="number"
+                                   min="1"
+                                   step="1"
+                                   class="promotion-input"
+                                   placeholder="Không giới hạn" />
+                            <span asp-validation-for="UsageLimit" class="promotion-field-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="promotion-inline-panels">
+                        <label class="promotion-switch-row promotion-switch-card">
+                            <input asp-for="IsActive" type="checkbox" class="promotion-switch-input" />
+                            <span class="promotion-switch-track">
+                                <span class="promotion-switch-thumb"></span>
+                            </span>
+                            <span>Cho phép sử dụng</span>
+                        </label>
+
+                        @if (isEdit)
+                        {
+                            <div class="promotion-usage-summary promotion-usage-inline">
+                                <strong>@Model.UsedCount</strong>
+                                <span>Lượt đã dùng</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="promotion-form-section">
+                <div class="promotion-section-title">
+                    <span class="promotion-section-icon">
+                        <i data-lucide="crosshair" class="w-4 h-4"></i>
+                    </span>
+                    <div>
+                        <h3>Phạm vi áp dụng</h3>
+                        <p>Chọn nhóm dữ liệu mà khuyến mãi được phép tham gia xét ưu đãi.</p>
+                    </div>
+                </div>
+
+                <div class="promotion-section-fields">
+                    <div class="promotion-field-row promotion-field-row-target">
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="TargetType" class="promotion-label">
+                                <span>Loại phạm vi</span>
+                                <strong>*</strong>
+                            </label>
+                            <select asp-for="TargetType" class="promotion-input" data-promotion-target-type>
+                                @foreach (var option in Model.TargetTypeOptions)
+                                {
+                                    <option value="@option.Value"
+                                            data-target-hint="@option.Hint"
+                                            selected="@(Model.TargetType.ToString() == option.Value ? "selected" : null)">
+                                        @option.Label
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="TargetType" class="promotion-field-error"></span>
+                        </div>
+
+                        <div class="promotion-field promotion-field-help">
+                            <span>Gợi ý áp dụng</span>
+                            <p data-promotion-target-hint>
+                                @(Model.TargetTypeOptions.FirstOrDefault(option => option.Value == Model.TargetType.ToString())?.Hint ?? "Chọn phạm vi phù hợp với quy tắc khuyến mãi.")
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="promotion-field" data-promotion-field>
+                        <label asp-for="TargetIds" class="promotion-label">
+                            <span>Đối tượng áp dụng</span>
+                            <strong>*</strong>
+                        </label>
+                        <div class="promotion-target-picker" data-promotion-target-picker>
+                            <div class="promotion-target-toolbar">
+                                <label class="promotion-target-search">
+                                    <i data-lucide="search" class="w-4 h-4"></i>
+                                    <input type="search"
+                                           data-promotion-target-search
+                                           placeholder="Tìm nhanh đối tượng áp dụng..." />
+                                </label>
+                                <span class="promotion-target-count" data-promotion-target-count>0 đã chọn</span>
+                            </div>
+
+                            <div class="promotion-target-list" data-promotion-target-list>
+                                @foreach (var option in Model.TargetOptions)
+                                {
+                                    var isSelected = option.TargetType == Model.TargetType && Model.TargetIds.Contains(option.Value);
+                                    <label class="promotion-target-option" data-promotion-target-option data-target-type="@option.TargetType">
+                                        <input type="checkbox"
+                                               name="TargetIds"
+                                               value="@option.Value"
+                                               checked="@(isSelected ? "checked" : null)" />
+                                        <span class="promotion-target-check" aria-hidden="true">
+                                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                        </span>
+                                        <span class="promotion-target-text">@option.Text</span>
+                                    </label>
+                                }
+                            </div>
+
+                            <div class="promotion-target-empty hidden" data-promotion-target-empty>
+                                Không tìm thấy đối tượng phù hợp.
+                            </div>
+                        </div>
+                        <p class="promotion-field-note">Có thể tìm kiếm và chọn nhiều đối tượng trong cùng loại phạm vi.</p>
+                        <span asp-validation-for="TargetIds" class="promotion-field-error"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="promotion-form-section">
+                <div class="promotion-section-title">
+                    <span class="promotion-section-icon">
+                        <i data-lucide="workflow" class="w-4 h-4"></i>
+                    </span>
+                    <div>
+                        <h3>Quy tắc chính</h3>
+                        <p>Quy định cách khách hàng nhận ưu đãi khi khuyến mãi được áp dụng.</p>
+                    </div>
+                </div>
+
+                <div class="promotion-section-fields">
+                    <div class="promotion-field-row promotion-field-row-three">
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="ActionType" class="promotion-label">
+                                <span>Loại khuyến mãi</span>
+                                <strong>*</strong>
+                            </label>
+                            <select asp-for="ActionType" class="promotion-input" data-promotion-action-type>
+                                @foreach (var option in Model.ActionTypeOptions)
+                                {
+                                    <option value="@option.Value" selected="@(Model.ActionType.ToString() == option.Value ? "selected" : null)">
+                                        @option.Label
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="ActionType" class="promotion-field-error"></span>
+                        </div>
+
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="DiscountValue" class="promotion-label">
+                                <span>Giá trị giảm</span>
+                                <strong>*</strong>
+                            </label>
+                            <div class="promotion-input-wrap">
+                                <input asp-for="DiscountValue"
+                                       type="number"
+                                       min="0"
+                                       step="1000"
+                                       class="promotion-input"
+                                       data-promotion-discount-value />
+                                <span>đ</span>
+                            </div>
+                            <span asp-validation-for="DiscountValue" class="promotion-field-error"></span>
+                        </div>
+
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="MaxDiscountValue" class="promotion-label">
+                                <span>Mức giảm tối đa</span>
+                            </label>
+                            <div class="promotion-input-wrap">
+                                <input asp-for="MaxDiscountValue"
+                                       type="number"
+                                       min="0.01"
+                                       step="1000"
+                                       class="promotion-input" />
+                                <span>đ</span>
+                            </div>
+                            <span asp-validation-for="MaxDiscountValue" class="promotion-field-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="promotion-field-row promotion-field-row-three">
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="BuyQuantity" class="promotion-label">
+                                <span>Số lượng mua</span>
+                                <strong>*</strong>
+                            </label>
+                            <input asp-for="BuyQuantity"
+                                   type="number"
+                                   min="1"
+                                   step="1"
+                                   class="promotion-input" />
+                            <span asp-validation-for="BuyQuantity" class="promotion-field-error"></span>
+                        </div>
+
+                        <div class="promotion-field" data-promotion-field>
+                            <label asp-for="GetQuantity" class="promotion-label">
+                                <span>Số lượng nhận</span>
+                            </label>
+                            <input asp-for="GetQuantity"
+                                   type="number"
+                                   min="0"
+                                   step="1"
+                                   class="promotion-input" />
+                            <span asp-validation-for="GetQuantity" class="promotion-field-error"></span>
+                        </div>
+
+                        <div class="promotion-field" data-promotion-field data-promotion-gift-field>
+                            <label asp-for="GiftProductVariantId" class="promotion-label">
+                                <span>Sản phẩm quà tặng</span>
+                                <strong data-promotion-gift-required>*</strong>
+                            </label>
+                            <select asp-for="GiftProductVariantId" class="promotion-input" data-promotion-gift-select>
+                                <option value="">Chọn biến thể quà tặng</option>
+                                @foreach (var option in Model.GiftVariantOptions)
+                                {
+                                    <option value="@option.Value" selected="@(Model.GiftProductVariantId == option.Value ? "selected" : null)">
+                                        @option.Text
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="GiftProductVariantId" class="promotion-field-error"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="promotion-submit-panel">
+            <button type="submit" class="promotion-submit-btn">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span>@(isEdit ? "Lưu thay đổi" : "Tạo khuyến mãi")</span>
+            </button>
+
+            <a asp-action="Index" class="promotion-cancel-btn">
+                <i data-lucide="x" class="w-4 h-4"></i>
+                <span>Hủy bỏ</span>
+            </a>
+        </div>
+    </section>
+</div>

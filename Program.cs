@@ -30,6 +30,8 @@ builder.Services.AddScoped<ICvaAdminService, CvaAdminService>();
 builder.Services.AddScoped<IProductAdminService, ProductAdminService>();
 builder.Services.AddScoped<IOrderAdminService, OrderAdminService>();
 builder.Services.AddScoped<IPaymentMethodAdminService, PaymentMethodAdminService>();
+builder.Services.AddScoped<IRatingAdminService, RatingAdminService>();
+builder.Services.AddScoped<IPromotionAdminService, PromotionAdminService>();
 builder.Services.AddScoped<ISupplierAdminService, SupplierAdminService>();
 builder.Services.AddScoped<IVoucherAdminService, VoucherAdminService>();
 builder.Services.Configure<CloudinaryOptions>(
