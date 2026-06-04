@@ -8,6 +8,103 @@
     animation: attr-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+.attr-toolbar {
+    border-bottom: 1px solid #e2ecee;
+    background:
+        linear-gradient(180deg, rgba(248, 250, 252, 0.88), rgba(255, 255, 255, 0.94)),
+        #ffffff;
+    padding: 1rem;
+}
+
+.attr-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) auto auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.attr-search-field {
+    display: flex;
+    min-height: 3.25rem;
+    min-width: 0;
+    align-items: center;
+    gap: 0.625rem;
+    border: 1px solid #d9e5e7;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #64748b;
+    padding: 0 1rem;
+    transition: border-color 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.attr-search-field:focus-within {
+    border-color: #14b8a6;
+    background: #ffffff;
+}
+
+.attr-search-field input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #172033;
+    font-size: 0.875rem;
+    outline: none;
+    padding: 0.875rem 0;
+}
+
+.attr-search-field input::placeholder {
+    color: #94a3b8;
+}
+
+.attr-filter-submit,
+.attr-filter-clear {
+    display: inline-flex;
+    min-height: 3.25rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.attr-filter-submit {
+    border: 0;
+    background: #0f766e;
+    color: #ffffff;
+    padding: 0 1.125rem;
+    cursor: pointer;
+    transition: background 220ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.attr-filter-submit:hover {
+    background: #115e59;
+    transform: translateY(-1px);
+}
+
+.attr-filter-clear {
+    color: #64748b;
+    padding: 0 0.9rem;
+    transition: background 220ms cubic-bezier(0.22, 1, 0.36, 1), color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.attr-filter-clear:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.attr-table-scroll {
+    overflow-x: auto;
+}
+
+.attr-table-scroll > .surface-table-head,
+.attr-table-scroll > .divide-y {
+    min-width: 52rem;
+}
+
 /* ── Table rows ─────────────────────────────────────────────────────────── */
 .attr-row {
     transition: background 0.15s ease;
@@ -810,7 +907,7 @@ body {
 
 .surface-page :is(a, button):focus-visible,
 .surface-form-grid :is(a, button):focus-visible {
-  outline: 3px solid rgba(15, 23, 42, 0.28);
+  outline: 2px solid #14b8a6;
   outline-offset: 3px;
 }
 
@@ -883,6 +980,17 @@ body {
   .surface-pagination {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .attr-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attr-filter-submit,
+  .attr-filter-clear {
+    width: 100%;
   }
 }
 

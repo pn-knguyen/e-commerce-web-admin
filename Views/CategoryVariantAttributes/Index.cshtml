@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = $"Thuộc tính biến thể — {Model.CategoryName}";
     Layout = "_Layout";
+
+    var hasFilters = !string.IsNullOrEmpty(Model.Search);
 }
 
 @section Styles {
@@ -83,45 +85,41 @@
     @* ════ LEFT (2/3): Assigned list ════ *@
     <div class="lg:col-span-2 space-y-4">
 
-        @* Filter *@
-        <div class="surface-console surface-toolbar-panel cva-anim surface-anim" style="animation-delay:0.08s">
-            <form method="get" asp-action="Index" class="flex gap-3">
-                <input type="hidden" name="categoryId" value="@Model.CategoryId" />
-                <div class="relative flex-1">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
-                    <input type="text" name="search" value="@Model.Search"
-                           placeholder="Tìm theo code hoặc tên thuộc tính..."
-                           class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
-                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                </div>
-                <button type="submit"
-                        class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700
-                               text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                    <i data-lucide="search" class="w-4 h-4"></i>
-                    Tìm
-                </button>
-                @if (!string.IsNullOrEmpty(Model.Search))
-                {
-                    <a asp-action="Index" asp-route-categoryId="@Model.CategoryId"
-                       class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
-                        <i data-lucide="x-circle" class="w-4 h-4"></i>
-                        Xoá lọc
-                    </a>
-                }
-            </form>
-        </div>
-
         @* Table *@
-        <div class="surface-console surface-table-card cva-anim surface-anim" style="animation-delay:0.12s">
+        <div class="surface-console surface-table-card cva-anim surface-anim" style="animation-delay:0.08s">
+            <div class="cva-toolbar">
+                <form method="get" asp-action="Index" class="cva-filter-grid">
+                    <input type="hidden" name="categoryId" value="@Model.CategoryId" />
+                    <label class="cva-search-field">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                        <input type="text"
+                               name="search"
+                               value="@Model.Search"
+                               placeholder="Tìm theo code hoặc tên thuộc tính..." />
+                    </label>
+                    <button type="submit" class="cva-filter-submit">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                        <span>Lọc</span>
+                    </button>
+                    @if (hasFilters)
+                    {
+                        <a asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="cva-filter-clear">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            <span>Xoá lọc</span>
+                        </a>
+                    }
+                </form>
+            </div>
+
             @if (!Model.AssignedAttributes.Any())
             {
                 <div class="surface-empty">
                     <div class="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-4">
                         <i data-lucide="list-filter" class="w-8 h-8 text-teal-300"></i>
                     </div>
-                    <p class="text-slate-600 font-semibold">Chưa có thuộc tính nào được gán</p>
+                    <p class="text-slate-600 font-semibold">@(hasFilters ? "Không tìm thấy thuộc tính phù hợp" : "Chưa có thuộc tính nào được gán")</p>
                     <p class="text-slate-400 text-sm mt-1">
-                        @if (!string.IsNullOrEmpty(Model.Search))
+                        @if (hasFilters)
                         {<span>Thử từ khoá khác hoặc <a asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="text-teal-600 hover:underline">xoá bộ lọc</a></span>}
                         else
                         {<span>Dùng form bên phải để gán thuộc tính vào danh mục</span>}
@@ -130,6 +128,7 @@
             }
             else
             {
+                <div class="cva-table-scroll">
                 @* Header *@
                 <div class="surface-table-head px-5 py-3
                             grid grid-cols-[auto_1fr_auto_auto_auto] gap-4 items-center">
@@ -190,6 +189,7 @@
                             </div>
                         </div>
                     }
+                </div>
                 </div>
 
                 @* Pagination *@

@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Danh mục sản phẩm";
     Layout = "_Layout";
+
+    var hasFilters = !string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.Status);
 }
 
 @section Styles {
@@ -99,42 +101,41 @@
     </div>
 </div>
 
-@* ── Filter bar ── *@
-<div class="surface-console surface-toolbar-panel cat-anim surface-anim" style="animation-delay:0.15s">
-    <form method="get" asp-action="Index" class="flex flex-col sm:flex-row gap-3">
-        <div class="relative flex-1">
-            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
-            <input type="text" name="search" value="@Model.Search"
-                   placeholder="Tìm theo tên hoặc slug..."
-                   class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
-                          focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-        </div>
-        <select name="status"
-                class="border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 bg-white
-                       focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
-            <option value="" selected="@(string.IsNullOrEmpty(Model.Status))">Tất cả</option>
-            <option value="active"   selected="@(Model.Status == "active")">Đang hoạt động</option>
-            <option value="inactive" selected="@(Model.Status == "inactive")">Đã tắt</option>
-        </select>
-        <button type="submit"
-                class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700
-                       text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-            <i data-lucide="search" class="w-4 h-4"></i>
-            Tìm kiếm
-        </button>
-        @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.Status))
-        {
-            <a asp-action="Index"
-               class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
-                <i data-lucide="x-circle" class="w-4 h-4"></i>
-                Xoá lọc
-            </a>
-        }
-    </form>
-</div>
-
 @* ── Tree Table ── *@
-<div class="surface-console surface-table-card cat-anim surface-anim" style="animation-delay:0.2s">
+<div class="surface-console surface-table-card cat-anim surface-anim" style="animation-delay:0.15s">
+    <div class="category-toolbar">
+        <form method="get" asp-action="Index" class="category-filter-grid">
+            <label class="category-search-field">
+                <i data-lucide="search" class="w-4 h-4"></i>
+                <input type="text"
+                       name="search"
+                       value="@Model.Search"
+                       placeholder="Tìm theo tên hoặc slug..." />
+            </label>
+
+            <label class="category-select-field">
+                <span>Trạng thái</span>
+                <select name="status">
+                    <option value="" selected="@(string.IsNullOrEmpty(Model.Status))">Tất cả</option>
+                    <option value="active" selected="@(Model.Status == "active")">Đang hoạt động</option>
+                    <option value="inactive" selected="@(Model.Status == "inactive")">Đã tắt</option>
+                </select>
+            </label>
+
+            <button type="submit" class="category-filter-submit">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                <span>Lọc</span>
+            </button>
+
+            @if (hasFilters)
+            {
+                <a asp-action="Index" class="category-filter-clear">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Xoá lọc</span>
+                </a>
+            }
+        </form>
+    </div>
 
     @if (!Model.Categories.Any())
     {
@@ -145,7 +146,7 @@
             </div>
             <p class="text-slate-600 font-semibold text-lg">Không tìm thấy danh mục</p>
             <p class="text-slate-400 text-sm mt-2">
-                @if (!string.IsNullOrEmpty(Model.Search))
+                @if (hasFilters)
                 {<span>Thử từ khoá khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xoá bộ lọc</a></span>}
                 else
                 {<span>Nhấn <strong class="text-slate-600">Thêm danh mục</strong> để bắt đầu</span>}
@@ -154,6 +155,7 @@
     }
     else
     {
+        <div class="category-table-scroll">
         @* Table header *@
         <div class="surface-table-head category-index-grid px-6 py-3.5">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Danh mục</span>
@@ -325,6 +327,7 @@
                     </div>
                 </div>
             }
+        </div>
         </div>
 
         @* ── Pagination ── *@

@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = $"Thông số — {Model.CategoryName}";
     Layout = "_Layout";
+
+    var hasFilters = !string.IsNullOrEmpty(Model.Search);
 }
 
 @section Styles {
@@ -86,35 +88,31 @@
        ════════════════════════════════════════ *@
     <div class="lg:col-span-2 space-y-4">
 
-        @* Search bar for assigned list *@
-        <div class="surface-console surface-toolbar-panel spec-anim surface-anim" style="animation-delay:0.08s">
-            <form method="get" asp-action="Index" class="flex gap-3">
-                <input type="hidden" name="categoryId" value="@Model.CategoryId" />
-                <div class="relative flex-1">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
-                    <input type="text" name="search" value="@Model.Search"
-                           placeholder="Tìm thông số đã gán..."
-                           class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-700
-                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                </div>
-                <button type="submit"
-                        class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
-                    <i data-lucide="search" class="w-4 h-4"></i>
-                    Tìm
-                </button>
-                @if (!string.IsNullOrEmpty(Model.Search))
-                {
-                    <a asp-action="Index" asp-route-categoryId="@Model.CategoryId"
-                       class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
-                        <i data-lucide="x-circle" class="w-4 h-4"></i>
-                        Xoá lọc
-                    </a>
-                }
-            </form>
-        </div>
-
         @* Assigned specs table *@
-        <div class="surface-console surface-table-card spec-anim surface-anim" style="animation-delay:0.12s">
+        <div class="surface-console surface-table-card spec-anim surface-anim" style="animation-delay:0.08s">
+            <div class="spec-toolbar">
+                <form method="get" asp-action="Index" class="spec-filter-grid">
+                    <input type="hidden" name="categoryId" value="@Model.CategoryId" />
+                    <label class="spec-search-field">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                        <input type="text"
+                               name="search"
+                               value="@Model.Search"
+                               placeholder="Tìm thông số đã gán..." />
+                    </label>
+                    <button type="submit" class="spec-filter-submit">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                        <span>Lọc</span>
+                    </button>
+                    @if (hasFilters)
+                    {
+                        <a asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="spec-filter-clear">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            <span>Xoá lọc</span>
+                        </a>
+                    }
+                </form>
+            </div>
 
             @if (!Model.AssignedSpecs.Any())
             {
@@ -122,12 +120,22 @@
                     <div class="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-4">
                         <i data-lucide="list-x" class="w-8 h-8 text-teal-300"></i>
                     </div>
-                    <p class="text-slate-600 font-semibold">Chưa có thông số nào được gán</p>
-                    <p class="text-slate-400 text-sm mt-1">Dùng bảng bên phải để gán thông số vào danh mục này.</p>
+                    <p class="text-slate-600 font-semibold">@(hasFilters ? "Không tìm thấy thông số phù hợp" : "Chưa có thông số nào được gán")</p>
+                    <p class="text-slate-400 text-sm mt-1">
+                        @if (hasFilters)
+                        {
+                            <span>Thử từ khoá khác hoặc <a asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="text-teal-600 hover:underline">xoá bộ lọc</a></span>
+                        }
+                        else
+                        {
+                            <span>Dùng bảng bên phải để gán thông số vào danh mục này.</span>
+                        }
+                    </p>
                 </div>
             }
             else
             {
+                <div class="spec-table-scroll">
                 @* Header *@
                 <div class="surface-table-head px-5 py-3
                             grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 items-center">
@@ -209,6 +217,7 @@
                             </div>
                         </div>
                     }
+                </div>
                 </div>
 
                 @* Pagination *@

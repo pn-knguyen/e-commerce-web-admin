@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Thuộc tính biến thể";
     Layout = "_Layout";
+
+    var hasFilters = !string.IsNullOrEmpty(Model.Search);
 }
 
 @section Styles {
@@ -97,33 +99,30 @@
         </div>
     </div>
 
-    @* ── Filter ── *@
-    <div class="surface-console surface-toolbar-panel attr-anim surface-anim" style="animation-delay:0.12s">
-        <form method="get" asp-action="Index" class="flex flex-col sm:flex-row gap-3">
-            <div class="relative flex-1">
-                <i data-lucide="search"
-                   class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
-                <input type="text" name="search" value="@Model.Search" placeholder="Tìm theo code hoặc tên..." class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
-                focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-            </div>
-            <button type="submit" class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700
-                text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                <i data-lucide="search" class="w-4 h-4"></i>
-                Tìm kiếm
-            </button>
-            @if (!string.IsNullOrEmpty(Model.Search))
-            {
-                <a asp-action="Index"
-                   class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
-                    <i data-lucide="x-circle" class="w-4 h-4"></i>
-                    Xoá lọc
-                </a>
-            }
-        </form>
-    </div>
-
     @* ── Table ── *@
-    <div class="surface-console surface-table-card attr-anim surface-anim" style="animation-delay:0.16s">
+    <div class="surface-console surface-table-card attr-anim surface-anim" style="animation-delay:0.12s">
+        <div class="attr-toolbar">
+            <form method="get" asp-action="Index" class="attr-filter-grid">
+                <label class="attr-search-field">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <input type="text"
+                           name="search"
+                           value="@Model.Search"
+                           placeholder="Tìm theo code hoặc tên..." />
+                </label>
+                <button type="submit" class="attr-filter-submit">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Lọc</span>
+                </button>
+                @if (hasFilters)
+                {
+                    <a asp-action="Index" class="attr-filter-clear">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Xoá lọc</span>
+                    </a>
+                }
+            </form>
+        </div>
 
         @if (!Model.Attributes.Any())
         {
@@ -134,7 +133,7 @@
                 </div>
                 <p class="text-slate-600 font-semibold text-lg">Chưa có thuộc tính nào</p>
                 <p class="text-slate-400 text-sm mt-2">
-                    @if (!string.IsNullOrEmpty(Model.Search))
+                    @if (hasFilters)
                     {
                         <span>Thử từ khoá khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xoá bộ
                             lọc</a></span>
@@ -149,6 +148,7 @@
             }
     else
             {
+                <div class="attr-table-scroll">
                 @* Header *@
                 <div class="surface-table-head px-6 py-3.5
                     grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center">
@@ -229,6 +229,7 @@
 
                         </div>
                     }
+                </div>
                 </div>
 
                 @* Pagination *@

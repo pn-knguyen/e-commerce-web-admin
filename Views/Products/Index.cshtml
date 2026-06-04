@@ -2,6 +2,12 @@
 @{
     ViewData["Title"] = "Sản phẩm";
     Layout = "_Layout";
+
+    var hasFilters = !string.IsNullOrEmpty(Model.Search) ||
+        !string.IsNullOrEmpty(Model.Status) ||
+        !string.IsNullOrEmpty(Model.Featured) ||
+        Model.BrandId.HasValue ||
+        Model.CategoryId.HasValue;
 }
 
 @section Styles {
@@ -94,75 +100,77 @@
     </div>
 </div>
 
-<div class="surface-console surface-toolbar-panel product-anim surface-anim" style="animation-delay:0.12s">
-    <form method="get" asp-action="Index" class="product-filter-grid">
-        <div class="relative product-filter-search">
-            <i data-lucide="search"
-               class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
-            <input type="text" name="search" value="@Model.Search"
-                   placeholder="Tìm theo tên, slug, thương hiệu, danh mục..." class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
-            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-        </div>
-
-        <select name="brandId" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white
-            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
-            <option value="">Tất cả thương hiệu</option>
-            @foreach (var brand in Model.BrandOptions)
-            {
-                <option value="@brand.Id" selected="@(Model.BrandId == brand.Id)">
-                    @brand.Label@(brand.IsActive ? string.Empty : " (tắt)")
-                </option>
-            }
-        </select>
-
-        <select name="categoryId" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white
-            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
-            <option value="">Tất cả danh mục</option>
-            @foreach (var category in Model.CategoryOptions)
-            {
-                <option value="@category.Id" selected="@(Model.CategoryId == category.Id)">
-                    @category.Label@(category.IsActive ? string.Empty : " (tắt)")
-                </option>
-            }
-        </select>
-
-        <select name="status" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white
-            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
-            <option value="" selected="@(string.IsNullOrEmpty(Model.Status))">Tất cả trạng thái</option>
-            <option value="active" selected="@(Model.Status == "active")">Đang bật</option>
-            <option value="inactive" selected="@(Model.Status == "inactive")">Đã tắt</option>
-        </select>
-
-        <select name="featured" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white
-            focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
-            <option value="" selected="@(string.IsNullOrEmpty(Model.Featured))">Tất cả nổi bật</option>
-            <option value="featured" selected="@(Model.Featured == "featured")">Nổi bật</option>
-            <option value="normal" selected="@(Model.Featured == "normal")">Không nổi bật</option>
-        </select>
-
-        <button type="submit" class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700
-            text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-            <i data-lucide="search" class="w-4 h-4"></i>
-            Tìm
-        </button>
-
-        @if (!string.IsNullOrEmpty(Model.Search) ||
-             !string.IsNullOrEmpty(Model.Status) ||
-             !string.IsNullOrEmpty(Model.Featured) ||
-             Model.BrandId.HasValue ||
-             Model.CategoryId.HasValue)
-        {
-            <a asp-action="Index"
-               class="inline-flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
-                <i data-lucide="x-circle" class="w-4 h-4"></i>
-                Xoá lọc
-            </a>
-        }
-    </form>
-</div>
-
 <div class="surface-console surface-table-card product-anim surface-anim"
-     style="animation-delay:0.16s">
+     style="animation-delay:0.12s">
+    <div class="product-toolbar">
+        <form method="get" asp-action="Index" class="product-filter-grid">
+            <label class="product-search-field">
+                <i data-lucide="search" class="w-4 h-4"></i>
+                <input type="text"
+                       name="search"
+                       value="@Model.Search"
+                       placeholder="Tìm theo tên, slug, thương hiệu, danh mục..." />
+            </label>
+
+            <label class="product-select-field">
+                <span>Thương hiệu</span>
+                <select name="brandId">
+                    <option value="">Tất cả</option>
+                    @foreach (var brand in Model.BrandOptions)
+                    {
+                        <option value="@brand.Id" selected="@(Model.BrandId == brand.Id)">
+                            @brand.Label@(brand.IsActive ? string.Empty : " (tắt)")
+                        </option>
+                    }
+                </select>
+            </label>
+
+            <label class="product-select-field">
+                <span>Danh mục</span>
+                <select name="categoryId">
+                    <option value="">Tất cả</option>
+                    @foreach (var category in Model.CategoryOptions)
+                    {
+                        <option value="@category.Id" selected="@(Model.CategoryId == category.Id)">
+                            @category.Label@(category.IsActive ? string.Empty : " (tắt)")
+                        </option>
+                    }
+                </select>
+            </label>
+
+            <label class="product-select-field">
+                <span>Trạng thái</span>
+                <select name="status">
+                    <option value="" selected="@(string.IsNullOrEmpty(Model.Status))">Tất cả</option>
+                    <option value="active" selected="@(Model.Status == "active")">Đang bật</option>
+                    <option value="inactive" selected="@(Model.Status == "inactive")">Đã tắt</option>
+                </select>
+            </label>
+
+            <label class="product-select-field">
+                <span>Nổi bật</span>
+                <select name="featured">
+                    <option value="" selected="@(string.IsNullOrEmpty(Model.Featured))">Tất cả</option>
+                    <option value="featured" selected="@(Model.Featured == "featured")">Nổi bật</option>
+                    <option value="normal" selected="@(Model.Featured == "normal")">Không nổi bật</option>
+                </select>
+            </label>
+
+            <button type="submit" class="product-filter-submit">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                <span>Lọc</span>
+            </button>
+
+            @if (hasFilters)
+            {
+                <a asp-action="Index" class="product-filter-clear">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Xoá lọc</span>
+                </a>
+            }
+        </form>
+    </div>
+
     @if (!Model.Products.Any())
     {
         <div class="surface-empty">
