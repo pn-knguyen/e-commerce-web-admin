@@ -1,6 +1,11 @@
 # Tài liệu backend quản lý Product
 
-Tài liệu này giải thích toàn bộ phần code đang phục vụ màn hình quản lý sản phẩm trong admin. Module Product hiện tập trung vào **thông tin sản phẩm chính** như tên, slug, thương hiệu, danh mục, mô tả, trạng thái hiển thị và trạng thái nổi bật. Các phần chi tiết hơn như biến thể, thuộc tính biến thể, ảnh màu và thông số kỹ thuật là các bảng liên quan, được kiểm tra khi xóa sản phẩm nhưng chưa được quản lý trực tiếp trong form Product.
+Tài liệu này mô tả phần backend đang phục vụ module quản lý sản phẩm trong admin. Trạng thái mới nhất của module Product:
+
+- Form Product quản lý thông tin sản phẩm chính và cho phép nhập thông số kỹ thuật theo danh mục.
+- Thông số kỹ thuật vẫn lưu ở cấp sản phẩm qua `product_specifications.ProductId`.
+- Ảnh sản phẩm theo màu đã được chuyển sang cấp biến thể qua `product_variant_images.ProductVariantId`.
+- Biến thể sản phẩm, thuộc tính biến thể, tồn kho, giỏ hàng, đơn hàng và khuyến mãi vẫn là các bảng liên quan riêng, không bị trộn vào service Product.
 
 ## 1. Các file chính
 
@@ -13,6 +18,8 @@ ViewModels/Products/ProductViewModels.cs
 Models/Entities/CatalogEntities.cs
 Data/ApplicationDbContext.cs
 Data/Seed/EcommerceSeedData.cs
+Migrations/20260605090000_MoveProductImagesToVariants.cs
+Migrations/ApplicationDbContextModelSnapshot.cs
 Views/Products/Index.cshtml
 Views/Products/Create.cshtml
 Views/Products/Edit.cshtml
@@ -24,18 +31,19 @@ wwwroot/css/products.css
 Ý nghĩa từng nhóm:
 
 - `Controllers/ProductsController.cs`: nhận request HTTP, gọi service, trả view, redirect hoặc JSON cho AJAX.
-- `Services/Products/IProductAdminService.cs`: interface mô tả các nghiệp vụ Product mà controller được phép gọi.
-- `Services/Products/ProductAdminService.cs`: nơi xử lý query, lọc, phân trang, tạo, sửa, xóa, toggle và validation.
-- `Services/Products/ProductServiceResults.cs`: các object kết quả nghiệp vụ trả từ service về controller.
-- `ViewModels/Products/ProductViewModels.cs`: dữ liệu riêng cho giao diện admin, không đưa trực tiếp entity EF Core ra view.
-- `Models/Entities/CatalogEntities.cs`: định nghĩa entity `Product`, `ProductVariant`, `ProductColorImage`, `ProductSpecification` và các entity catalog liên quan.
+- `Services/Products/IProductAdminService.cs`: interface nghiệp vụ để controller không phụ thuộc trực tiếp vào EF Core.
+- `Services/Products/ProductAdminService.cs`: xử lý query, lọc, phân trang, tạo, sửa, xóa, toggle, validate và lưu thông số kỹ thuật.
+- `Services/Products/ProductServiceResults.cs`: định nghĩa object kết quả trả từ service về controller.
+- `ViewModels/Products/ProductViewModels.cs`: dữ liệu riêng cho giao diện admin, tránh đưa thẳng entity EF Core ra view.
+- `Models/Entities/CatalogEntities.cs`: định nghĩa `Product`, `ProductVariant`, `ProductVariantImage`, `ProductSpecification` và các entity catalog liên quan.
 - `Data/ApplicationDbContext.cs`: khai báo `DbSet`, mapping bảng, khóa, index, precision và quan hệ.
-- `Data/Seed/EcommerceSeedData.cs`: dữ liệu mẫu ban đầu cho product, variant, image, specification, cart, wishlist, order item và promotion rule.
+- `Data/Seed/EcommerceSeedData.cs`: seed dữ liệu mẫu cho product, variant, ảnh biến thể, thông số, giỏ hàng, đơn hàng và khuyến mãi.
+- `Migrations/20260605090000_MoveProductImagesToVariants.cs`: migration đổi bảng ảnh từ `product_color_images` sang `product_variant_images`.
 - `Views/Products/*.cshtml`: giao diện Razor cho danh sách, tạo, sửa và form dùng chung.
-- `wwwroot/js/products.js`: xử lý slug tự động, bật/tắt trạng thái, bật/tắt nổi bật, kiểm tra xóa bằng AJAX, dismiss toast.
-- `wwwroot/css/products.css`: layout grid, table scroll, trạng thái, action button và responsive cho module Product.
+- `wwwroot/js/products.js`: validate form phía client, sinh slug, đồng bộ nhóm thông số theo danh mục, toggle trạng thái và kiểm tra xóa.
+- `wwwroot/css/products.css`: style riêng cho module Product.
 
-## 2. Đăng ký service trong Program
+## 2. Đăng ký service
 
 Trong `Program.cs`:
 
@@ -43,13 +51,14 @@ Trong `Program.cs`:
 builder.Services.AddScoped<IProductAdminService, ProductAdminService>();
 ```
 
-Controller chỉ phụ thuộc vào `IProductAdminService`, không phụ thuộc trực tiếp `ApplicationDbContext`. Cách tách này giúp:
+Controller chỉ phụ thuộc vào `IProductAdminService`. Cách tách này giúp:
 
 - Controller giữ vai trò điều phối request/response.
 - Service chịu trách nhiệm nghiệp vụ và database.
-- View chỉ nhận dữ liệu đã được chuẩn bị sẵn qua ViewModel.
+- View chỉ nhận dữ liệu đã được chuẩn bị qua ViewModel.
+- Frontend JS/CSS chỉ xử lý tương tác và hiển thị, không tự quyết định dữ liệu được lưu.
 
-## 3. Entity Product và các quan hệ chính
+## 3. Entity Product
 
 File: `Models/Entities/CatalogEntities.cs`
 
@@ -70,40 +79,29 @@ public class Product
     public bool IsFeatured { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+
+    public Brand? Brand { get; set; }
+    public Category? Category { get; set; }
+    public ICollection<ProductVariant> ProductVariants { get; set; } = new List<ProductVariant>();
+    public ICollection<ProductSpecification> ProductSpecifications { get; set; } = new List<ProductSpecification>();
 }
 ```
 
 Các cột chính:
 
-- `BrandId`: FK tới `brands`.
-- `CategoryId`: FK tới `categories`.
-- `Name`: tên sản phẩm.
+- `BrandId`: khóa ngoại tới `brands`.
+- `CategoryId`: khóa ngoại tới `categories`.
+- `Name`: tên sản phẩm, bắt buộc.
 - `Slug`: định danh URL, có unique index.
 - `Description`: mô tả dài, tối đa 4000 ký tự theo mapping.
 - `ViewsCount`: số lượt xem.
 - `TotalSoldCount`: tổng số lượng đã bán.
 - `RatingAverage`, `RatingCount`: điểm đánh giá trung bình và số đánh giá.
-- `IsActive`: bật/tắt hiển thị.
+- `IsActive`: bật/tắt sản phẩm.
 - `IsFeatured`: đánh dấu sản phẩm nổi bật.
 - `CreatedAt`, `UpdatedAt`: thời gian tạo/cập nhật.
 
-Navigation trong `Product`:
-
-```csharp
-public Brand? Brand { get; set; }
-public Category? Category { get; set; }
-public ICollection<ProductVariant> ProductVariants { get; set; } = new List<ProductVariant>();
-public ICollection<ProductColorImage> ProductColorImages { get; set; } = new List<ProductColorImage>();
-public ICollection<ProductSpecification> ProductSpecifications { get; set; } = new List<ProductSpecification>();
-```
-
-Ý nghĩa:
-
-- Mỗi sản phẩm thuộc một thương hiệu.
-- Mỗi sản phẩm thuộc một danh mục.
-- Một sản phẩm có nhiều biến thể.
-- Một sản phẩm có nhiều ảnh theo màu.
-- Một sản phẩm có nhiều thông số kỹ thuật.
+Điểm thay đổi quan trọng: `Product` không còn collection `ProductColorImages`. Ảnh đã chuyển sang đi theo `ProductVariant`.
 
 ## 4. Entity ProductVariant
 
@@ -120,34 +118,54 @@ public class ProductVariant
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+
+    public Product? Product { get; set; }
+    public ICollection<VariantAttribute> VariantAttributes { get; set; } = new List<VariantAttribute>();
+    public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
+    public ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
+    public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+    public ICollection<GoodReceiptItem> GoodReceiptItems { get; set; } = new List<GoodReceiptItem>();
+    public ICollection<PromotionRule> GiftPromotionRules { get; set; } = new List<PromotionRule>();
+    public ICollection<ProductVariantImage> ProductVariantImages { get; set; } = new List<ProductVariantImage>();
 }
 ```
 
-`ProductVariant` là SKU/biến thể bán hàng thực tế. Ví dụ: cùng một sản phẩm iPhone có thể có nhiều biến thể theo màu hoặc dung lượng.
+`ProductVariant` là SKU/biến thể bán hàng thực tế. Ví dụ cùng một iPhone có nhiều biến thể theo màu và dung lượng.
 
-Navigation đáng chú ý:
+Các navigation quan trọng:
 
-- `Product`: biến thể thuộc về sản phẩm nào.
-- `VariantAttributes`: các option thuộc tính của biến thể, ví dụ màu, dung lượng, size.
+- `Product`: biến thể thuộc sản phẩm nào.
+- `VariantAttributes`: option thuộc tính của biến thể, ví dụ màu, dung lượng, size.
 - `CartItems`, `Wishlists`, `OrderItems`: biến thể được dùng trong giỏ hàng, yêu thích và đơn hàng.
 - `GoodReceiptItems`: biến thể được dùng trong phiếu nhập hàng.
 - `GiftPromotionRules`: biến thể được dùng làm quà tặng trong khuyến mãi.
+- `ProductVariantImages`: nhiều ảnh thuộc riêng biến thể đó.
 
-## 5. Entity ProductColorImage
+## 5. Entity ProductVariantImage
 
 ```csharp
-public class ProductColorImage
+public class ProductVariantImage
 {
     public long Id { get; set; }
-    public long ProductId { get; set; }
+    public long ProductVariantId { get; set; }
     public string Color { get; set; } = string.Empty;
     public string ImagePath { get; set; } = string.Empty;
     public string? AltText { get; set; }
     public int Position { get; set; }
+
+    public ProductVariant? ProductVariant { get; set; }
 }
 ```
 
-Bảng này lưu ảnh sản phẩm theo màu. Product admin hiện chỉ kiểm tra số ảnh khi xóa, chưa có form upload ảnh trong module Product.
+Đây là bảng ảnh mới thay cho `ProductColorImage`.
+
+- Bảng vật lý là `product_variant_images`.
+- Khóa ngoại là `ProductVariantId`.
+- Một biến thể có thể có nhiều ảnh.
+- `Color` vẫn được giữ để mô tả màu liên quan tới ảnh.
+- `Position` dùng để sắp xếp thứ tự ảnh.
+
+Ý nghĩa nghiệp vụ: khi người dùng chọn một biến thể, hệ thống có thể chỉ hiển thị ảnh của biến thể đó thay vì ảnh chung của toàn sản phẩm.
 
 ## 6. Entity ProductSpecification
 
@@ -159,15 +177,22 @@ public class ProductSpecification
     public string Value { get; set; } = string.Empty;
     public int SortOrder { get; set; }
     public bool IsHighlight { get; set; }
+
+    public Product? Product { get; set; }
+    public Specification? Specification { get; set; }
 }
 ```
 
 Đây là bảng nối giữa `Product` và `Specification`.
 
 - Khóa chính là cặp `{ ProductId, SpecificationId }`.
+- `ProductId` xác nhận thông số thuộc cấp sản phẩm, không thuộc biến thể.
+- `SpecificationId` trỏ tới định nghĩa thông số gốc.
 - `Value` là giá trị cụ thể của thông số trên sản phẩm.
 - `SortOrder` dùng để sắp xếp.
 - `IsHighlight` dùng để đánh dấu thông số nổi bật.
+
+Điểm quan trọng: vì thông số nằm ở cấp sản phẩm, admin không phải nhập lại cùng một bộ thông số cho từng biến thể.
 
 ## 7. Mapping trong ApplicationDbContext
 
@@ -178,431 +203,343 @@ DbSet liên quan:
 ```csharp
 public DbSet<Product> Products => Set<Product>();
 public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
-public DbSet<ProductColorImage> ProductColorImages => Set<ProductColorImage>();
+public DbSet<ProductVariantImage> ProductVariantImages => Set<ProductVariantImage>();
+public DbSet<Specification> Specifications => Set<Specification>();
+public DbSet<CategorySpecification> CategorySpecifications => Set<CategorySpecification>();
 public DbSet<ProductSpecification> ProductSpecifications => Set<ProductSpecification>();
 ```
 
-Mapping `Product`:
+Mapping `ProductVariantImage`:
 
 ```csharp
-modelBuilder.Entity<Product>(entity =>
+modelBuilder.Entity<ProductVariantImage>(entity =>
 {
-    entity.ToTable("products");
-    entity.HasIndex(product => product.Slug).IsUnique();
-    entity.Property(product => product.Name).HasMaxLength(255).IsRequired();
-    entity.Property(product => product.Description).HasMaxLength(4000);
-    entity.Property(product => product.Slug).HasMaxLength(255).IsRequired();
-    entity.Property(product => product.RatingAverage).HasPrecision(3, 2);
+    entity.ToTable("product_variant_images");
+    entity.Property(image => image.Color).HasMaxLength(80).IsRequired();
+    entity.Property(image => image.ImagePath).HasMaxLength(500).IsRequired();
+    entity.Property(image => image.AltText).HasMaxLength(255);
+    entity.HasOne(image => image.ProductVariant)
+        .WithMany(variant => variant.ProductVariantImages)
+        .HasForeignKey(image => image.ProductVariantId);
 });
 ```
 
-Các ràng buộc quan trọng:
+Mapping này đảm bảo ảnh thuộc về biến thể. Khi lấy ảnh cho một biến thể, chỉ cần query theo `ProductVariantId`.
 
-- Bảng là `products`.
-- `Slug` là duy nhất.
-- `Name` bắt buộc, tối đa 255 ký tự.
-- `Description` tối đa 4000 ký tự.
-- `RatingAverage` dùng precision `(3,2)`.
-
-Quan hệ:
+Mapping `ProductSpecification`:
 
 ```csharp
-entity.HasOne(product => product.Brand)
-    .WithMany(brand => brand.Products)
-    .HasForeignKey(product => product.BrandId);
-
-entity.HasOne(product => product.Category)
-    .WithMany(category => category.Products)
-    .HasForeignKey(product => product.CategoryId);
-```
-
-Toàn bộ foreign key trong `OnModelCreating` được set `DeleteBehavior.Restrict`, nên khi có dữ liệu liên quan, SQL Server sẽ không tự cascade delete.
-
-## 8. Controller ProductsController
-
-File: `Controllers/ProductsController.cs`
-
-Controller inject service:
-
-```csharp
-private readonly IProductAdminService _productService;
-
-public ProductsController(IProductAdminService productService)
-    => _productService = productService;
-```
-
-Controller không tự query database. Nó nhận request, đóng gói input, gọi service và quyết định response.
-
-## 9. Action Index
-
-```csharp
-public async Task<IActionResult> Index(
-    string? search,
-    string? status,
-    string? featured,
-    long? brandId,
-    long? categoryId,
-    int page = 1,
-    CancellationToken ct = default)
-```
-
-Tham số query string:
-
-- `search`: tìm theo tên, slug, brand name, category name.
-- `status`: `active`, `inactive` hoặc rỗng.
-- `featured`: `featured`, `normal` hoặc rỗng.
-- `brandId`: lọc theo thương hiệu.
-- `categoryId`: lọc theo danh mục, bao gồm cả danh mục con.
-- `page`: trang hiện tại.
-
-Action tạo `ProductIndexQuery`, gọi:
-
-```csharp
-_productService.GetIndexAsync(query, ct)
-```
-
-Sau đó trả `ProductIndexViewModel` cho `Views/Products/Index.cshtml`.
-
-## 10. Action Create
-
-GET:
-
-```csharp
-public async Task<IActionResult> Create(CancellationToken ct)
-    => View(await _productService.GetCreateFormAsync(ct));
-```
-
-GET Create chuẩn bị form rỗng, trong đó service đã nạp danh sách brand/category để render select.
-
-POST:
-
-```csharp
-[HttpPost, ValidateAntiForgeryToken]
-public async Task<IActionResult> Create(ProductFormViewModel viewModel, CancellationToken ct)
-```
-
-Luồng xử lý:
-
-1. Kiểm tra `ModelState`.
-2. Nếu invalid, gọi `PrepareFormAsync` để nạp lại dropdown.
-3. Nếu valid, gọi `CreateAsync`.
-4. Nếu service trả lỗi nghiệp vụ, add lỗi vào `ModelState`.
-5. Nếu thành công, set `TempData["Success"]` và redirect về `Index`.
-
-## 11. Action Edit
-
-GET:
-
-```csharp
-public async Task<IActionResult> Edit(long id, CancellationToken ct)
-```
-
-Service gọi `GetEditFormAsync(id)`. Nếu không tìm thấy product thì trả `NotFound()`.
-
-POST:
-
-```csharp
-[HttpPost, ValidateAntiForgeryToken]
-public async Task<IActionResult> Edit(long id, ProductFormViewModel viewModel, CancellationToken ct)
-```
-
-Điểm quan trọng:
-
-- Nếu `id != viewModel.Id` thì trả `BadRequest()`.
-- Nếu `ModelState` lỗi thì nạp lại dropdown và trả view.
-- Nếu update thành công thì redirect về index.
-
-## 12. Action Delete và CheckDelete
-
-`Delete` là POST thường:
-
-```csharp
-[HttpPost, ValidateAntiForgeryToken]
-public async Task<IActionResult> Delete(long id, CancellationToken ct)
-```
-
-Controller gọi `DeleteAsync`. Service sẽ tự gọi `CheckDeleteAsync` trước khi xóa thật.
-
-`CheckDelete` là POST dùng cho AJAX:
-
-```csharp
-[HttpPost, ValidateAntiForgeryToken]
-public async Task<IActionResult> CheckDelete(long id, CancellationToken ct)
-```
-
-Response JSON:
-
-```json
+modelBuilder.Entity<ProductSpecification>(entity =>
 {
-  "canDelete": true,
-  "message": "...",
-  "blockers": []
+    entity.ToTable("product_specifications");
+    entity.HasKey(item => new { item.ProductId, item.SpecificationId });
+    entity.Property(item => item.Value).HasMaxLength(1000).IsRequired();
+    entity.HasOne(item => item.Product)
+        .WithMany(product => product.ProductSpecifications)
+        .HasForeignKey(item => item.ProductId);
+    entity.HasOne(item => item.Specification)
+        .WithMany(specification => specification.ProductSpecifications)
+        .HasForeignKey(item => item.SpecificationId);
+});
+```
+
+Mapping này giữ thông số ở cấp sản phẩm. Khóa chính kép giúp một sản phẩm không bị trùng cùng một loại thông số.
+
+Toàn bộ foreign key trong `OnModelCreating` đang được cấu hình `DeleteBehavior.Restrict`, nên SQL Server không tự cascade delete khi có dữ liệu liên quan.
+
+## 8. Migration ảnh biến thể
+
+File: `Migrations/20260605090000_MoveProductImagesToVariants.cs`
+
+Migration này đổi mô hình ảnh:
+
+```csharp
+migrationBuilder.DropForeignKey(
+    name: "FK_product_color_images_products_ProductId",
+    table: "product_color_images");
+
+migrationBuilder.RenameTable(
+    name: "product_color_images",
+    newName: "product_variant_images");
+
+migrationBuilder.RenameColumn(
+    name: "ProductId",
+    table: "product_variant_images",
+    newName: "ProductVariantId");
+```
+
+Sau khi đổi tên bảng và cột, migration chuyển dữ liệu cũ từ product sang biến thể mặc định:
+
+```csharp
+migrationBuilder.Sql("""
+    UPDATE pvi
+    SET ProductVariantId = mapped.Id
+    FROM product_variant_images AS pvi
+    CROSS APPLY (
+        SELECT TOP (1) pv.Id
+        FROM product_variants AS pv
+        WHERE pv.ProductId = pvi.ProductVariantId
+        ORDER BY CASE WHEN pv.IsDefault = CAST(1 AS bit) THEN 0 ELSE 1 END, pv.Id
+    ) AS mapped;
+    """);
+```
+
+Ý nghĩa:
+
+- Trước migration, cột cũ là `ProductId`.
+- Sau khi rename sang `ProductVariantId`, giá trị trong cột vẫn đang là id sản phẩm.
+- Đoạn SQL tìm biến thể thuộc sản phẩm đó, ưu tiên biến thể `IsDefault = true`.
+- Sau đó cập nhật `ProductVariantId` về id biến thể thật.
+
+Cuối cùng migration tạo lại foreign key:
+
+```csharp
+migrationBuilder.AddForeignKey(
+    name: "FK_product_variant_images_product_variants_ProductVariantId",
+    table: "product_variant_images",
+    column: "ProductVariantId",
+    principalTable: "product_variants",
+    principalColumn: "Id",
+    onDelete: ReferentialAction.Restrict);
+```
+
+`Down` migration làm ngược lại: chuyển `ProductVariantId` về `ProductId`, rename bảng về `product_color_images`, rồi tạo lại foreign key tới `products`.
+
+## 9. ViewModel ProductFormViewModel
+
+File: `ViewModels/Products/ProductViewModels.cs`
+
+```csharp
+public sealed class ProductFormViewModel
+{
+    public long Id { get; set; }
+
+    [Required(ErrorMessage = "Tên sản phẩm là bắt buộc.")]
+    [StringLength(255, ErrorMessage = "Tên sản phẩm tối đa 255 ký tự.")]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(255, ErrorMessage = "Slug tối đa 255 ký tự.")]
+    [RegularExpression(@"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        ErrorMessage = "Slug chỉ gồm chữ thường, số và dấu gạch ngang.")]
+    public string? Slug { get; set; }
+
+    [Required(ErrorMessage = "Vui lòng chọn thương hiệu.")]
+    [Range(1, long.MaxValue, ErrorMessage = "Vui lòng chọn thương hiệu.")]
+    public long? BrandId { get; set; }
+
+    [Required(ErrorMessage = "Vui lòng chọn danh mục.")]
+    [Range(1, long.MaxValue, ErrorMessage = "Vui lòng chọn danh mục.")]
+    public long? CategoryId { get; set; }
+
+    [StringLength(4000, ErrorMessage = "Mô tả tối đa 4000 ký tự.")]
+    public string? Description { get; set; }
+
+    public bool IsActive { get; set; } = true;
+    public bool IsFeatured { get; set; }
+
+    public List<ProductSelectItem> BrandOptions { get; set; } = [];
+    public List<ProductCategorySelectItem> CategoryOptions { get; set; } = [];
+    public List<ProductSpecificationInputViewModel> Specifications { get; set; } = [];
 }
 ```
 
-Frontend gọi action này trước khi hiện `confirm`. Nếu sản phẩm còn dữ liệu liên quan thì frontend hiển thị alert và không submit form xóa.
+Điểm mới là `Specifications`. Danh sách này chứa toàn bộ input thông số kỹ thuật có thể hiển thị theo danh mục.
 
-## 13. Action ToggleActive và ToggleFeatured
-
-```csharp
-[HttpPost, ValidateAntiForgeryToken]
-public async Task<IActionResult> ToggleActive(long id, CancellationToken ct)
-```
+ViewModel cho từng input thông số:
 
 ```csharp
-[HttpPost, ValidateAntiForgeryToken]
-public async Task<IActionResult> ToggleFeatured(long id, CancellationToken ct)
-```
-
-Hai action này phục vụ AJAX trong trang index.
-
-- `ToggleActive`: đảo `IsActive`.
-- `ToggleFeatured`: đảo `IsFeatured`.
-- Nếu không tìm thấy product thì trả `NotFound()`.
-- Nếu thành công thì trả JSON chứa trạng thái mới.
-
-## 14. Interface IProductAdminService
-
-File: `Services/Products/IProductAdminService.cs`
-
-```csharp
-public interface IProductAdminService
+public sealed class ProductSpecificationInputViewModel
 {
-    Task<ProductIndexViewModel> GetIndexAsync(ProductIndexQuery query, CancellationToken ct = default);
-    Task<ProductFormViewModel> GetCreateFormAsync(CancellationToken ct = default);
-    Task<ProductFormViewModel?> GetEditFormAsync(long id, CancellationToken ct = default);
-    Task<ProductFormViewModel> PrepareFormAsync(ProductFormViewModel form, CancellationToken ct = default);
-    Task<ProductSaveResult> CreateAsync(ProductFormViewModel form, CancellationToken ct = default);
-    Task<ProductSaveResult> UpdateAsync(long id, ProductFormViewModel form, CancellationToken ct = default);
-    Task<ProductDeleteCheckResult> CheckDeleteAsync(long id, CancellationToken ct = default);
-    Task<ProductDeleteResult> DeleteAsync(long id, CancellationToken ct = default);
-    Task<ProductToggleResult?> ToggleActiveAsync(long id, CancellationToken ct = default);
-    Task<ProductToggleResult?> ToggleFeaturedAsync(long id, CancellationToken ct = default);
+    public long CategoryId { get; set; }
+    public long SpecificationId { get; set; }
+    public string Key { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Unit { get; set; }
+    public string? GroupName { get; set; }
+    public bool IsRequired { get; set; }
+    public int SortOrder { get; set; }
+
+    [StringLength(1000, ErrorMessage = "Giá trị thông số tối đa 1000 ký tự.")]
+    public string? Value { get; set; }
+
+    public bool IsHighlight { get; set; }
 }
 ```
 
-Interface này chính là hợp đồng nghiệp vụ của module Product. Controller không cần biết EF Core query ra sao, chỉ cần gọi đúng method.
+Ý nghĩa từng field:
 
-## 15. ProductAdminService - cấu hình chung
+- `CategoryId`: thông số này thuộc cấu hình của danh mục nào.
+- `SpecificationId`: id thông số gốc trong bảng `specifications`.
+- `Key`: mã kỹ thuật của thông số.
+- `Name`: tên hiển thị cho admin.
+- `Unit`: đơn vị, ví dụ `GB`, `inch`, `Hz`.
+- `GroupName`: nhóm thông số, ví dụ `Bộ xử lý & Đồ họa`, `Màn hình`.
+- `IsRequired`: thông số bắt buộc theo cấu hình danh mục.
+- `SortOrder`: thứ tự hiển thị và lưu.
+- `Value`: giá trị admin nhập.
+- `IsHighlight`: có hiển thị nổi bật hay không.
 
-File: `Services/Products/ProductAdminService.cs`
+## 10. ProductAdminService - chuẩn bị form
+
+Create form:
 
 ```csharp
-private const int DefaultPageSize = 30;
-private readonly ApplicationDbContext _db;
-```
-
-- `DefaultPageSize = 30`: mỗi trang index hiển thị 30 sản phẩm.
-- `_db`: EF Core DbContext để query và lưu dữ liệu.
-
-Service có private class `ProductIndexItem` dùng làm DTO nội bộ khi projection từ database:
-
-```csharp
-private sealed class ProductIndexItem
+public async Task<ProductFormViewModel> GetCreateFormAsync(CancellationToken ct = default)
 {
-    public long Id { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string Slug { get; init; } = string.Empty;
-    public string BrandName { get; init; } = string.Empty;
-    public string CategoryName { get; init; } = string.Empty;
-    public int VariantCount { get; init; }
-    public int ViewsCount { get; init; }
-    public int TotalSoldCount { get; init; }
-    public decimal RatingAverage { get; init; }
-    public int RatingCount { get; init; }
-    public bool IsActive { get; init; }
-    public bool IsFeatured { get; init; }
-    public DateTime CreatedAt { get; init; }
+    return await PrepareFormAsync(new ProductFormViewModel { IsActive = true }, ct);
 }
-```
-
-DTO này giúp query chỉ lấy đúng các trường cần hiển thị, không load toàn bộ entity và collection.
-
-## 16. GetIndexAsync - lọc, thống kê, phân trang
-
-Khởi đầu:
-
-```csharp
-var page = Math.Max(1, query.Page);
-var dbQuery = _db.Products.AsNoTracking();
-```
-
-- Trang nhỏ hơn 1 được đưa về 1.
-- `AsNoTracking()` dùng cho màn hình đọc dữ liệu, nhẹ hơn tracking entity.
-
-Lọc trạng thái:
-
-```csharp
-if (query.Status == "active")
-    dbQuery = dbQuery.Where(product => product.IsActive);
-else if (query.Status == "inactive")
-    dbQuery = dbQuery.Where(product => !product.IsActive);
-```
-
-Lọc nổi bật:
-
-```csharp
-if (query.Featured == "featured")
-    dbQuery = dbQuery.Where(product => product.IsFeatured);
-else if (query.Featured == "normal")
-    dbQuery = dbQuery.Where(product => !product.IsFeatured);
-```
-
-Lọc brand:
-
-```csharp
-if (query.BrandId.HasValue)
-    dbQuery = dbQuery.Where(product => product.BrandId == query.BrandId.Value);
-```
-
-Lọc category:
-
-```csharp
-var categoryIds = await GetCategoryAndDescendantIdsAsync(query.CategoryId.Value, ct);
-dbQuery = categoryIds.Count == 0
-    ? dbQuery.Where(product => false)
-    : dbQuery.Where(product => categoryIds.Contains(product.CategoryId));
-```
-
-Nếu lọc theo danh mục cha, service lấy cả danh mục cha và toàn bộ danh mục con. Nhờ vậy admin chọn "Điện tử" vẫn thấy sản phẩm thuộc "Điện thoại", "Laptop" nếu các danh mục đó là con.
-
-Tìm kiếm:
-
-```csharp
-dbQuery = dbQuery.Where(product =>
-    product.Name.Contains(term) ||
-    product.Slug.Contains(term) ||
-    product.Brand!.Name.Contains(term) ||
-    product.Category!.Name.Contains(term));
-```
-
-Search hiện tìm theo:
-
-- Tên sản phẩm.
-- Slug sản phẩm.
-- Tên thương hiệu.
-- Tên danh mục.
-
-Thống kê:
-
-```csharp
-var totalCount = await dbQuery.CountAsync(ct);
-var activeCount = await dbQuery.CountAsync(product => product.IsActive, ct);
-var inactiveCount = await dbQuery.CountAsync(product => !product.IsActive, ct);
-var featuredCount = await dbQuery.CountAsync(product => product.IsFeatured, ct);
-```
-
-Các con số này được tính trên `dbQuery` sau khi đã áp filter. Nghĩa là khi đang lọc theo brand/category/search, các thẻ thống kê phản ánh tập dữ liệu đang lọc, không phải toàn bộ hệ thống.
-
-Query danh sách:
-
-```csharp
-var items = await dbQuery
-    .OrderByDescending(product => product.CreatedAt)
-    .ThenBy(product => product.Name)
-    .Skip((page - 1) * DefaultPageSize)
-    .Take(DefaultPageSize)
-    .Select(product => new ProductIndexItem { ... })
-    .ToListAsync(ct);
-```
-
-Điểm tốt:
-
-- Có phân trang bằng `Skip`/`Take`.
-- Có projection sang DTO, tránh load dư entity.
-- Lấy `VariantCount` bằng count collection ngay trong query.
-
-## 17. GetCreateFormAsync và GetEditFormAsync
-
-Create:
-
-```csharp
-return await PrepareFormAsync(new ProductFormViewModel { IsActive = true }, ct);
 ```
 
 Sản phẩm mới mặc định `IsActive = true`.
 
-Edit:
+Edit form:
 
 ```csharp
 var entity = await _db.Products
     .AsNoTracking()
+    .Include(product => product.ProductSpecifications)
     .FirstOrDefaultAsync(product => product.Id == id, ct);
 ```
 
-Edit chỉ load các trường cần cho form:
+Khi sửa, service load thêm `ProductSpecifications` để fill giá trị đã lưu vào form.
 
-- `Id`
-- `Name`
-- `Slug`
-- `BrandId`
-- `CategoryId`
-- `Description`
-- `IsActive`
-- `IsFeatured`
-
-Sau đó gọi `PrepareFormAsync` để nạp dropdown brand/category.
-
-## 18. PrepareFormAsync
+Mapping thông số đang có:
 
 ```csharp
-form.BrandOptions = await BuildBrandOptionsAsync(ct);
-form.CategoryOptions = await BuildCategoryOptionsAsync(ct);
-return form;
+Specifications = entity.ProductSpecifications
+    .Select(item => new ProductSpecificationInputViewModel
+    {
+        CategoryId = entity.CategoryId,
+        SpecificationId = item.SpecificationId,
+        Value = item.Value,
+        SortOrder = item.SortOrder,
+        IsHighlight = item.IsHighlight,
+    })
+    .ToList(),
 ```
 
-Method này được gọi trong cả GET Create, GET Edit và khi POST bị lỗi. Đây là điểm quan trọng vì nếu validation lỗi mà không nạp lại options thì view select sẽ thiếu dữ liệu.
+`CategoryId` được lấy từ product hiện tại để service ghép đúng với cấu hình thông số của danh mục.
 
-## 19. CreateAsync
-
-Luồng:
+`PrepareFormAsync`:
 
 ```csharp
-NormalizeForm(form);
-var errors = await ValidateFormAsync(form, existingId: null, ct);
-```
-
-Trước khi lưu, service chuẩn hóa:
-
-- Trim tên.
-- Sinh slug nếu để trống.
-- Chuẩn hóa slug nếu admin nhập thủ công.
-- Trim description hoặc đưa về null.
-
-Nếu không có lỗi, tạo entity:
-
-```csharp
-var entity = new Product
+public async Task<ProductFormViewModel> PrepareFormAsync(
+    ProductFormViewModel form,
+    CancellationToken ct = default)
 {
-    BrandId = form.BrandId!.Value,
-    CategoryId = form.CategoryId!.Value,
-    Name = form.Name,
-    Slug = form.Slug!,
-    Description = form.Description,
-    IsActive = form.IsActive,
-    IsFeatured = form.IsFeatured,
-    CreatedAt = DateTime.UtcNow,
-};
+    form.BrandOptions = await BuildBrandOptionsAsync(ct);
+    form.CategoryOptions = await BuildCategoryOptionsAsync(ct);
+    form.Specifications = await BuildSpecificationInputsAsync(form.Specifications, ct);
+    return form;
+}
 ```
 
-Các trường chưa nhập trên form như `ViewsCount`, `TotalSoldCount`, `RatingAverage`, `RatingCount` sẽ dùng giá trị mặc định của kiểu dữ liệu.
+Method này luôn nạp lại:
 
-## 20. UpdateAsync
+- Danh sách thương hiệu.
+- Danh sách danh mục.
+- Danh sách thông số theo `CategorySpecifications`.
 
-Update cũng gọi:
+Nhờ vậy khi POST lỗi validation, form trả về vẫn đủ dữ liệu để render lại dropdown và thông số.
+
+## 11. BuildSpecificationInputsAsync
+
+```csharp
+private async Task<List<ProductSpecificationInputViewModel>> BuildSpecificationInputsAsync(
+    IEnumerable<ProductSpecificationInputViewModel> existingValues,
+    CancellationToken ct)
+{
+    var valueMap = existingValues
+        .GroupBy(item => new { item.CategoryId, item.SpecificationId })
+        .ToDictionary(
+            group => group.Key,
+            group => group.Last());
+
+    var categorySpecifications = await _db.CategorySpecifications
+        .AsNoTracking()
+        .Include(item => item.Specification)
+        .OrderBy(item => item.CategoryId)
+        .ThenBy(item => item.GroupName)
+        .ThenBy(item => item.SortOrder)
+        .ThenBy(item => item.Specification!.Name)
+        .ToListAsync(ct);
+
+    return categorySpecifications.Select(item =>
+    {
+        valueMap.TryGetValue(
+            new { item.CategoryId, item.SpecificationId },
+            out var existing);
+
+        return new ProductSpecificationInputViewModel
+        {
+            CategoryId = item.CategoryId,
+            SpecificationId = item.SpecificationId,
+            Key = item.Specification!.Key,
+            Name = item.Specification.Name,
+            Unit = item.Specification.Unit,
+            GroupName = item.GroupName,
+            IsRequired = item.IsRequired,
+            SortOrder = item.SortOrder,
+            Value = string.IsNullOrWhiteSpace(existing?.Value) ? null : existing.Value.Trim(),
+            IsHighlight = existing?.IsHighlight ?? false,
+        };
+    }).ToList();
+}
+```
+
+Luồng xử lý:
+
+1. Nhận `existingValues` từ form hoặc dữ liệu edit.
+2. Tạo `valueMap` theo cặp `{ CategoryId, SpecificationId }`.
+3. Query toàn bộ cấu hình thông số theo danh mục từ `CategorySpecifications`.
+4. Ghép metadata từ `Specification` với giá trị đã nhập/lưu.
+5. Trả về danh sách input hoàn chỉnh cho view.
+
+Lý do backend tự rebuild metadata: không tin hoàn toàn vào hidden input từ frontend. Frontend chỉ gửi id và value, còn tên thông số, unit, required, group, sort order được lấy lại từ DB.
+
+## 12. CreateAsync - lưu thông số kỹ thuật
 
 ```csharp
 NormalizeForm(form);
-ValidateFormAsync(form, existingId: id, ct);
+form = await PrepareFormAsync(form, ct);
+
+var errors = await ValidateFormAsync(form, existingId: null, ct);
+if (errors.Count > 0)
+{
+    return ProductSaveResult.Failed(form, errors);
+}
 ```
 
-Khác với create, validate slug khi update bỏ qua chính sản phẩm hiện tại:
+Trước khi validate, service gọi `PrepareFormAsync` để đảm bảo danh sách thông số có đủ metadata từ DB. Đây là điểm quan trọng vì required/spec group không được quyết định bởi client.
+
+Sau khi tạo entity product:
 
 ```csharp
-product => product.Slug == form.Slug && product.Id != existingId.Value
+foreach (var specification in GetSelectedSpecificationInputs(form))
+{
+    entity.ProductSpecifications.Add(new ProductSpecification
+    {
+        SpecificationId = specification.SpecificationId,
+        Value = specification.Value!,
+        SortOrder = specification.SortOrder,
+        IsHighlight = specification.IsHighlight,
+    });
+}
 ```
 
-Sau đó cập nhật entity:
+Chỉ những thông số thuộc danh mục đang chọn và có `Value` mới được lưu. Thông số trống không được insert, trừ trường bắt buộc sẽ bị validate chặn trước đó.
+
+## 13. UpdateAsync - cập nhật thông số kỹ thuật
+
+Khi cập nhật, service load product kèm thông số hiện có:
+
+```csharp
+var entity = await _db.Products
+    .Include(product => product.ProductSpecifications)
+    .FirstOrDefaultAsync(product => product.Id == id, ct);
+```
+
+Sau khi validate product chính:
 
 ```csharp
 entity.BrandId = form.BrandId!.Value;
@@ -613,18 +550,93 @@ entity.Description = form.Description;
 entity.IsActive = form.IsActive;
 entity.IsFeatured = form.IsFeatured;
 entity.UpdatedAt = DateTime.UtcNow;
+ApplyProductSpecifications(entity, GetSelectedSpecificationInputs(form));
 ```
 
-## 21. ValidateFormAsync
+`ApplyProductSpecifications` chịu trách nhiệm đồng bộ collection `ProductSpecifications`.
+
+## 14. GetSelectedSpecificationInputs
+
+```csharp
+private static List<ProductSpecificationInputViewModel> GetSelectedSpecificationInputs(ProductFormViewModel form)
+{
+    if (!form.CategoryId.HasValue)
+    {
+        return [];
+    }
+
+    return form.Specifications
+        .Where(item => item.CategoryId == form.CategoryId.Value)
+        .Where(item => !string.IsNullOrWhiteSpace(item.Value))
+        .Select(item =>
+        {
+            item.Value = item.Value!.Trim();
+            return item;
+        })
+        .ToList();
+}
+```
+
+Method này lọc thông số theo đúng danh mục đang chọn. Nếu admin đổi danh mục, các thông số của danh mục cũ không được giữ lại trong danh sách lưu.
+
+## 15. ApplyProductSpecifications
+
+```csharp
+private void ApplyProductSpecifications(
+    Product product,
+    IReadOnlyCollection<ProductSpecificationInputViewModel> selectedSpecifications)
+{
+    var selectedMap = selectedSpecifications.ToDictionary(item => item.SpecificationId);
+    var existingItems = product.ProductSpecifications.ToList();
+
+    foreach (var existing in existingItems)
+    {
+        if (!selectedMap.TryGetValue(existing.SpecificationId, out var selected))
+        {
+            _db.ProductSpecifications.Remove(existing);
+            product.ProductSpecifications.Remove(existing);
+            continue;
+        }
+
+        existing.Value = selected.Value!;
+        existing.SortOrder = selected.SortOrder;
+        existing.IsHighlight = selected.IsHighlight;
+    }
+
+    var existingIds = existingItems.Select(item => item.SpecificationId).ToHashSet();
+    foreach (var selected in selectedSpecifications.Where(item => !existingIds.Contains(item.SpecificationId)))
+    {
+        product.ProductSpecifications.Add(new ProductSpecification
+        {
+            ProductId = product.Id,
+            SpecificationId = selected.SpecificationId,
+            Value = selected.Value!,
+            SortOrder = selected.SortOrder,
+            IsHighlight = selected.IsHighlight,
+        });
+    }
+}
+```
+
+Luồng đồng bộ:
+
+- Nếu thông số cũ không còn trong form hiện tại, remove khỏi DbContext và collection.
+- Nếu thông số đã tồn tại, cập nhật `Value`, `SortOrder`, `IsHighlight`.
+- Nếu thông số mới có value, thêm mới vào collection.
+
+Việc gọi `_db.ProductSpecifications.Remove(existing)` là cần thiết vì delete behavior đang là `Restrict`; service chủ động xóa row nối thay vì trông chờ cascade.
+
+## 16. ValidateFormAsync
 
 Validation nghiệp vụ trong service gồm:
 
 1. Kiểm tra slug trùng.
-2. Kiểm tra brand có được chọn không.
+2. Kiểm tra brand đã chọn chưa.
 3. Kiểm tra brand có tồn tại trong DB không.
-4. Kiểm tra category có được chọn không.
+4. Kiểm tra category đã chọn chưa.
 5. Kiểm tra category có tồn tại trong DB không.
 6. Kiểm tra category có phải danh mục lá không.
+7. Kiểm tra các thông số bắt buộc của danh mục lá.
 
 Rule danh mục lá:
 
@@ -637,448 +649,410 @@ else if (category.ChildCount > 0)
 }
 ```
 
-Nghĩa là sản phẩm không được gán vào danh mục cha nếu danh mục đó còn danh mục con. Đây là rule hợp lý để dữ liệu sản phẩm nằm ở cấp phân loại cụ thể nhất.
-
-## 22. CheckDeleteAsync và DeleteAsync
-
-`CheckDeleteAsync` lấy số lượng dữ liệu phụ thuộc:
+Rule thông số bắt buộc:
 
 ```csharp
-VariantCount = item.ProductVariants.Count,
-SpecificationCount = item.ProductSpecifications.Count,
-ImageCount = item.ProductColorImages.Count,
-```
-
-`BuildDeleteBlockers` tạo danh sách lý do không được xóa:
-
-- Còn biến thể.
-- Còn thông số kỹ thuật.
-- Còn ảnh sản phẩm.
-
-`DeleteAsync` luôn gọi `CheckDeleteAsync` trước:
-
-```csharp
-var deleteCheck = await CheckDeleteAsync(id, ct);
-if (!deleteCheck.CanDelete)
-    return ProductDeleteResult.Failed(deleteCheck.Message);
-```
-
-Chỉ khi không còn blocker thì service mới gọi:
-
-```csharp
-_db.Products.Remove(entity);
-await _db.SaveChangesAsync(ct);
-```
-
-Lưu ý khi kiểm tra code: `VoucherTarget` và `PromotionTarget` là polymorphic target, không có FK trực tiếp tới `Product`. Nếu sau này có sản phẩm không còn variant/spec/image nhưng vẫn đang được tham chiếu bởi target kiểu `Product`, code hiện tại chưa chặn trường hợp đó.
-
-## 23. ToggleActiveAsync và ToggleFeaturedAsync
-
-Toggle active:
-
-```csharp
-entity.IsActive = !entity.IsActive;
-entity.UpdatedAt = DateTime.UtcNow;
-```
-
-Toggle featured:
-
-```csharp
-entity.IsFeatured = !entity.IsFeatured;
-entity.UpdatedAt = DateTime.UtcNow;
-```
-
-Hai method này trả `ProductToggleResult` để controller trả JSON cho frontend.
-
-## 24. BuildBrandOptionsAsync
-
-```csharp
-return await _db.Brands
-    .AsNoTracking()
-    .OrderBy(brand => brand.Name)
-    .Select(brand => new ProductSelectItem
-    {
-        Id = brand.Id,
-        Label = brand.Name,
-        IsActive = brand.IsActive,
-    })
-    .ToListAsync(ct);
-```
-
-Brand options gồm cả brand đang tắt. View sẽ hiển thị hậu tố `(đang tắt)` để admin biết trạng thái.
-
-## 25. BuildCategoryOptionsAsync
-
-Service lấy toàn bộ category rồi dựng cây:
-
-```csharp
-AppendCategoryOptions(categories, parentId: null, depth: 0, result);
-```
-
-`AppendCategoryOptions` thêm prefix theo độ sâu:
-
-```csharp
-var prefix = depth == 0 ? string.Empty : $"{new string('-', depth * 2)} ";
-```
-
-View dùng `HasChildren` để disable danh mục cha:
-
-```cshtml
-disabled="@category.HasChildren"
-```
-
-Như vậy rule "chỉ chọn danh mục lá" được hỗ trợ ở cả UI và backend.
-
-## 26. GenerateSlug và NormalizeForm
-
-Server-side slug generator:
-
-```csharp
-private static string GenerateSlug(string value)
-```
-
-Các bước:
-
-1. Trim và lowercase.
-2. Normalize Unicode dạng FormD.
-3. Bỏ dấu tiếng Việt bằng cách bỏ `NonSpacingMark`.
-4. Chuyển `đ` thành `d`.
-5. Giữ chữ `a-z`, số `0-9`.
-6. Chuyển khoảng trắng, `-`, `_` thành `-`.
-7. Gộp nhiều dấu `-` liên tiếp.
-8. Trim dấu `-` ở đầu/cuối.
-
-Frontend cũng có hàm `toSlug` tương tự trong `wwwroot/js/products.js`, nhưng server vẫn là nguồn chuẩn cuối cùng vì POST luôn đi qua `NormalizeForm`.
-
-## 27. ProductServiceResults
-
-File: `Services/Products/ProductServiceResults.cs`
-
-`ProductValidationError`:
-
-```csharp
-public sealed record ProductValidationError(string FieldName, string Message);
-```
-
-Dùng để service trả lỗi theo từng field. Controller đưa lỗi này vào `ModelState`.
-
-`ProductSaveResult`:
-
-- `Succeeded`: create/update thành công hay thất bại.
-- `Message`: thông báo thành công.
-- `Form`: form đã chuẩn bị lại, thường đã có dropdown.
-- `Errors`: lỗi nghiệp vụ.
-
-`ProductDeleteResult`:
-
-- `Found`: có tìm thấy sản phẩm không.
-- `Succeeded`: xóa thành công không.
-- `Message`: thông báo cho `TempData`.
-
-`ProductDeleteCheckResult`:
-
-- `Found`: có tìm thấy sản phẩm không.
-- `CanDelete`: có được xóa không.
-- `ProductName`: tên sản phẩm.
-- `Message`: message hiển thị.
-- `Blockers`: danh sách dữ liệu liên quan đang chặn xóa.
-
-`ProductToggleResult`:
-
-```csharp
-public sealed record ProductToggleResult(bool Value);
-```
-
-Dùng chung cho active và featured toggle.
-
-## 28. ViewModel Product
-
-File: `ViewModels/Products/ProductViewModels.cs`
-
-`ProductIndexQuery`:
-
-```csharp
-public sealed class ProductIndexQuery
+if (category is not null && category.ChildCount == 0)
 {
-    public string? Search { get; set; }
-    public string? Status { get; set; }
-    public string? Featured { get; set; }
-    public long? BrandId { get; set; }
-    public long? CategoryId { get; set; }
-    public int Page { get; set; } = 1;
+    foreach (var item in form.Specifications.Select((specification, index) => new { specification, index }))
+    {
+        if (item.specification.CategoryId != form.CategoryId.Value || !item.specification.IsRequired)
+        {
+            continue;
+        }
+
+        if (string.IsNullOrWhiteSpace(item.specification.Value))
+        {
+            errors.Add(new ProductValidationError(
+                $"{nameof(form.Specifications)}[{item.index}].{nameof(ProductSpecificationInputViewModel.Value)}",
+                $"Vui lòng nhập {item.specification.Name}."));
+        }
+    }
 }
 ```
 
-Đây là object nhận filter từ controller trước khi chuyển xuống service.
+Field name dạng `Specifications[index].Value` giúp controller add lỗi vào đúng input trong form Razor.
 
-`ProductIndexViewModel` chứa:
+## 17. NormalizeForm
 
-- `Products`: rows hiển thị trong bảng.
-- `BrandOptions`: dropdown brand filter.
-- `CategoryOptions`: dropdown category filter.
-- Các filter hiện tại để giữ trạng thái UI.
-- `Page`, `PageSize`, `TotalCount`.
-- Các số thống kê: active, inactive, featured, variant.
-- Computed properties `TotalPages`, `HasPrev`, `HasNext`.
+```csharp
+private static void NormalizeForm(ProductFormViewModel form)
+{
+    form.Name = form.Name.Trim();
+    form.Slug = string.IsNullOrWhiteSpace(form.Slug)
+        ? GenerateSlug(form.Name)
+        : GenerateSlug(form.Slug);
+    form.Description = string.IsNullOrWhiteSpace(form.Description) ? null : form.Description.Trim();
 
-`ProductRowViewModel` là một dòng trong table:
-
-- Tên, slug.
-- Brand/category.
-- Số biến thể.
-- Lượt xem.
-- Đã bán.
-- Rating.
-- Active/featured.
-- CreatedAt.
-
-`ProductFormViewModel` dùng cho create/edit:
-
-- `Name`: required, tối đa 255.
-- `Slug`: tối đa 255, regex chỉ cho lowercase, số và dấu gạch ngang.
-- `BrandId`: required và phải >= 1.
-- `CategoryId`: required và phải >= 1.
-- `Description`: tối đa 4000.
-- `IsActive`, `IsFeatured`.
-- `BrandOptions`, `CategoryOptions`.
-
-## 29. View Index
-
-File: `Views/Products/Index.cshtml`
-
-View này gồm các phần:
-
-- Header với nút "Thêm sản phẩm".
-- Toast success/error từ `TempData`.
-- 4 ô thống kê: tổng sản phẩm, đang bật, nổi bật, biến thể.
-- Form filter GET.
-- Bảng sản phẩm.
-- Empty state nếu không có dữ liệu.
-- Pagination.
-- Script `products.js`.
-
-Form filter gửi về `Products/Index` bằng method GET:
-
-```cshtml
-<form method="get" asp-action="Index" class="product-filter-grid">
+    foreach (var specification in form.Specifications)
+    {
+        specification.Value = string.IsNullOrWhiteSpace(specification.Value)
+            ? null
+            : specification.Value.Trim();
+    }
+}
 ```
 
-Các filter trong UI khớp với `ProductIndexQuery`:
+Service chuẩn hóa cả dữ liệu sản phẩm và giá trị thông số:
 
-- `search`
-- `brandId`
-- `categoryId`
-- `status`
-- `featured`
+- Tên được trim.
+- Slug được sinh hoặc chuẩn hóa lại.
+- Description rỗng chuyển về `null`.
+- Value thông số rỗng chuyển về `null`, value có nội dung được trim.
 
-Mỗi row có:
+## 18. CheckDeleteAsync
 
-- Nút sửa.
-- Form xóa POST có anti-forgery token.
-- Nút toggle active.
-- Nút toggle featured.
+```csharp
+var product = await _db.Products
+    .AsNoTracking()
+    .Where(item => item.Id == id)
+    .Select(item => new
+    {
+        item.Name,
+        VariantCount = item.ProductVariants.Count,
+        SpecificationCount = item.ProductSpecifications.Count,
+        ImageCount = item.ProductVariants.Sum(variant => variant.ProductVariantImages.Count),
+    })
+    .FirstOrDefaultAsync(ct);
+```
 
-## 30. View _Form
+Điểm thay đổi: `ImageCount` không còn đếm `ProductColorImages` trực tiếp trên product. Ảnh hiện nằm dưới variant nên service đếm tổng ảnh qua:
+
+```csharp
+item.ProductVariants.Sum(variant => variant.ProductVariantImages.Count)
+```
+
+`BuildDeleteBlockers` vẫn chặn xóa nếu còn:
+
+- Biến thể.
+- Thông số kỹ thuật.
+- Ảnh biến thể.
+
+## 19. Controller ProductsController
+
+Controller không thay đổi lớn ở lần cập nhật này. Luồng vẫn như cũ:
+
+- GET `Create`: gọi `GetCreateFormAsync`.
+- POST `Create`: bind `ProductFormViewModel`, gọi `CreateAsync`.
+- GET `Edit`: gọi `GetEditFormAsync`.
+- POST `Edit`: gọi `UpdateAsync`.
+- POST `CheckDelete`: gọi `CheckDeleteAsync`.
+- POST toggle: gọi `ToggleActiveAsync` hoặc `ToggleFeaturedAsync`.
+
+Khi service trả lỗi theo field, controller add lỗi vào `ModelState`, ví dụ lỗi của thông số sẽ map vào `Specifications[index].Value`.
+
+## 20. View _Form - nhập thông số kỹ thuật
 
 File: `Views/Products/_Form.cshtml`
 
-Partial form dùng chung cho Create và Edit.
-
-Các input chính:
-
-- `Name`: input text.
-- `Slug`: input text có prefix `/products/`.
-- `BrandId`: select brand.
-- `CategoryId`: select category.
-- `Description`: textarea.
-- `IsActive`: toggle checkbox.
-- `IsFeatured`: toggle checkbox.
-
-Category select có logic disable danh mục cha:
+Form có thêm card thông số kỹ thuật:
 
 ```cshtml
-disabled="@category.HasChildren"
-data-has-children="@category.HasChildren.ToString().ToLower()"
+<div class="surface-form-card product-spec-card bg-white rounded-2xl border border-slate-200 p-5"
+     data-product-spec-section>
+    <h3 class="text-sm font-semibold text-slate-700 mb-4">Thông số kỹ thuật</h3>
+
+    <div class="product-spec-empty" data-product-spec-empty>
+        Chọn danh mục sản phẩm để nhập thông số kỹ thuật.
+    </div>
 ```
 
-Nếu form invalid, partial hiển thị validation summary.
+View group thông số theo `CategoryId` và `GroupName`:
 
-## 31. View Create và Edit
+```cshtml
+var specItems = Model.Specifications
+    .Select((spec, index) => new { spec, index })
+    .GroupBy(item => new
+    {
+        item.spec.CategoryId,
+        GroupName = string.IsNullOrWhiteSpace(item.spec.GroupName)
+            ? "Thông số khác"
+            : item.spec.GroupName
+    })
+```
 
-`Create.cshtml`:
+Mỗi input thông số gửi đủ dữ liệu cần thiết:
 
-- Set title "Thêm sản phẩm".
-- Render breadcrumb.
-- Form POST về `Create`.
-- Render `_Form`.
-- Include `products.js`.
+```cshtml
+<input type="hidden" name="Specifications[@item.index].CategoryId" value="@item.spec.CategoryId" />
+<input type="hidden" name="Specifications[@item.index].SpecificationId" value="@item.spec.SpecificationId" />
+```
 
-`Edit.cshtml`:
+Input value:
 
-- Set title theo tên sản phẩm.
-- Form POST về `Edit` với route id.
-- Có hidden `Id`.
-- Render `_Form`.
-- Include `products.js`.
+```cshtml
+<input id="Specifications_@(item.index)__Value"
+       name="@fieldName"
+       value="@item.spec.Value"
+       maxlength="1000"
+       data-product-spec-value
+       data-product-spec-required="@isRequired"
+       data-required-message="Vui lòng nhập @item.spec.Name."
+       class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 ..."
+       placeholder="Nhập @item.spec.Name.ToLowerInvariant()" />
+```
 
-## 32. Frontend products.js
+Validation message:
+
+```cshtml
+@Html.ValidationMessage(
+    fieldName,
+    null,
+    new { @class = "text-xs text-red-500 mt-1 block" })
+```
+
+Checkbox nổi bật:
+
+```cshtml
+<input type="checkbox"
+       name="Specifications[@item.index].IsHighlight"
+       value="true"
+       checked="@item.spec.IsHighlight" />
+```
+
+Lưu ý: không đặt hidden `false` trước checkbox này để tránh binder nhận giá trị sai khi checkbox được tick.
+
+## 21. products.js - validate và đồng bộ thông số
 
 File: `wwwroot/js/products.js`
 
 Khi DOM ready:
 
 ```javascript
-bindSlugGenerator();
-bindStatusToggles();
-bindFeaturedToggles();
-bindDeleteConfirmation();
-bindToastDismiss();
+document.addEventListener('DOMContentLoaded', () => {
+    bindProductFormValidation();
+    bindSlugGenerator();
+    bindProductSpecifications();
+    bindStatusToggles();
+    bindFeaturedToggles();
+    bindDeleteConfirmation();
+    bindToastDismiss();
+});
 ```
 
-### Slug generator
-
-`toSlug(text)` chuẩn hóa tiếng Việt và loại ký tự không hợp lệ. `bindSlugGenerator` tự cập nhật slug theo tên sản phẩm cho tới khi admin tự sửa slug.
-
-Logic:
-
-- Nếu slug đang rỗng, khi nhập tên thì tự sinh slug.
-- Nếu admin nhập slug thủ công, không auto overwrite nữa.
-- Khi blur slug input, slug được chuẩn hóa lại.
-
-### Toggle active/featured
+`bindProductSpecifications()` là phần mới để đồng bộ thông số theo danh mục:
 
 ```javascript
-toggleProductState(button, 'ToggleActive')
-toggleProductState(button, 'ToggleFeatured')
+function bindProductSpecifications() {
+    const categorySelect = document.getElementById('productCategoryId');
+    const section = document.querySelector('[data-product-spec-section]');
+
+    if (!categorySelect || !section) {
+        return;
+    }
 ```
 
-Hàm này gửi POST tới:
-
-```text
-/Products/ToggleActive/{id}
-/Products/ToggleFeatured/{id}
-```
-
-Header có anti-forgery token:
+Khi category thay đổi, JS chỉ hiển thị group có `data-category-id` khớp category đang chọn:
 
 ```javascript
-RequestVerificationToken: token
+const isVisible = Boolean(selectedCategoryId) && group.dataset.categoryId === selectedCategoryId;
+group.hidden = !isVisible;
 ```
 
-Sau khi update thành công, trang reload để đồng bộ lại row, badge và thống kê.
+Thông số bắt buộc chỉ bật required khi group đang hiển thị:
 
-### Delete confirmation
-
-Trước khi submit form xóa, JS gọi:
-
-```text
-/Products/CheckDelete/{id}
+```javascript
+setRequiredState(field, isVisible && field.dataset.productSpecRequired === 'true');
 ```
 
-Nếu `canDelete = false`, hiển thị message từ backend. Nếu được xóa, JS mới hiện `confirm`, sau đó submit form thật.
+Khi group bị ẩn, JS clear lỗi cũ:
 
-### Toast dismiss
+```javascript
+if (!isVisible) {
+    clearFieldError(field);
+}
+```
 
-Toast success/error có thể đóng bằng nút `x`, hoặc tự biến mất sau 5 giây.
+Điểm này giúp admin đổi danh mục không còn thấy lỗi của thông số thuộc danh mục cũ.
 
-## 33. CSS products.css
+`bindSurfaceFormClientValidation` cũng bỏ qua field nằm trong group ẩn:
+
+```javascript
+.filter(field => !field.closest('[data-product-spec-group][hidden], [data-product-spec-row][hidden]'))
+```
+
+Nhờ vậy client validation không bắt lỗi các thông số đang không áp dụng.
+
+## 22. products.css - style thông số kỹ thuật
 
 File: `wwwroot/css/products.css`
 
-Các nhóm style:
+Các class mới:
 
-- `product-fade-up`, `product-anim`: animation vào trang.
-- `product-filter-grid`: grid filter responsive.
-- `product-table-scroll`: cho table cuộn ngang.
-- `product-index-grid`: grid layout của header và row.
-- `product-status-btn`: pill bật/tắt active.
-- `product-feature-btn`: nút star nổi bật.
-- `product-action-btn`: nút sửa/xóa.
-- Media query `1280px` và `640px`: chuyển filter grid về 2 cột hoặc 1 cột.
+```css
+.product-spec-empty { ... }
+.product-spec-group { ... }
+.product-spec-grid { ... }
+.product-spec-field { ... }
+.product-spec-input-wrap { ... }
+.product-spec-input-has-unit { ... }
+.product-highlight-check { ... }
+```
 
-## 34. Seed data liên quan Product
+Grid thông số:
+
+```css
+.product-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+```
+
+Responsive:
+
+```css
+@media (max-width: 640px) {
+  .product-spec-grid {
+    grid-template-columns: 1fr;
+  }
+}
+```
+
+Nếu thông số có unit, input được chừa khoảng phải:
+
+```css
+.product-spec-input-has-unit {
+  padding-right: 4rem;
+}
+```
+
+## 23. Luồng tạo sản phẩm mới sau cập nhật
+
+```text
+GET Create
+-> ProductAdminService.GetCreateFormAsync
+-> PrepareFormAsync
+   -> BuildBrandOptionsAsync
+   -> BuildCategoryOptionsAsync
+   -> BuildSpecificationInputsAsync
+-> View _Form
+```
+
+Khi admin chọn danh mục:
+
+```text
+products.js
+-> bindProductSpecifications
+-> hiện nhóm thông số có CategoryId khớp
+-> bật required cho thông số bắt buộc
+```
+
+Khi submit:
+
+```text
+POST Create
+-> NormalizeForm
+-> PrepareFormAsync để rebuild metadata thông số
+-> ValidateFormAsync
+-> GetSelectedSpecificationInputs
+-> entity.ProductSpecifications.Add(...)
+-> SaveChanges
+```
+
+## 24. Luồng sửa sản phẩm sau cập nhật
+
+```text
+GET Edit
+-> Products.Include(ProductSpecifications)
+-> map value cũ vào ProductSpecificationInputViewModel
+-> PrepareFormAsync ghép lại metadata từ CategorySpecifications
+-> View _Form
+```
+
+Khi submit:
+
+```text
+POST Edit
+-> load Product kèm ProductSpecifications
+-> NormalizeForm
+-> PrepareFormAsync
+-> ValidateFormAsync
+-> ApplyProductSpecifications
+   -> update thông số cũ
+   -> remove thông số không còn áp dụng
+   -> add thông số mới
+-> SaveChanges
+```
+
+## 25. Luồng ảnh biến thể sau migration
+
+```text
+Product
+-> ProductVariants
+   -> ProductVariantImages
+```
+
+Quan hệ DB:
+
+```text
+products.Id
+  1 - n product_variants.ProductId
+product_variants.Id
+  1 - n product_variant_images.ProductVariantId
+```
+
+Khi cần hiển thị ảnh theo biến thể:
+
+```csharp
+var images = await _db.ProductVariantImages
+    .Where(image => image.ProductVariantId == variantId)
+    .OrderBy(image => image.Position)
+    .ToListAsync(ct);
+```
+
+Module Product admin hiện mới cập nhật backend/entity/migration và delete check cho ảnh biến thể. Form upload/quản lý ảnh biến thể có thể làm ở module variant riêng để giữ frontend/backend gọn.
+
+## 26. Seed data liên quan
 
 File: `Data/Seed/EcommerceSeedData.cs`
 
-Các seed chính:
+Ảnh mẫu hiện dùng entity mới:
 
-- `Product`: 5 sản phẩm mẫu.
-- `ProductVariant`: 5 biến thể mẫu.
-- `ProductColorImage`: ảnh màu cho từng sản phẩm.
-- `Specification`: thông số gốc.
-- `ProductSpecification`: giá trị thông số theo sản phẩm.
-- `VariantAttribute`: thuộc tính theo biến thể.
-- `CartItem`, `Wishlist`, `OrderItem`: dữ liệu user/cart/order gắn với variant.
-- `PromotionRule`: có rule dùng `GiftProductVariantId`.
-
-Seed này làm cho dữ liệu product được nối với nhiều module khác, vì vậy logic xóa Product phải cẩn thận.
-
-## 35. Luồng nghiệp vụ tổng quát
-
-Luồng mở danh sách:
-
-```text
-Browser -> ProductsController.Index
-        -> ProductAdminService.GetIndexAsync
-        -> ApplicationDbContext.Products
-        -> ProductIndexViewModel
-        -> Views/Products/Index.cshtml
+```csharp
+modelBuilder.Entity<ProductVariantImage>().HasData(
+    new ProductVariantImage
+    {
+        Id = 1,
+        ProductVariantId = 1,
+        Color = "...",
+        ImagePath = "...",
+        AltText = "...",
+        Position = 1
+    });
 ```
 
-Luồng tạo:
+Thông số kỹ thuật mẫu vẫn dùng `ProductSpecification` theo product:
 
-```text
-GET Create -> GetCreateFormAsync -> PrepareFormAsync -> View
-POST Create -> ModelState -> CreateAsync -> NormalizeForm -> ValidateFormAsync -> SaveChanges -> Redirect Index
+```csharp
+modelBuilder.Entity<ProductSpecification>().HasData(
+    new ProductSpecification
+    {
+        ProductId = 1,
+        SpecificationId = 2,
+        Value = "256GB",
+        SortOrder = 1,
+        IsHighlight = true
+    });
 ```
 
-Luồng sửa:
+## 27. Những điểm đang ổn
 
-```text
-GET Edit -> GetEditFormAsync -> PrepareFormAsync -> View
-POST Edit -> ModelState -> UpdateAsync -> NormalizeForm -> ValidateFormAsync -> SaveChanges -> Redirect Index
-```
+- Controller mỏng, không query database trực tiếp.
+- Service giữ nghiệp vụ tạo/sửa/xóa/toggle/validation.
+- ViewModel tách khỏi entity EF Core.
+- Product form hiện đã nhập được thông số kỹ thuật theo cấu hình danh mục.
+- Backend rebuild metadata thông số từ DB, không tin hidden input từ frontend.
+- Required specification được validate ở cả client và backend.
+- `product_specifications` vẫn nối với `products`, đúng hướng thông số cấp sản phẩm.
+- `product_variant_images` nối với `product_variants`, đúng hướng ảnh theo biến thể.
+- Delete check đã cập nhật để đếm ảnh thông qua variant.
+- Build hiện tại đã kiểm tra qua `dotnet build --no-restore` và không có warning/error.
 
-Luồng xóa:
+## 28. Điểm cần lưu ý nếu mở rộng
 
-```text
-Click Xóa -> products.js gọi CheckDelete
-          -> ProductAdminService.CheckDeleteAsync
-          -> nếu không có blocker, confirm
-          -> form POST Delete
-          -> ProductAdminService.DeleteAsync
-          -> SaveChanges
-```
-
-Luồng toggle:
-
-```text
-Click Active/Featured -> products.js POST AJAX
-                       -> ProductsController.Toggle...
-                       -> ProductAdminService.Toggle...
-                       -> SaveChanges
-                       -> JSON
-                       -> reload page
-```
-
-## 36. Kết quả kiểm tra nhanh
-
-Những điểm đang ổn:
-
-- Controller mỏng, logic nghiệp vụ nằm trong service.
-- Service dùng `AsNoTracking()` cho query đọc.
-- Index dùng projection thay vì load toàn bộ entity.
-- Slug được chuẩn hóa ở cả frontend và backend.
-- Có validation backend cho brand/category tồn tại.
-- Có rule không cho chọn danh mục cha còn con.
-- Có check trước khi xóa để tránh xóa product còn variant/spec/image.
-- Form lỗi sẽ được nạp lại dropdown bằng `PrepareFormAsync`.
-- Toggle active/featured dùng POST và anti-forgery token.
-
-Những điểm cần lưu ý nếu mở rộng sau này:
-
-- Product form hiện chỉ quản lý thông tin chính, chưa quản lý variant, ảnh, thông số ngay trong cùng màn hình.
-- Delete check chưa kiểm tra `VoucherTarget`/`PromotionTarget` dạng polymorphic trỏ tới product.
-- Các số thống kê trên index là thống kê theo tập dữ liệu đã lọc, không phải thống kê toàn hệ thống.
-- JS toggle lấy anti-forgery token từ input đầu tiên trên trang; hiện trang index có token trong từng form xóa, nên hoạt động khi có row sản phẩm.
-- Khi thêm màn hình ProductVariant riêng, cần giữ nhất quán với ràng buộc xóa của Product vì variant đang là blocker quan trọng nhất.
+- Migration `20260605090000_MoveProductImagesToVariants.cs` đang là migration viết tay, chạy được nhưng không có file `.Designer.cs` sinh tự động.
+- Module Product hiện chưa có form quản lý biến thể và ảnh biến thể; nên làm ở module riêng để không làm form Product quá nặng.
+- Khi thêm module quản lý ảnh biến thể, nên query theo `ProductVariantId` và giữ thứ tự bằng `Position`.
+- Nếu sau này thông số kỹ thuật cần khác nhau theo từng biến thể, phải thay đổi thiết kế DB. Hiện tại thiết kế đã chốt là thông số ở cấp sản phẩm.
+- Delete check hiện chưa kiểm tra target polymorphic như `VoucherTarget` hoặc `PromotionTarget` nếu target trỏ thẳng tới product.

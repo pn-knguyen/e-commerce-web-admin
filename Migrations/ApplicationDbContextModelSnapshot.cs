@@ -1367,7 +1367,7 @@ namespace e_commerce_web_admin.Migrations
                         });
                 });
 
-            modelBuilder.Entity("e_commerce_web_admin.Models.Entities.ProductColorImage", b =>
+            modelBuilder.Entity("e_commerce_web_admin.Models.Entities.ProductVariantImage", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -1392,14 +1392,14 @@ namespace e_commerce_web_admin.Migrations
                     b.Property<int>("Position")
                         .HasColumnType("int");
 
-                    b.Property<long>("ProductId")
+                    b.Property<long>("ProductVariantId")
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("ProductVariantId");
 
-                    b.ToTable("product_color_images", (string)null);
+                    b.ToTable("product_variant_images", (string)null);
 
                     b.HasData(
                         new
@@ -1409,7 +1409,7 @@ namespace e_commerce_web_admin.Migrations
                             Color = "Black Titanium",
                             ImagePath = "/uploads/products/iphone-15-pro-max-black.jpg",
                             Position = 1,
-                            ProductId = 1L
+                            ProductVariantId = 1L
                         },
                         new
                         {
@@ -1418,7 +1418,7 @@ namespace e_commerce_web_admin.Migrations
                             Color = "Titanium Gray",
                             ImagePath = "/uploads/products/galaxy-s24-ultra-gray.jpg",
                             Position = 1,
-                            ProductId = 2L
+                            ProductVariantId = 2L
                         },
                         new
                         {
@@ -1427,7 +1427,7 @@ namespace e_commerce_web_admin.Migrations
                             Color = "Platinum Silver",
                             ImagePath = "/uploads/products/dell-xps-13-silver.jpg",
                             Position = 1,
-                            ProductId = 3L
+                            ProductVariantId = 3L
                         },
                         new
                         {
@@ -1436,7 +1436,7 @@ namespace e_commerce_web_admin.Migrations
                             Color = "White",
                             ImagePath = "/uploads/products/nike-af1-white.jpg",
                             Position = 1,
-                            ProductId = 4L
+                            ProductVariantId = 4L
                         },
                         new
                         {
@@ -1445,7 +1445,7 @@ namespace e_commerce_web_admin.Migrations
                             Color = "Core Black",
                             ImagePath = "/uploads/products/adidas-ultraboost-black.jpg",
                             Position = 1,
-                            ProductId = 5L
+                            ProductVariantId = 5L
                         });
                 });
 
@@ -3147,15 +3147,15 @@ namespace e_commerce_web_admin.Migrations
                     b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("e_commerce_web_admin.Models.Entities.ProductColorImage", b =>
+            modelBuilder.Entity("e_commerce_web_admin.Models.Entities.ProductVariantImage", b =>
                 {
-                    b.HasOne("e_commerce_web_admin.Models.Entities.Product", "Product")
-                        .WithMany("ProductColorImages")
-                        .HasForeignKey("ProductId")
+                    b.HasOne("e_commerce_web_admin.Models.Entities.ProductVariant", "ProductVariant")
+                        .WithMany("ProductVariantImages")
+                        .HasForeignKey("ProductVariantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Product");
+                    b.Navigation("ProductVariant");
                 });
 
             modelBuilder.Entity("e_commerce_web_admin.Models.Entities.ProductSpecification", b =>
@@ -3401,8 +3401,6 @@ namespace e_commerce_web_admin.Migrations
 
             modelBuilder.Entity("e_commerce_web_admin.Models.Entities.Product", b =>
                 {
-                    b.Navigation("ProductColorImages");
-
                     b.Navigation("ProductSpecifications");
 
                     b.Navigation("ProductVariants");
@@ -3417,6 +3415,8 @@ namespace e_commerce_web_admin.Migrations
                     b.Navigation("GoodReceiptItems");
 
                     b.Navigation("OrderItems");
+
+                    b.Navigation("ProductVariantImages");
 
                     b.Navigation("VariantAttributes");
 

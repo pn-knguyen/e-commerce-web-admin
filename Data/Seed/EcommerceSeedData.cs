@@ -472,47 +472,47 @@ public static class EcommerceSeedData
                 UpdatedAt = UpdatedAt
             });
 
-        modelBuilder.Entity<ProductColorImage>().HasData(
-            new ProductColorImage
+        modelBuilder.Entity<ProductVariantImage>().HasData(
+            new ProductVariantImage
             {
                 Id = 1,
-                ProductId = 1,
+                ProductVariantId = 1,
                 Color = "Black Titanium",
                 ImagePath = "/uploads/products/iphone-15-pro-max-black.jpg",
                 AltText = "iPhone 15 Pro Max Black Titanium",
                 Position = 1
             },
-            new ProductColorImage
+            new ProductVariantImage
             {
                 Id = 2,
-                ProductId = 2,
+                ProductVariantId = 2,
                 Color = "Titanium Gray",
                 ImagePath = "/uploads/products/galaxy-s24-ultra-gray.jpg",
                 AltText = "Samsung Galaxy S24 Ultra Titanium Gray",
                 Position = 1
             },
-            new ProductColorImage
+            new ProductVariantImage
             {
                 Id = 3,
-                ProductId = 3,
+                ProductVariantId = 3,
                 Color = "Platinum Silver",
                 ImagePath = "/uploads/products/dell-xps-13-silver.jpg",
                 AltText = "Dell XPS 13 Platinum Silver",
                 Position = 1
             },
-            new ProductColorImage
+            new ProductVariantImage
             {
                 Id = 4,
-                ProductId = 4,
+                ProductVariantId = 4,
                 Color = "White",
                 ImagePath = "/uploads/products/nike-af1-white.jpg",
                 AltText = "Nike Air Force 1 White",
                 Position = 1
             },
-            new ProductColorImage
+            new ProductVariantImage
             {
                 Id = 5,
-                ProductId = 5,
+                ProductVariantId = 5,
                 Color = "Core Black",
                 ImagePath = "/uploads/products/adidas-ultraboost-black.jpg",
                 AltText = "Adidas Ultraboost Light Core Black",

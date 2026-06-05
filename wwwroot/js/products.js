@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     bindProductFormValidation();
     bindSlugGenerator();
+    bindProductSpecifications();
     bindStatusToggles();
     bindFeaturedToggles();
     bindDeleteConfirmation();
@@ -41,6 +42,7 @@ function bindSurfaceFormClientValidation(form) {
 
     const getFields = () => Array.from(form.querySelectorAll('input[name], select[name], textarea[name]'))
         .filter(field => !field.disabled && !ignoredTypes.has((field.type || '').toLowerCase()))
+        .filter(field => !field.closest('[data-product-spec-group][hidden], [data-product-spec-row][hidden]'))
         .filter(field => field.dataset.val === 'true' || hasNativeRules(field));
 
     const hasNativeRules = field =>
@@ -231,6 +233,81 @@ function bindSlugGenerator() {
         slugInput.value = toSlug(slugInput.value);
         slugEdited = slugInput.value.trim() !== '';
     });
+}
+
+function bindProductSpecifications() {
+    const categorySelect = document.getElementById('productCategoryId');
+    const section = document.querySelector('[data-product-spec-section]');
+
+    if (!categorySelect || !section) {
+        return;
+    }
+
+    const emptyState = section.querySelector('[data-product-spec-empty]');
+    const groups = Array.from(section.querySelectorAll('[data-product-spec-group]'));
+    const findValidationMessage = fieldName => Array.from(section.querySelectorAll('[data-valmsg-for]'))
+        .find(element => element.dataset.valmsgFor === fieldName) ?? null;
+
+    const setRequiredState = (field, isRequired) => {
+        if (isRequired) {
+            field.required = true;
+            field.dataset.val = 'true';
+            field.dataset.valRequired = field.dataset.requiredMessage || 'Trường này là bắt buộc.';
+            return;
+        }
+
+        field.required = false;
+        delete field.dataset.valRequired;
+        if (!field.dataset.valLength && !field.dataset.valMaxlength && !field.dataset.valRegex) {
+            delete field.dataset.val;
+        }
+    };
+
+    const clearFieldError = field => {
+        field.setAttribute('aria-invalid', 'false');
+        field.classList.remove('input-validation-error');
+
+        const message = findValidationMessage(field.name);
+        if (!message) {
+            return;
+        }
+
+        message.textContent = '';
+        message.classList.remove('field-validation-error');
+        message.classList.add('field-validation-valid');
+    };
+
+    const sync = () => {
+        const selectedCategoryId = categorySelect.value;
+        let visibleCount = 0;
+
+        groups.forEach(group => {
+            const isVisible = Boolean(selectedCategoryId) && group.dataset.categoryId === selectedCategoryId;
+            group.hidden = !isVisible;
+
+            if (isVisible) {
+                visibleCount += 1;
+            }
+
+            group.querySelectorAll('[data-product-spec-value]').forEach(field => {
+                setRequiredState(field, isVisible && field.dataset.productSpecRequired === 'true');
+
+                if (!isVisible) {
+                    clearFieldError(field);
+                }
+            });
+        });
+
+        if (emptyState) {
+            emptyState.hidden = Boolean(selectedCategoryId) && visibleCount > 0;
+            emptyState.textContent = selectedCategoryId
+                ? 'Danh mục này chưa được cấu hình thông số kỹ thuật.'
+                : 'Chọn danh mục sản phẩm để nhập thông số kỹ thuật.';
+        }
+    };
+
+    categorySelect.addEventListener('change', sync);
+    sync();
 }
 
 function bindStatusToggles() {

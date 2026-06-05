@@ -840,6 +840,85 @@ body {
   color: #9aa6bc;
 }
 
+.product-spec-empty {
+  border: 1px dashed #cbdde0;
+  border-radius: 1rem;
+  background: #f8fbfb;
+  color: var(--surface-muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+  padding: 0.95rem 1rem;
+}
+
+.product-spec-empty[hidden],
+.product-spec-group[hidden] {
+  display: none !important;
+}
+
+.product-spec-group {
+  border: 1px solid var(--surface-border-soft);
+  border-radius: 1rem;
+  background: #fbfefd;
+  padding: 1rem;
+}
+
+.product-spec-group h4 {
+  margin: 0 0 0.85rem;
+  color: var(--surface-text);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.product-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.product-spec-field {
+  min-width: 0;
+}
+
+.product-spec-field label:first-of-type {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.product-spec-input-wrap {
+  position: relative;
+}
+
+.product-spec-input-wrap > span {
+  position: absolute;
+  top: 50%;
+  right: 0.9rem;
+  color: var(--surface-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.product-spec-input-has-unit {
+  padding-right: 4rem;
+}
+
+.product-highlight-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  color: var(--surface-muted);
+  font-size: 0.78rem !important;
+  font-weight: 750 !important;
+}
+
+.product-highlight-check input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--surface-teal);
+}
+
 .surface-submit-card {
   display: grid;
   gap: 0.75rem;
@@ -989,6 +1068,10 @@ body {
 
   .surface-toolbar-panel select {
     min-width: 0;
+  }
+
+  .product-spec-grid {
+    grid-template-columns: 1fr;
   }
 
   .surface-pagination {

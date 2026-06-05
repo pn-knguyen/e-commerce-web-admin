@@ -141,6 +141,7 @@ public sealed class ProductAdminService : IProductAdminService
     {
         var entity = await _db.Products
             .AsNoTracking()
+            .Include(product => product.ProductSpecifications)
             .FirstOrDefaultAsync(product => product.Id == id, ct);
 
         if (entity is null)
@@ -158,6 +159,16 @@ public sealed class ProductAdminService : IProductAdminService
             Description = entity.Description,
             IsActive = entity.IsActive,
             IsFeatured = entity.IsFeatured,
+            Specifications = entity.ProductSpecifications
+                .Select(item => new ProductSpecificationInputViewModel
+                {
+                    CategoryId = entity.CategoryId,
+                    SpecificationId = item.SpecificationId,
+                    Value = item.Value,
+                    SortOrder = item.SortOrder,
+                    IsHighlight = item.IsHighlight,
+                })
+                .ToList(),
         }, ct);
     }
 
@@ -167,6 +178,7 @@ public sealed class ProductAdminService : IProductAdminService
     {
         form.BrandOptions = await BuildBrandOptionsAsync(ct);
         form.CategoryOptions = await BuildCategoryOptionsAsync(ct);
+        form.Specifications = await BuildSpecificationInputsAsync(form.Specifications, ct);
         return form;
     }
 
@@ -175,11 +187,12 @@ public sealed class ProductAdminService : IProductAdminService
         CancellationToken ct = default)
     {
         NormalizeForm(form);
+        form = await PrepareFormAsync(form, ct);
 
         var errors = await ValidateFormAsync(form, existingId: null, ct);
         if (errors.Count > 0)
         {
-            return ProductSaveResult.Failed(await PrepareFormAsync(form, ct), errors);
+            return ProductSaveResult.Failed(form, errors);
         }
 
         var entity = new Product
@@ -193,6 +206,17 @@ public sealed class ProductAdminService : IProductAdminService
             IsFeatured = form.IsFeatured,
             CreatedAt = DateTime.UtcNow,
         };
+
+        foreach (var specification in GetSelectedSpecificationInputs(form))
+        {
+            entity.ProductSpecifications.Add(new ProductSpecification
+            {
+                SpecificationId = specification.SpecificationId,
+                Value = specification.Value!,
+                SortOrder = specification.SortOrder,
+                IsHighlight = specification.IsHighlight,
+            });
+        }
 
         _db.Products.Add(entity);
         await _db.SaveChangesAsync(ct);
@@ -208,7 +232,9 @@ public sealed class ProductAdminService : IProductAdminService
     {
         NormalizeForm(form);
 
-        var entity = await _db.Products.FirstOrDefaultAsync(product => product.Id == id, ct);
+        var entity = await _db.Products
+            .Include(product => product.ProductSpecifications)
+            .FirstOrDefaultAsync(product => product.Id == id, ct);
         if (entity is null)
         {
             return ProductSaveResult.Failed(
@@ -216,10 +242,12 @@ public sealed class ProductAdminService : IProductAdminService
                 new[] { new ProductValidationError(string.Empty, "Không tìm thấy sản phẩm.") });
         }
 
+        form = await PrepareFormAsync(form, ct);
+
         var errors = await ValidateFormAsync(form, existingId: id, ct);
         if (errors.Count > 0)
         {
-            return ProductSaveResult.Failed(await PrepareFormAsync(form, ct), errors);
+            return ProductSaveResult.Failed(form, errors);
         }
 
         entity.BrandId = form.BrandId!.Value;
@@ -230,6 +258,7 @@ public sealed class ProductAdminService : IProductAdminService
         entity.IsActive = form.IsActive;
         entity.IsFeatured = form.IsFeatured;
         entity.UpdatedAt = DateTime.UtcNow;
+        ApplyProductSpecifications(entity, GetSelectedSpecificationInputs(form));
 
         await _db.SaveChangesAsync(ct);
         return ProductSaveResult.Success(form, $"Đã cập nhật sản phẩm \"{entity.Name}\" thành công.");
@@ -245,7 +274,7 @@ public sealed class ProductAdminService : IProductAdminService
                 item.Name,
                 VariantCount = item.ProductVariants.Count,
                 SpecificationCount = item.ProductSpecifications.Count,
-                ImageCount = item.ProductColorImages.Count,
+                ImageCount = item.ProductVariants.Sum(variant => variant.ProductVariantImages.Count),
             })
             .FirstOrDefaultAsync(ct);
 
@@ -366,7 +395,119 @@ public sealed class ProductAdminService : IProductAdminService
                 "Chỉ chọn danh mục con cuối cùng, không chọn danh mục cha còn chứa danh mục con."));
         }
 
+        if (category is not null && category.ChildCount == 0)
+        {
+            foreach (var item in form.Specifications.Select((specification, index) => new { specification, index }))
+            {
+                if (item.specification.CategoryId != form.CategoryId.Value || !item.specification.IsRequired)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(item.specification.Value))
+                {
+                    errors.Add(new ProductValidationError(
+                        $"{nameof(form.Specifications)}[{item.index}].{nameof(ProductSpecificationInputViewModel.Value)}",
+                        $"Vui lòng nhập {item.specification.Name}."));
+                }
+            }
+        }
+
         return errors;
+    }
+
+    private async Task<List<ProductSpecificationInputViewModel>> BuildSpecificationInputsAsync(
+        IEnumerable<ProductSpecificationInputViewModel> existingValues,
+        CancellationToken ct)
+    {
+        var valueMap = existingValues
+            .GroupBy(item => new { item.CategoryId, item.SpecificationId })
+            .ToDictionary(
+                group => group.Key,
+                group => group.Last());
+
+        var categorySpecifications = await _db.CategorySpecifications
+            .AsNoTracking()
+            .Include(item => item.Specification)
+            .OrderBy(item => item.CategoryId)
+            .ThenBy(item => item.GroupName)
+            .ThenBy(item => item.SortOrder)
+            .ThenBy(item => item.Specification!.Name)
+            .ToListAsync(ct);
+
+        return categorySpecifications.Select(item =>
+        {
+            valueMap.TryGetValue(
+                new { item.CategoryId, item.SpecificationId },
+                out var existing);
+
+            return new ProductSpecificationInputViewModel
+            {
+                CategoryId = item.CategoryId,
+                SpecificationId = item.SpecificationId,
+                Key = item.Specification!.Key,
+                Name = item.Specification.Name,
+                Unit = item.Specification.Unit,
+                GroupName = item.GroupName,
+                IsRequired = item.IsRequired,
+                SortOrder = item.SortOrder,
+                Value = string.IsNullOrWhiteSpace(existing?.Value) ? null : existing.Value.Trim(),
+                IsHighlight = existing?.IsHighlight ?? false,
+            };
+        }).ToList();
+    }
+
+    private static List<ProductSpecificationInputViewModel> GetSelectedSpecificationInputs(ProductFormViewModel form)
+    {
+        if (!form.CategoryId.HasValue)
+        {
+            return [];
+        }
+
+        return form.Specifications
+            .Where(item => item.CategoryId == form.CategoryId.Value)
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value))
+            .Select(item =>
+            {
+                item.Value = item.Value!.Trim();
+                return item;
+            })
+            .ToList();
+    }
+
+    private void ApplyProductSpecifications(
+        Product product,
+        IReadOnlyCollection<ProductSpecificationInputViewModel> selectedSpecifications)
+    {
+        var selectedMap = selectedSpecifications.ToDictionary(item => item.SpecificationId);
+        var existingItems = product.ProductSpecifications.ToList();
+
+        foreach (var existing in existingItems)
+        {
+            if (!selectedMap.TryGetValue(existing.SpecificationId, out var selected))
+            {
+                _db.ProductSpecifications.Remove(existing);
+                product.ProductSpecifications.Remove(existing);
+                continue;
+            }
+
+            existing.Value = selected.Value!;
+            existing.SortOrder = selected.SortOrder;
+            existing.IsHighlight = selected.IsHighlight;
+        }
+
+        var existingIds = existingItems.Select(item => item.SpecificationId).ToHashSet();
+        foreach (var selected in selectedSpecifications.Where(item => !existingIds.Contains(item.SpecificationId)))
+        {
+            product.ProductSpecifications.Add(new ProductSpecification
+            {
+                ProductId = product.Id,
+                SpecificationId = selected.SpecificationId,
+                Value = selected.Value!,
+                SortOrder = selected.SortOrder,
+                IsHighlight = selected.IsHighlight,
+            });
+        }
     }
 
     private async Task<List<ProductSelectItem>> BuildBrandOptionsAsync(CancellationToken ct)
@@ -510,6 +651,13 @@ public sealed class ProductAdminService : IProductAdminService
             ? GenerateSlug(form.Name)
             : GenerateSlug(form.Slug);
         form.Description = string.IsNullOrWhiteSpace(form.Description) ? null : form.Description.Trim();
+
+        foreach (var specification in form.Specifications)
+        {
+            specification.Value = string.IsNullOrWhiteSpace(specification.Value)
+                ? null
+                : specification.Value.Trim();
+        }
     }
 
     private static string GenerateSlug(string value)

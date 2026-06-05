@@ -20,7 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
-    public DbSet<ProductColorImage> ProductColorImages => Set<ProductColorImage>();
+    public DbSet<ProductVariantImage> ProductVariantImages => Set<ProductVariantImage>();
     public DbSet<Specification> Specifications => Set<Specification>();
     public DbSet<CategorySpecification> CategorySpecifications => Set<CategorySpecification>();
     public DbSet<ProductSpecification> ProductSpecifications => Set<ProductSpecification>();
@@ -177,15 +177,15 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(variant => variant.ProductId);
         });
 
-        modelBuilder.Entity<ProductColorImage>(entity =>
+        modelBuilder.Entity<ProductVariantImage>(entity =>
         {
-            entity.ToTable("product_color_images");
+            entity.ToTable("product_variant_images");
             entity.Property(image => image.Color).HasMaxLength(80).IsRequired();
             entity.Property(image => image.ImagePath).HasMaxLength(500).IsRequired();
             entity.Property(image => image.AltText).HasMaxLength(255);
-            entity.HasOne(image => image.Product)
-                .WithMany(product => product.ProductColorImages)
-                .HasForeignKey(image => image.ProductId);
+            entity.HasOne(image => image.ProductVariant)
+                .WithMany(variant => variant.ProductVariantImages)
+                .HasForeignKey(image => image.ProductVariantId);
         });
 
         modelBuilder.Entity<Specification>(entity =>

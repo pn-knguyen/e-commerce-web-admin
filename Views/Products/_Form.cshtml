@@ -94,6 +94,94 @@
                 </div>
             </div>
         </div>
+
+        <div class="surface-form-card product-spec-card bg-white rounded-2xl border border-slate-200 p-5"
+             data-product-spec-section>
+            <h3 class="text-sm font-semibold text-slate-700 mb-4">Thông số kỹ thuật</h3>
+
+            <div class="product-spec-empty" data-product-spec-empty>
+                Chọn danh mục sản phẩm để nhập thông số kỹ thuật.
+            </div>
+
+            @{
+                var specItems = Model.Specifications
+                    .Select((spec, index) => new { spec, index })
+                    .GroupBy(item => new
+                    {
+                        item.spec.CategoryId,
+                        GroupName = string.IsNullOrWhiteSpace(item.spec.GroupName)
+                            ? "Thông số khác"
+                            : item.spec.GroupName
+                    })
+                    .OrderBy(group => group.Key.CategoryId)
+                    .ThenBy(group => group.Min(item => item.spec.SortOrder));
+            }
+
+            <div class="space-y-4">
+                @foreach (var group in specItems)
+                {
+                    <section class="product-spec-group"
+                             data-product-spec-group
+                             data-category-id="@group.Key.CategoryId">
+                        <h4>@group.Key.GroupName</h4>
+
+                        <div class="product-spec-grid">
+                            @foreach (var item in group.OrderBy(row => row.spec.SortOrder).ThenBy(row => row.spec.Name))
+                            {
+                                var fieldName = $"Specifications[{item.index}].Value";
+                                var isRequired = item.spec.IsRequired.ToString().ToLowerInvariant();
+
+                                <div class="product-spec-field"
+                                     data-product-spec-row
+                                     data-category-id="@item.spec.CategoryId">
+                                    <input type="hidden" name="Specifications[@item.index].CategoryId" value="@item.spec.CategoryId" />
+                                    <input type="hidden" name="Specifications[@item.index].SpecificationId" value="@item.spec.SpecificationId" />
+
+                                    <label for="Specifications_@(item.index)__Value">
+                                        @item.spec.Name
+                                        @if (item.spec.IsRequired)
+                                        {
+                                            <span class="text-red-500">*</span>
+                                        }
+                                    </label>
+
+                                    <div class="product-spec-input-wrap">
+                                        <input id="Specifications_@(item.index)__Value"
+                                               name="@fieldName"
+                                               value="@item.spec.Value"
+                                               maxlength="1000"
+                                               data-product-spec-value
+                                               data-product-spec-required="@isRequired"
+                                               data-required-message="Vui lòng nhập @item.spec.Name."
+                                               class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 @(string.IsNullOrWhiteSpace(item.spec.Unit) ? string.Empty : "product-spec-input-has-unit")
+                                               focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+                                               placeholder="Nhập @item.spec.Name.ToLowerInvariant()" />
+
+                                        @if (!string.IsNullOrWhiteSpace(item.spec.Unit))
+                                        {
+                                            <span>@item.spec.Unit</span>
+                                        }
+                                    </div>
+
+                                    @Html.ValidationMessage(
+                                        fieldName,
+                                        null,
+                                        new { @class = "text-xs text-red-500 mt-1 block" })
+
+                                    <label class="product-highlight-check">
+                                        <input type="checkbox"
+                                               name="Specifications[@item.index].IsHighlight"
+                                               value="true"
+                                               checked="@item.spec.IsHighlight" />
+                                        <span>Hiển thị nổi bật</span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                }
+            </div>
+        </div>
     </div>
 
     <div class="space-y-5">

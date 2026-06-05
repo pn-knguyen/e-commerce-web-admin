@@ -82,6 +82,7 @@ public sealed class ProductFormViewModel
 
     public List<ProductSelectItem> BrandOptions { get; set; } = [];
     public List<ProductCategorySelectItem> CategoryOptions { get; set; } = [];
+    public List<ProductSpecificationInputViewModel> Specifications { get; set; } = [];
 }
 
 public sealed class ProductSelectItem
@@ -98,4 +99,21 @@ public sealed class ProductCategorySelectItem
     public int Depth { get; set; }
     public bool IsActive { get; set; } = true;
     public bool HasChildren { get; set; }
+}
+
+public sealed class ProductSpecificationInputViewModel
+{
+    public long CategoryId { get; set; }
+    public long SpecificationId { get; set; }
+    public string Key { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Unit { get; set; }
+    public string? GroupName { get; set; }
+    public bool IsRequired { get; set; }
+    public int SortOrder { get; set; }
+
+    [StringLength(1000, ErrorMessage = "Giá trị thông số tối đa 1000 ký tự.")]
+    public string? Value { get; set; }
+
+    public bool IsHighlight { get; set; }
 }

@@ -55,7 +55,6 @@ public class Product
     public Brand? Brand { get; set; }
     public Category? Category { get; set; }
     public ICollection<ProductVariant> ProductVariants { get; set; } = new List<ProductVariant>();
-    public ICollection<ProductColorImage> ProductColorImages { get; set; } = new List<ProductColorImage>();
     public ICollection<ProductSpecification> ProductSpecifications { get; set; } = new List<ProductSpecification>();
 }
 
@@ -81,18 +80,19 @@ public class ProductVariant
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     public ICollection<GoodReceiptItem> GoodReceiptItems { get; set; } = new List<GoodReceiptItem>();
     public ICollection<PromotionRule> GiftPromotionRules { get; set; } = new List<PromotionRule>();
+    public ICollection<ProductVariantImage> ProductVariantImages { get; set; } = new List<ProductVariantImage>();
 }
 
-public class ProductColorImage
+public class ProductVariantImage
 {
     public long Id { get; set; }
-    public long ProductId { get; set; }
+    public long ProductVariantId { get; set; }
     public string Color { get; set; } = string.Empty;
     public string ImagePath { get; set; } = string.Empty;
     public string? AltText { get; set; }
     public int Position { get; set; }
 
-    public Product? Product { get; set; }
+    public ProductVariant? ProductVariant { get; set; }
 }
 
 public class Specification
