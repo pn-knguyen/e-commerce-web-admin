@@ -1,0 +1,321 @@
+@model e_commerce_web_admin.ViewModels.ProductVariants.ProductVariantIndexViewModel
+@{
+    ViewData["Title"] = "Biến thể sản phẩm";
+    Layout = "_Layout";
+
+    var hasFilters = !string.IsNullOrWhiteSpace(Model.Search)
+        || !string.IsNullOrWhiteSpace(Model.Status)
+        || !string.IsNullOrWhiteSpace(Model.Stock)
+        || Model.ProductId.HasValue
+        || Model.CategoryId.HasValue;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/product-variants.css" asp-append-version="true" />
+}
+
+<main class="pv-page">
+    <section class="pv-hero pv-anim" style="animation-delay:0.04s">
+        <div class="pv-page-mark">Catalog vận hành</div>
+        <div class="pv-title-row">
+            <div>
+                <h1>Biến thể sản phẩm</h1>
+                <p>Quản lý SKU, giá bán, tồn kho, thuộc tính và ảnh riêng cho từng biến thể.</p>
+            </div>
+            <a asp-action="Create" class="pv-primary-action">
+                <span>Thêm biến thể</span>
+                <span class="pv-action-icon">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                </span>
+            </a>
+        </div>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div id="toastSuccess" class="pv-flash pv-flash-success pv-anim" style="animation-delay:0.06s">
+            <span class="pv-flash-icon"><i data-lucide="check" class="w-4 h-4"></i></span>
+            <span>@TempData["Success"]</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div id="toastError" class="pv-flash pv-flash-error pv-anim" style="animation-delay:0.06s">
+            <span class="pv-flash-icon"><i data-lucide="alert-circle" class="w-4 h-4"></i></span>
+            <span>@TempData["Error"]</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <div data-pv-toast-root class="pv-toast-root" aria-live="polite" aria-atomic="true"></div>
+
+    <section class="pv-metrics pv-anim" style="animation-delay:0.08s" aria-label="Thống kê biến thể">
+        <article class="pv-metric">
+            <span class="pv-metric-icon"><i data-lucide="layers" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.TotalCount</p>
+                <span>Tổng biến thể</span>
+            </div>
+        </article>
+        <article class="pv-metric">
+            <span class="pv-metric-icon pv-metric-icon-active"><i data-lucide="check-circle-2" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.ActiveCount</p>
+                <span>Đang bật</span>
+            </div>
+        </article>
+        <article class="pv-metric">
+            <span class="pv-metric-icon pv-metric-icon-muted"><i data-lucide="package-x" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.OutOfStockCount</p>
+                <span>Hết hàng</span>
+            </div>
+        </article>
+        <article class="pv-metric">
+            <span class="pv-metric-icon pv-metric-icon-image"><i data-lucide="images" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.TotalImageCount</p>
+                <span>Ảnh biến thể</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="pv-console pv-anim" style="animation-delay:0.12s">
+        <div class="pv-toolbar">
+            <form method="get" asp-action="Index" class="pv-filter-grid">
+                <label class="pv-search-field">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <input type="text"
+                           name="search"
+                           value="@Model.Search"
+                           placeholder="Tìm mã SKU, sản phẩm, thương hiệu..." />
+                </label>
+
+                <label class="pv-select-field">
+                    <span>Sản phẩm</span>
+                    <select name="productId">
+                        <option value="">Tất cả</option>
+                        @foreach (var product in Model.ProductOptions)
+                        {
+                            <option value="@product.Id" selected="@(Model.ProductId == product.Id ? "selected" : null)">
+                                @product.ProductName
+                            </option>
+                        }
+                    </select>
+                </label>
+
+                <label class="pv-select-field">
+                    <span>Danh mục</span>
+                    <select name="categoryId">
+                        <option value="">Tất cả</option>
+                        @foreach (var category in Model.CategoryOptions)
+                        {
+                            <option value="@category.Id" selected="@(Model.CategoryId == category.Id ? "selected" : null)">
+                                @category.Label
+                            </option>
+                        }
+                    </select>
+                </label>
+
+                <label class="pv-select-field pv-select-small">
+                    <span>Trạng thái</span>
+                    <select name="status">
+                        <option value="" selected="@(string.IsNullOrWhiteSpace(Model.Status) ? "selected" : null)">Tất cả</option>
+                        <option value="active" selected="@(Model.Status == "active" ? "selected" : null)">Đang bật</option>
+                        <option value="inactive" selected="@(Model.Status == "inactive" ? "selected" : null)">Đang tắt</option>
+                    </select>
+                </label>
+
+                <label class="pv-select-field pv-select-small">
+                    <span>Tồn kho</span>
+                    <select name="stock">
+                        <option value="" selected="@(string.IsNullOrWhiteSpace(Model.Stock) ? "selected" : null)">Tất cả</option>
+                        <option value="in-stock" selected="@(Model.Stock == "in-stock" ? "selected" : null)">Còn hàng</option>
+                        <option value="out-of-stock" selected="@(Model.Stock == "out-of-stock" ? "selected" : null)">Hết hàng</option>
+                    </select>
+                </label>
+
+                <button type="submit" class="pv-filter-submit">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Lọc</span>
+                </button>
+
+                @if (hasFilters)
+                {
+                    <a asp-action="Index" class="pv-filter-clear">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Xóa lọc</span>
+                    </a>
+                }
+            </form>
+        </div>
+
+        @if (!Model.Variants.Any())
+        {
+            <div class="pv-empty">
+                <span class="pv-empty-icon">
+                    <i data-lucide="package-search" class="w-9 h-9"></i>
+                </span>
+                <h2>Không tìm thấy biến thể</h2>
+                @if (hasFilters)
+                {
+                    <p>Điều chỉnh bộ lọc hoặc xóa lọc để xem lại danh sách biến thể.</p>
+                    <a asp-action="Index" class="pv-empty-action">Xóa bộ lọc</a>
+                }
+                else
+                {
+                    <p>Tạo biến thể đầu tiên để quản lý SKU, giá bán và ảnh riêng theo lựa chọn của khách hàng.</p>
+                    <a asp-action="Create" class="pv-empty-action">Thêm biến thể</a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="pv-table-scroll">
+                <div class="pv-index-grid pv-table-head">
+                    <span>Biến thể</span>
+                    <span>Sản phẩm</span>
+                    <span>Thuộc tính</span>
+                    <span class="text-right">Giá / tồn</span>
+                    <span class="text-center">Trạng thái</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div class="pv-table-body">
+                    @{
+                        var animIndex = 0;
+                    }
+                    @foreach (var variant in Model.Variants)
+                    {
+                        <article class="pv-row pv-index-grid pv-anim"
+                                 style="animation-delay:@(0.14 + animIndex++ * 0.025)s"
+                                 data-id="@variant.Id">
+                            <div class="pv-code-cell">
+                                <span class="pv-avatar"><i data-lucide="layers" class="w-4 h-4"></i></span>
+                                <div>
+                                    <h2>@variant.Code</h2>
+                                    <p>@variant.CreatedAt.ToString("dd/MM/yyyy")</p>
+                                </div>
+                            </div>
+
+                            <div class="pv-product-cell">
+                                <h3>@variant.ProductName</h3>
+                                <p>@variant.BrandName · @variant.CategoryName</p>
+                            </div>
+
+                            <div class="pv-attribute-cell">
+                                <span class="pv-attribute-text" title="@variant.AttributeSummary">@variant.AttributeSummary</span>
+                                <span class="pv-image-pill @(variant.ImageCount > 0 ? "has-images" : "")">
+                                    <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                                    @variant.ImageCount ảnh
+                                </span>
+                            </div>
+
+                            <div class="pv-price-cell">
+                                <strong>@variant.Price.ToString("N0") đ</strong>
+                                <span>@variant.Quantity tồn · @variant.SoldCount bán</span>
+                            </div>
+
+                            <div class="pv-status-stack">
+                                <button type="button"
+                                        data-pv-toggle
+                                        data-pv-id="@variant.Id"
+                                        class="pv-status-btn @(variant.IsActive ? "is-active" : "is-inactive")">
+                                    <span class="dot"></span>
+                                    <span>@(variant.IsActive ? "Đang bật" : "Đang tắt")</span>
+                                </button>
+                                <button type="button"
+                                        data-pv-default
+                                        data-pv-id="@variant.Id"
+                                        class="pv-default-btn @(variant.IsDefault ? "is-default" : "")"
+                                        @(variant.IsDefault ? "disabled" : null)>
+                                    <i data-lucide="star" class="w-3.5 h-3.5"></i>
+                                    <span>@(variant.IsDefault ? "Mặc định" : "Đặt mặc định")</span>
+                                </button>
+                            </div>
+
+                            <div class="pv-actions">
+                                <a asp-action="Edit" asp-route-id="@variant.Id" class="pv-action-btn pv-action-edit">
+                                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                    <span>Sửa</span>
+                                </a>
+                                <form asp-action="Delete"
+                                      asp-route-id="@variant.Id"
+                                      method="post"
+                                      data-pv-delete
+                                      data-pv-id="@variant.Id"
+                                      data-pv-code="@variant.Code">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="pv-action-btn pv-action-delete">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Xóa</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <footer class="pv-pagination">
+                    <p>
+                        Trang <strong>@Model.Page</strong> / @Model.TotalPages
+                        <span>@Model.TotalCount biến thể</span>
+                    </p>
+                    <nav aria-label="Phân trang biến thể">
+                        @if (Model.HasPrev)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@(Model.Page - 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-productId="@Model.ProductId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="pv-page-btn">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@p"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-productId="@Model.ProductId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="pv-page-btn @(p == Model.Page ? "is-current" : "")">
+                                @p
+                            </a>
+                        }
+                        @if (Model.HasNext)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@(Model.Page + 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-productId="@Model.ProductId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="pv-page-btn">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </nav>
+                </footer>
+            }
+        }
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/product-variants.js" asp-append-version="true"></script>
+}
