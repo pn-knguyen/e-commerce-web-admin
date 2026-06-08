@@ -139,18 +139,21 @@
 
     @if (!Model.Categories.Any())
     {
-        <div class="surface-empty">
-            <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-100 to-teal-50
-                        flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <i data-lucide="folder-open" class="w-10 h-10 text-teal-300"></i>
-            </div>
-            <p class="text-slate-600 font-semibold text-lg">Không tìm thấy danh mục</p>
-            <p class="text-slate-400 text-sm mt-2">
-                @if (hasFilters)
-                {<span>Thử từ khoá khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xoá bộ lọc</a></span>}
-                else
-                {<span>Nhấn <strong class="text-slate-600">Thêm danh mục</strong> để bắt đầu</span>}
-            </p>
+        <div class="admin-empty">
+            <span class="admin-empty-icon">
+                <i data-lucide="folder-open" class="w-9 h-9"></i>
+            </span>
+            <h2>Không tìm thấy danh mục</h2>
+            @if (hasFilters)
+            {
+                <p>Điều chỉnh từ khóa hoặc xóa bộ lọc để xem lại toàn bộ danh mục.</p>
+                <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
+            }
+            else
+            {
+                <p>Tạo danh mục đầu tiên để xây dựng cây phân loại sản phẩm của cửa hàng.</p>
+                <a asp-action="Create" class="admin-empty-action">Thêm danh mục</a>
+            }
         </div>
     }
     else

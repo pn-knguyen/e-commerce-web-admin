@@ -144,15 +144,15 @@
 
         @if (!Model.Ratings.Any())
         {
-            <div class="rating-empty">
-                <span class="rating-empty-icon">
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
                     <i data-lucide="message-square-off" class="w-9 h-9"></i>
                 </span>
                 <h2>Không tìm thấy đánh giá</h2>
                 @if (Model.HasFilters)
                 {
-                    <p>Thử điều chỉnh bộ lọc hoặc xóa bộ lọc để xem lại toàn bộ đánh giá.</p>
-                    <a asp-action="Index" class="rating-empty-action">Xóa bộ lọc</a>
+                    <p>Điều chỉnh bộ lọc hoặc xóa bộ lọc để xem lại toàn bộ đánh giá.</p>
+                    <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
                 }
                 else
                 {

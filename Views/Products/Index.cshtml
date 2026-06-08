@@ -173,29 +173,26 @@
 
     @if (!Model.Products.Any())
     {
-        <div class="surface-empty">
-            <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-100 to-teal-50
-                flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <i data-lucide="package-open" class="w-10 h-10 text-teal-300"></i>
-            </div>
-            <p class="text-slate-600 font-semibold text-lg">Không tìm thấy sản phẩm</p>
-            <p class="text-slate-400 text-sm mt-2">
-                @if (!string.IsNullOrEmpty(Model.Search))
-                {
-                    <span>Thử từ khoá khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xoá bộ
-                        lọc</a></span>
-                    }
-                else
-                    {
-
-                        <span>Nhấn <strong class="text-slate-600">Thêm sản phẩm</strong> để bắt đầu</span>
-                    }
-                </p>
-            </div>
-        }
+        <div class="admin-empty">
+            <span class="admin-empty-icon">
+                <i data-lucide="package-open" class="w-9 h-9"></i>
+            </span>
+            <h2>Không tìm thấy sản phẩm</h2>
+            @if (hasFilters)
+            {
+                <p>Điều chỉnh bộ lọc hoặc xóa bộ lọc để xem lại toàn bộ sản phẩm.</p>
+                <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
+            }
+            else
+            {
+                <p>Tạo sản phẩm đầu tiên để quản lý thông tin catalog, thông số kỹ thuật và biến thể bán hàng.</p>
+                <a asp-action="Create" class="admin-empty-action">Thêm sản phẩm</a>
+            }
+        </div>
+    }
     else
-        {
-            <div class="product-table-scroll">
+    {
+        <div class="product-table-scroll">
                 <div
                     class="surface-table-head product-index-grid px-6 py-3.5">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sản phẩm</span>

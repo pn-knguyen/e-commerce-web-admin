@@ -126,29 +126,26 @@
 
         @if (!Model.Attributes.Any())
         {
-            <div class="surface-empty">
-                <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-100 to-teal-50
-                    flex items-center justify-center mx-auto mb-5 shadow-sm">
-                    <i data-lucide="list-filter" class="w-10 h-10 text-teal-300"></i>
-                </div>
-                <p class="text-slate-600 font-semibold text-lg">Chưa có thuộc tính nào</p>
-                <p class="text-slate-400 text-sm mt-2">
-                    @if (hasFilters)
-                    {
-                        <span>Thử từ khoá khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xoá bộ
-                            lọc</a></span>
-                        }
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="list-filter" class="w-9 h-9"></i>
+                </span>
+                <h2>Không tìm thấy thuộc tính</h2>
+                @if (hasFilters)
+                {
+                    <p>Điều chỉnh từ khóa hoặc xóa bộ lọc để xem lại toàn bộ thuộc tính.</p>
+                    <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
+                }
                 else
-                        {
-
-                            <span>Nhấn <strong class="text-slate-600">Thêm thuộc tính</strong> để bắt đầu</span>
-                        }
-                    </p>
-                </div>
-            }
-    else
-            {
-                <div class="attr-table-scroll">
+                {
+                    <p>Tạo thuộc tính đầu tiên để cấu hình màu sắc, dung lượng, kích thước hoặc các lựa chọn biến thể khác.</p>
+                    <a asp-action="Create" class="admin-empty-action">Thêm thuộc tính</a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="attr-table-scroll">
                 @* Header *@
                 <div class="surface-table-head px-6 py-3.5
                     grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center">

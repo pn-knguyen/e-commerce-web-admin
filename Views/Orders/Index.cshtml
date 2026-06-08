@@ -175,15 +175,15 @@
 
         @if (!Model.Orders.Any())
         {
-            <div class="order-empty">
-                <span class="order-empty-icon">
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
                     <i data-lucide="package-search" class="w-9 h-9"></i>
                 </span>
                 <h2>Không tìm thấy đơn hàng</h2>
                 @if (Model.HasFilters)
                 {
                     <p>Điều chỉnh bộ lọc hoặc xóa bộ lọc để xem lại toàn bộ đơn hàng.</p>
-                    <a asp-action="Index" class="order-empty-action">Xóa bộ lọc</a>
+                    <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
                 }
                 else
                 {

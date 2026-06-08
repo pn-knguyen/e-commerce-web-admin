@@ -131,22 +131,21 @@
      style="animation-delay:0.16s">
     @if (!Model.PaymentMethods.Any())
     {
-        <div class="surface-empty">
-            <div
-                class="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-100 to-teal-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <i data-lucide="credit-card" class="w-10 h-10 text-teal-300"></i>
-            </div>
-            <p class="text-slate-600 font-semibold text-lg">Không tìm thấy phương thức thanh toán</p>
-            <p class="text-slate-400 text-sm mt-2">
-                @if (!string.IsNullOrEmpty(Model.Search))
-                {
-                    <span>Thử từ khóa khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xóa bộ lọc</a></span>
-                }
-                else
-                {
-                    <span>Nhấn <strong class="text-slate-600">Thêm phương thức</strong> để bắt đầu</span>
-                }
-            </p>
+        <div class="admin-empty">
+            <span class="admin-empty-icon">
+                <i data-lucide="credit-card" class="w-9 h-9"></i>
+            </span>
+            <h2>Không tìm thấy phương thức thanh toán</h2>
+            @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.Status))
+            {
+                <p>Điều chỉnh từ khóa hoặc xóa bộ lọc để xem lại toàn bộ phương thức thanh toán.</p>
+                <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
+            }
+            else
+            {
+                <p>Tạo phương thức thanh toán đầu tiên để đơn hàng có thể ghi nhận kênh thanh toán phù hợp.</p>
+                <a asp-action="Create" class="admin-empty-action">Thêm phương thức</a>
+            }
         </div>
     }
     else

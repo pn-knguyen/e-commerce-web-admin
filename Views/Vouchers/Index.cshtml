@@ -132,18 +132,21 @@
 <div class="surface-console surface-table-card voucher-anim surface-anim" style="animation-delay:0.16s">
     @if (!Model.Vouchers.Any())
     {
-        <div class="surface-empty">
-            <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-100 to-teal-50
-                        flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <i data-lucide="ticket" class="w-10 h-10 text-teal-300"></i>
-            </div>
-            <p class="text-slate-600 font-semibold text-lg">Không tìm thấy voucher</p>
-            <p class="text-slate-400 text-sm mt-2">
-                @if (!string.IsNullOrEmpty(Model.Search))
-                {<span>Thử từ khoá khác hoặc <a asp-action="Index" class="text-teal-600 hover:underline">xoá bộ lọc</a></span>}
-                else
-                {<span>Nhấn <strong class="text-slate-600">Thêm voucher</strong> để bắt đầu</span>}
-            </p>
+        <div class="admin-empty">
+            <span class="admin-empty-icon">
+                <i data-lucide="ticket" class="w-9 h-9"></i>
+            </span>
+            <h2>Không tìm thấy voucher</h2>
+            @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.Status))
+            {
+                <p>Điều chỉnh từ khóa hoặc xóa bộ lọc để xem lại toàn bộ voucher.</p>
+                <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
+            }
+            else
+            {
+                <p>Tạo voucher đầu tiên để cấu hình mã giảm giá, phạm vi áp dụng và giới hạn sử dụng.</p>
+                <a asp-action="Create" class="admin-empty-action">Thêm voucher</a>
+            }
         </div>
     }
     else

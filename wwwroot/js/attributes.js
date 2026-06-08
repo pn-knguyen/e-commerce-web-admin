@@ -356,6 +356,7 @@ if (optionsPanel) {
     function renderOptions(options) {
         if (!optionsList) return;
         optionsList.innerHTML = '';
+        if (optionCount) optionCount.textContent = options.length;
 
         if (options.length === 0) {
             optionsList.innerHTML = `
@@ -404,7 +405,6 @@ if (optionsPanel) {
         });
 
         lucide.createIcons({ nodes: [optionsList] });
-        if (optionCount) optionCount.textContent = options.length;
     }
 
     /* ── Load options from API ───────────────────────────────────────────── */
@@ -514,9 +514,10 @@ if (optionsPanel) {
 
     let hasSubmittedAddOption = false;
 
+    const getAddOptionPanel = () => addForm?.closest('[data-attr-add-option-panel]') ?? addForm?.closest('.surface-form-card');
+
     const setAddOptionAlertVisible = isVisible => {
-        addForm
-            ?.closest('.surface-form-card')
+        getAddOptionPanel()
             ?.querySelector('[data-surface-form-alert]')
             ?.classList.toggle('hidden', !isVisible);
     };

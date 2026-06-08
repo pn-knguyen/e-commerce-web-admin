@@ -1138,3 +1138,111 @@ body {
   cursor: wait;
   opacity: 0.65;
 }
+
+/* Edit page option management */
+.attr-option-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--surface-border-soft);
+    padding: 1rem 1.25rem;
+}
+
+.attr-option-filter {
+    display: flex;
+    width: min(100%, 18rem);
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.55rem;
+    border: 1px solid #d9e5e7;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #64748b;
+    padding: 0 0.9rem;
+    transition: border-color 220ms var(--surface-ease), background 220ms var(--surface-ease);
+}
+
+.attr-option-filter:focus-within {
+    border-color: #14b8a6;
+    background: #ffffff;
+}
+
+.attr-option-filter input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--surface-copy);
+    font-size: 0.8125rem;
+    outline: none;
+    padding: 0.75rem 0;
+}
+
+.attr-option-head-grid,
+.option-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 5rem 5.75rem;
+}
+
+.attr-option-add-panel {
+    border-top: 1px solid var(--surface-border-soft);
+    background: #f8fbfb;
+    padding: 1.25rem;
+}
+
+.attr-option-add-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: end;
+}
+
+.attr-option-add-submit {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface-teal);
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 850;
+    padding: 0 1rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 220ms var(--surface-ease), transform 220ms var(--surface-ease);
+}
+
+.attr-option-add-submit:hover {
+    background: var(--surface-teal-strong);
+    transform: translateY(-1px);
+}
+
+.attr-option-add-submit:disabled {
+    cursor: wait;
+    opacity: 0.7;
+    transform: none;
+}
+
+@media (max-width: 767px) {
+    .attr-option-card-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .attr-option-add-form {
+        grid-template-columns: 1fr;
+    }
+
+    .attr-option-filter {
+        width: 100%;
+    }
+
+    .option-row {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+        padding: 1rem 1.25rem;
+    }
+}

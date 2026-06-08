@@ -8,83 +8,91 @@ namespace e_commerce_web_admin.Services.CategorySpecifications;
 public sealed class CategorySpecAdminService : ICategorySpecAdminService
 {
     private const int DefaultPageSize = 30;
+    private const int MaxGroupNameLength = 120;
+    private const int MaxSortOrder = 9999;
+
     private readonly ApplicationDbContext _db;
 
     public CategorySpecAdminService(ApplicationDbContext db) => _db = db;
 
-    // ── Index ──────────────────────────────────────────────────────────────
-
     public async Task<CategorySpecIndexViewModel?> GetIndexAsync(
-        long categoryId, CategorySpecIndexQuery query, CancellationToken ct = default)
+        long categoryId,
+        CategorySpecIndexQuery query,
+        CancellationToken ct = default)
     {
-        var category = await _db.Categories.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == categoryId, ct);
+        var category = await _db.Categories
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == categoryId, ct);
 
-        if (category is null) return null;
+        if (category is null)
+        {
+            return null;
+        }
 
         var page = Math.Max(1, query.Page);
-
-        // Specs đã gán
-        var allCategoryAssignments = await _db.CategorySpecifications
-            .Include(cs => cs.Specification)
-            .Where(cs => cs.CategoryId == categoryId)
+        var assignments = await _db.CategorySpecifications
             .AsNoTracking()
+            .Include(item => item.Specification)
+            .Where(item => item.CategoryId == categoryId)
             .ToListAsync(ct);
 
-        var assignedQuery = allCategoryAssignments.AsEnumerable();
+        var assignedQuery = assignments.AsEnumerable();
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = query.Search.Trim();
-            assignedQuery = assignedQuery.Where(cs =>
-                cs.Specification!.Name.Contains(term) ||
-                cs.Specification!.Key.Contains(term));
+            assignedQuery = assignedQuery.Where(item =>
+                item.Specification!.Name.Contains(term) ||
+                item.Specification.Key.Contains(term) ||
+                (!string.IsNullOrWhiteSpace(item.GroupName) && item.GroupName.Contains(term)));
         }
 
-        var allAssigned = assignedQuery
-            .OrderBy(cs => cs.SortOrder)
-            .ThenBy(cs => cs.Specification!.Name)
+        var assigned = assignedQuery
+            .OrderBy(item => string.IsNullOrWhiteSpace(item.GroupName) ? 1 : 0)
+            .ThenBy(item => item.GroupName)
+            .ThenBy(item => item.SortOrder)
+            .ThenBy(item => item.Specification!.Name)
             .ToList();
 
-        // Đếm usage của từng spec trong category này (qua Product)
         var categoryProductIds = await _db.Products
-            .Where(p => p.CategoryId == categoryId)
-            .Select(p => p.Id)
+            .AsNoTracking()
+            .Where(item => item.CategoryId == categoryId)
+            .Select(item => item.Id)
             .ToListAsync(ct);
 
         var usageMap = await _db.ProductSpecifications
-            .Where(ps => categoryProductIds.Contains(ps.ProductId))
-            .GroupBy(ps => ps.SpecificationId)
-            .Select(g => new { SpecId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.SpecId, x => x.Count, ct);
+            .AsNoTracking()
+            .Where(item => categoryProductIds.Contains(item.ProductId))
+            .GroupBy(item => item.SpecificationId)
+            .Select(group => new { SpecificationId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.SpecificationId, item => item.Count, ct);
 
-        var pageItems = allAssigned
+        var rows = assigned
             .Skip((page - 1) * DefaultPageSize)
             .Take(DefaultPageSize)
+            .Select(item => new CategorySpecRowViewModel
+            {
+                SpecificationId = item.SpecificationId,
+                Key = item.Specification!.Key,
+                Name = item.Specification.Name,
+                Unit = item.Specification.Unit,
+                GroupName = item.GroupName,
+                IsRequired = item.IsRequired,
+                SortOrder = item.SortOrder,
+                ProductUsageCount = usageMap.GetValueOrDefault(item.SpecificationId),
+            })
             .ToList();
 
-        var rows = pageItems.Select(cs => new CategorySpecRowViewModel
-        {
-            SpecificationId = cs.SpecificationId,
-            Key = cs.Specification!.Key,
-            Name = cs.Specification.Name,
-            Unit = cs.Specification.Unit,
-            GroupName = cs.GroupName,
-            IsRequired = cs.IsRequired,
-            SortOrder = cs.SortOrder,
-            ProductUsageCount = usageMap.GetValueOrDefault(cs.SpecificationId),
-        }).ToList();
-
-        // Specs chưa gán
-        var assignedIds = allCategoryAssignments.Select(cs => cs.SpecificationId).ToHashSet();
-        var available = await _db.Specifications.AsNoTracking()
-            .Where(s => !assignedIds.Contains(s.Id))
-            .OrderBy(s => s.Name)
-            .Select(s => new AvailableSpecOption
+        var assignedIds = assignments.Select(item => item.SpecificationId).ToHashSet();
+        var available = await _db.Specifications
+            .AsNoTracking()
+            .Where(item => !assignedIds.Contains(item.Id))
+            .OrderBy(item => item.Name)
+            .Select(item => new AvailableSpecOption
             {
-                Id = s.Id,
-                Key = s.Key,
-                Name = s.Name,
-                Unit = s.Unit,
+                Id = item.Id,
+                Key = item.Key,
+                Name = item.Name,
+                Unit = item.Unit,
             })
             .ToListAsync(ct);
 
@@ -95,62 +103,107 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
             CategorySlug = category.Slug,
             AssignedSpecs = rows,
             AvailableSpecs = available,
-            AssignForm = new CategorySpecAssignViewModel { CategoryId = categoryId },
+            AssignForm = BuildAssignForm(categoryId, assignments, available),
             Search = query.Search,
             Page = page,
             PageSize = DefaultPageSize,
-            TotalAssigned = allAssigned.Count,
+            TotalAssigned = assigned.Count,
         };
     }
 
-    // ── Assign (upsert) ────────────────────────────────────────────────────
-
     public async Task<CategorySpecSaveResult> AssignAsync(
-        CategorySpecAssignViewModel form, CancellationToken ct = default)
+        CategorySpecAssignViewModel form,
+        CancellationToken ct = default)
     {
-        var categoryExists = await _db.Categories.AsNoTracking()
-            .AnyAsync(c => c.Id == form.CategoryId, ct);
+        var categoryExists = await _db.Categories
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == form.CategoryId, ct);
 
         if (!categoryExists)
-            return new CategorySpecSaveResult(false, "Không tìm thấy danh mục.");
-
-        var spec = await _db.Specifications.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == form.SpecificationId, ct);
-
-        if (spec is null)
-            return new CategorySpecSaveResult(false, "Không tìm thấy thông số.");
-
-        var existing = await _db.CategorySpecifications
-            .FirstOrDefaultAsync(
-                cs => cs.CategoryId == form.CategoryId && cs.SpecificationId == form.SpecificationId, ct);
-
-        if (existing is not null)
-            return new CategorySpecSaveResult(false, $"Thông số \"{spec.Name}\" đã được gán cho danh mục này.");
-
-        _db.CategorySpecifications.Add(new CategorySpecification
         {
-            CategoryId = form.CategoryId,
-            SpecificationId = form.SpecificationId,
-            GroupName = string.IsNullOrWhiteSpace(form.GroupName) ? null : form.GroupName.Trim(),
-            IsRequired = form.IsRequired,
-            SortOrder = form.SortOrder,
-        });
+            return new CategorySpecSaveResult(false, "Không tìm thấy danh mục.");
+        }
+
+        var selectedItems = NormalizeSelectedItems(form.Items);
+        if (selectedItems.Count == 0)
+        {
+            return new CategorySpecSaveResult(false, "Vui lòng chọn ít nhất một thông số cần gán.");
+        }
+
+        var validationError = ValidateSelectedItems(selectedItems);
+        if (validationError is not null)
+        {
+            return new CategorySpecSaveResult(false, validationError);
+        }
+
+        var selectedIds = selectedItems.Select(item => item.SpecificationId).ToList();
+        if (selectedIds.Distinct().Count() != selectedIds.Count)
+        {
+            return new CategorySpecSaveResult(false, "Danh sách thông số được chọn bị trùng.");
+        }
+
+        var specs = await _db.Specifications
+            .AsNoTracking()
+            .Where(item => selectedIds.Contains(item.Id))
+            .ToDictionaryAsync(item => item.Id, ct);
+
+        if (specs.Count != selectedIds.Count)
+        {
+            return new CategorySpecSaveResult(false, "Một hoặc nhiều thông số không tồn tại.");
+        }
+
+        var existingIds = await _db.CategorySpecifications
+            .AsNoTracking()
+            .Where(item => item.CategoryId == form.CategoryId && selectedIds.Contains(item.SpecificationId))
+            .Select(item => item.SpecificationId)
+            .ToListAsync(ct);
+
+        if (existingIds.Count > 0)
+        {
+            var existingNames = existingIds
+                .Select(id => specs.TryGetValue(id, out var spec) ? spec.Name : id.ToString())
+                .ToList();
+            return new CategorySpecSaveResult(
+                false,
+                $"Thông số đã được gán trước đó: {string.Join(", ", existingNames)}.");
+        }
+
+        foreach (var item in selectedItems)
+        {
+            _db.CategorySpecifications.Add(new CategorySpecification
+            {
+                CategoryId = form.CategoryId,
+                SpecificationId = item.SpecificationId,
+                GroupName = item.GroupName,
+                IsRequired = item.IsRequired,
+                SortOrder = item.SortOrder,
+            });
+        }
 
         await _db.SaveChangesAsync(ct);
-        return new CategorySpecSaveResult(true, $"Đã gán thông số \"{spec.Name}\" thành công.");
+
+        if (selectedItems.Count == 1)
+        {
+            var specName = specs[selectedItems[0].SpecificationId].Name;
+            return new CategorySpecSaveResult(true, $"Đã gán thông số \"{specName}\" thành công.");
+        }
+
+        return new CategorySpecSaveResult(true, $"Đã gán {selectedItems.Count} thông số thành công.");
     }
 
-    // ── Update ─────────────────────────────────────────────────────────────
-
     public async Task<CategorySpecSaveResult> UpdateAsync(
-        CategorySpecUpdateViewModel form, CancellationToken ct = default)
+        CategorySpecUpdateViewModel form,
+        CancellationToken ct = default)
     {
         var entity = await _db.CategorySpecifications
             .FirstOrDefaultAsync(
-                cs => cs.CategoryId == form.CategoryId && cs.SpecificationId == form.SpecificationId, ct);
+                item => item.CategoryId == form.CategoryId && item.SpecificationId == form.SpecificationId,
+                ct);
 
         if (entity is null)
+        {
             return new CategorySpecSaveResult(false, "Không tìm thấy liên kết thông số - danh mục.");
+        }
 
         entity.GroupName = string.IsNullOrWhiteSpace(form.GroupName) ? null : form.GroupName.Trim();
         entity.IsRequired = form.IsRequired;
@@ -160,31 +213,97 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
         return new CategorySpecSaveResult(true, "Đã cập nhật thành công.");
     }
 
-    // ── Remove ─────────────────────────────────────────────────────────────
-
     public async Task<CategorySpecRemoveResult> RemoveAsync(
-        long categoryId, long specId, CancellationToken ct = default)
+        long categoryId,
+        long specId,
+        CancellationToken ct = default)
     {
         var entity = await _db.CategorySpecifications
-            .Include(cs => cs.Specification)
+            .Include(item => item.Specification)
             .FirstOrDefaultAsync(
-                cs => cs.CategoryId == categoryId && cs.SpecificationId == specId, ct);
+                item => item.CategoryId == categoryId && item.SpecificationId == specId,
+                ct);
 
         if (entity is null)
+        {
             return new CategorySpecRemoveResult(false, false, "Không tìm thấy liên kết.");
+        }
 
-        // Kiểm tra có sản phẩm trong danh mục này đang dùng spec không
         var inUse = await _db.ProductSpecifications.AnyAsync(
-            ps => ps.SpecificationId == specId &&
-                  _db.Products.Any(p => p.Id == ps.ProductId && p.CategoryId == categoryId), ct);
+            productSpec => productSpec.SpecificationId == specId &&
+                           _db.Products.Any(product => product.Id == productSpec.ProductId && product.CategoryId == categoryId),
+            ct);
 
         if (inUse)
-            return new CategorySpecRemoveResult(true, false,
+        {
+            return new CategorySpecRemoveResult(
+                true,
+                false,
                 $"Không thể bỏ gán \"{entity.Specification!.Name}\" vì đang được dùng bởi sản phẩm trong danh mục.");
+        }
 
         _db.CategorySpecifications.Remove(entity);
         await _db.SaveChangesAsync(ct);
-        return new CategorySpecRemoveResult(true, true,
+
+        return new CategorySpecRemoveResult(
+            true,
+            true,
             $"Đã bỏ gán thông số \"{entity.Specification!.Name}\" thành công.");
+    }
+
+    private static CategorySpecAssignViewModel BuildAssignForm(
+        long categoryId,
+        IReadOnlyCollection<CategorySpecification> assigned,
+        IReadOnlyList<AvailableSpecOption> available)
+    {
+        var nextSortOrder = assigned.Count == 0 ? 1 : assigned.Max(item => item.SortOrder) + 1;
+        return new CategorySpecAssignViewModel
+        {
+            CategoryId = categoryId,
+            Items = available.Select((item, index) => new CategorySpecAssignItemViewModel
+            {
+                SpecificationId = item.Id,
+                SortOrder = Math.Min(nextSortOrder + index, MaxSortOrder),
+            }).ToList(),
+        };
+    }
+
+    private static List<CategorySpecAssignItemViewModel> NormalizeSelectedItems(
+        IEnumerable<CategorySpecAssignItemViewModel> items)
+    {
+        return items
+            .Where(item => item.Selected)
+            .Select(item => new CategorySpecAssignItemViewModel
+            {
+                SpecificationId = item.SpecificationId,
+                Selected = true,
+                GroupName = string.IsNullOrWhiteSpace(item.GroupName) ? null : item.GroupName.Trim(),
+                IsRequired = item.IsRequired,
+                SortOrder = item.SortOrder,
+            })
+            .ToList();
+    }
+
+    private static string? ValidateSelectedItems(IEnumerable<CategorySpecAssignItemViewModel> items)
+    {
+        foreach (var item in items)
+        {
+            if (item.SpecificationId <= 0)
+            {
+                return "Thông số được chọn không hợp lệ.";
+            }
+
+            if (item.GroupName?.Length > MaxGroupNameLength)
+            {
+                return "Tên nhóm tối đa 120 ký tự.";
+            }
+
+            if (item.SortOrder is < 0 or > MaxSortOrder)
+            {
+                return "Thứ tự phải từ 0 đến 9999.";
+            }
+        }
+
+        return null;
     }
 }

@@ -135,20 +135,20 @@
 
         @if (!Model.Suppliers.Any())
         {
-            <div class="supplier-empty">
-                <span class="supplier-empty-icon">
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
                     <i data-lucide="package-search" class="w-9 h-9"></i>
                 </span>
                 <h2>Không tìm thấy nhà cung cấp</h2>
                 @if (hasFilters)
                 {
-                    <p>Điều chỉnh từ khóa hoặc xóa bộ lọc để xem lại toàn bộ danh sách.</p>
-                    <a asp-action="Index" class="supplier-empty-action">Xóa bộ lọc</a>
+                    <p>Điều chỉnh từ khóa hoặc xóa bộ lọc để xem lại toàn bộ danh sách nhà cung cấp.</p>
+                    <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
                 }
                 else
                 {
                     <p>Danh sách đang trống. Tạo hồ sơ nhà cung cấp đầu tiên để bắt đầu quy trình nhập hàng.</p>
-                    <a asp-action="Create" class="supplier-empty-action">Thêm nhà cung cấp</a>
+                    <a asp-action="Create" class="admin-empty-action">Thêm nhà cung cấp</a>
                 }
             </div>
         }

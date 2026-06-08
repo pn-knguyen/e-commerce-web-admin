@@ -1,118 +1,182 @@
-/**
- * category-specifications.js
- * Handles category-specific specification assignment UI.
- */
-
 (function () {
     'use strict';
 
     const token = () =>
         document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
 
-    bindAvailableSpecFilter();
-    bindAssignSpecificationValidation();
+    bindAssignSpecificationForm();
     bindInlineUpdates();
     bindToastDismiss();
 
-    function bindAssignSpecificationValidation() {
-        const assignForm = Array.from(document.querySelectorAll('form'))
-            .find(form => form.querySelector('[name="SpecificationId"]'));
-
-        if (!assignForm) {
+    function bindAssignSpecificationForm() {
+        const form = document.querySelector('[data-category-spec-assign-form]');
+        if (!form) {
             return;
         }
 
-        const alertBox = assignForm.closest('.surface-form-card')?.querySelector('[data-surface-form-alert]')
-            ?? assignForm.querySelector('[data-surface-form-alert]');
-        let hasSubmitted = !alertBox?.classList.contains('hidden');
-        const setAlertVisible = isVisible => {
-            alertBox?.classList.toggle('hidden', !isVisible);
+        const alertBox = form.closest('.surface-form-card')?.querySelector('[data-surface-form-alert]');
+        const alertText = alertBox?.querySelector('[data-category-spec-alert-text]');
+        const searchInput = document.getElementById('categorySpecAssignSearch');
+        const selectedCount = form.querySelector('[data-category-spec-selected-count]');
+        const rows = Array.from(form.querySelectorAll('[data-category-spec-assign-row]'));
+        let hasSubmitted = false;
+
+        const setAlert = (message) => {
+            const hasMessage = Boolean(message);
+            if (alertText && message) {
+                alertText.textContent = message;
+            }
+
+            alertBox?.classList.toggle('hidden', !hasMessage);
         };
 
-        const specificationSelect = assignForm.querySelector('[name="SpecificationId"]');
-        const groupNameInput = assignForm.querySelector('[name="GroupName"]');
-        const sortOrderInput = assignForm.querySelector('[name="SortOrder"]');
+        const checkedRows = () => rows.filter(row => row.querySelector('[data-category-spec-select]')?.checked);
 
-        const validators = [
-            showErrors => validateRequiredSelect(specificationSelect, 'Vui lòng chọn thông số cần gán.', showErrors),
-            showErrors => validateMaxLength(groupNameInput, 120, 'Tên nhóm tối đa 120 ký tự.', showErrors),
-            showErrors => validateNumberRange(sortOrderInput, 0, 9999, 'Thứ tự phải từ 0 đến 9999.', showErrors),
-        ];
+        const updateRowState = (row) => {
+            const checkbox = row.querySelector('[data-category-spec-select]');
+            row.classList.toggle('is-selected', Boolean(checkbox?.checked));
+        };
 
-        [specificationSelect, groupNameInput, sortOrderInput].filter(Boolean).forEach(field => {
-            ['input', 'change', 'blur'].forEach(eventName => {
-                field.addEventListener(eventName, () => {
-                    validateAssignForm(validators, true);
+        const updateSelectedCount = () => {
+            const count = checkedRows().length;
+            if (selectedCount) {
+                selectedCount.textContent = `${count} đã chọn`;
+            }
+        };
+
+        const selectRow = (row) => {
+            const checkbox = row.querySelector('[data-category-spec-select]');
+            if (!checkbox?.checked) {
+                checkbox.checked = true;
+                updateRowState(row);
+                updateSelectedCount();
+            }
+        };
+
+        const clearFieldError = (field) => setFieldError(field, '');
+
+        rows.forEach(row => {
+            const select = row.querySelector('[data-category-spec-select]');
+            const groupInput = row.querySelector('[data-category-spec-group]');
+            const orderInput = row.querySelector('[data-category-spec-order]');
+            const requiredInput = row.querySelector('[data-category-spec-required]');
+
+            select?.addEventListener('change', () => {
+                updateRowState(row);
+                updateSelectedCount();
+                if (hasSubmitted) {
+                    validateAssignForm(form, rows, false, setAlert);
+                }
+            });
+
+            [groupInput, orderInput, requiredInput].filter(Boolean).forEach(field => {
+                field.addEventListener('input', () => {
+                    selectRow(row);
+                    clearFieldError(field);
                     if (hasSubmitted) {
-                        setAlertVisible(!validateAssignForm(validators, false));
+                        validateAssignForm(form, rows, false, setAlert);
+                    }
+                });
+
+                field.addEventListener('change', () => {
+                    selectRow(row);
+                    clearFieldError(field);
+                    if (hasSubmitted) {
+                        validateAssignForm(form, rows, false, setAlert);
+                    }
+                });
+            });
+
+            updateRowState(row);
+        });
+
+        searchInput?.addEventListener('input', () => {
+            const term = searchInput.value.toLowerCase().trim();
+            rows.forEach(row => {
+                const text = `${row.dataset.name ?? ''} ${row.dataset.key ?? ''}`.toLowerCase();
+                row.hidden = Boolean(term) && !text.includes(term);
+            });
+        });
+
+        document.querySelectorAll('[data-category-spec-group-chip]').forEach(button => {
+            button.addEventListener('click', () => {
+                const groupName = button.dataset.categorySpecGroupChip ?? '';
+                const targets = checkedRows().length > 0 ? checkedRows() : rows.filter(row => !row.hidden);
+                targets.forEach(row => {
+                    const groupInput = row.querySelector('[data-category-spec-group]');
+                    if (groupInput) {
+                        groupInput.value = groupName;
+                        selectRow(row);
+                        clearFieldError(groupInput);
                     }
                 });
             });
         });
 
-        assignForm.addEventListener('submit', event => {
+        form.addEventListener('submit', event => {
             hasSubmitted = true;
-            const isValid = validateAssignForm(validators, true);
-            setAlertVisible(!isValid);
-
-            if (!isValid) {
+            const result = validateAssignForm(form, rows, true, setAlert);
+            if (!result.isValid) {
                 event.preventDefault();
-                assignForm.querySelector('[aria-invalid="true"]')?.focus();
+                result.firstInvalid?.focus();
             }
+        });
+
+        updateSelectedCount();
+    }
+
+    function validateAssignForm(form, rows, showErrors, setAlert) {
+        let firstInvalid = null;
+        let isValid = true;
+        const selectedRows = rows.filter(row => row.querySelector('[data-category-spec-select]')?.checked);
+
+        rows.forEach(row => {
+            clearRowErrors(row);
+        });
+
+        if (selectedRows.length === 0) {
+            setAlert('Vui lòng chọn ít nhất một thông số cần gán.');
+            return { isValid: false, firstInvalid: form.querySelector('[data-category-spec-select]') };
+        }
+
+        selectedRows.forEach(row => {
+            const groupInput = row.querySelector('[data-category-spec-group]');
+            const orderInput = row.querySelector('[data-category-spec-order]');
+
+            if (groupInput && groupInput.value.trim().length > 120) {
+                isValid = false;
+                firstInvalid ??= groupInput;
+                if (showErrors) {
+                    setFieldError(groupInput, 'Tên nhóm tối đa 120 ký tự.');
+                }
+            }
+
+            const rawOrder = orderInput?.value.trim() ?? '';
+            const orderValue = Number(rawOrder);
+            if (!orderInput || rawOrder === '' || !Number.isFinite(orderValue) || orderValue < 0 || orderValue > 9999) {
+                isValid = false;
+                firstInvalid ??= orderInput;
+                if (showErrors && orderInput) {
+                    setFieldError(orderInput, 'Thứ tự phải từ 0 đến 9999.');
+                }
+            }
+        });
+
+        setAlert(isValid ? '' : 'Vui lòng kiểm tra lại thông tin.');
+        return { isValid, firstInvalid };
+    }
+
+    function clearRowErrors(row) {
+        row.querySelectorAll('[data-category-spec-group], [data-category-spec-order]').forEach(field => {
+            setFieldError(field, '');
         });
     }
 
-    function validateAssignForm(validators, showErrors) {
-        return validators
-            .map(validate => validate(showErrors))
-            .every(Boolean);
-    }
-
-    function validateRequiredSelect(field, message, showError) {
+    function setFieldError(field, message) {
         if (!field) {
-            return true;
+            return;
         }
 
-        const error = field.value ? '' : message;
-        if (showError) {
-            setInlineError(field, error);
-        }
-
-        return error === '';
-    }
-
-    function validateMaxLength(field, maxLength, message, showError) {
-        if (!field) {
-            return true;
-        }
-
-        const error = field.value.trim().length > maxLength ? message : '';
-        if (showError) {
-            setInlineError(field, error);
-        }
-
-        return error === '';
-    }
-
-    function validateNumberRange(field, min, max, message, showError) {
-        if (!field) {
-            return true;
-        }
-
-        const rawValue = field.value.trim();
-        const value = Number(rawValue);
-        const error = rawValue !== '' && (!Number.isFinite(value) || value < min || value > max)
-            ? message
-            : '';
-
-        if (showError) {
-            setInlineError(field, error);
-        }
-
-        return error === '';
-    }
-
-    function setInlineError(field, message) {
         let messageElement = field.parentElement?.querySelector('[data-client-error-for="' + field.name + '"]');
         if (!messageElement) {
             messageElement = document.createElement('span');
@@ -124,24 +188,6 @@
         messageElement.textContent = message;
         field.setAttribute('aria-invalid', message ? 'true' : 'false');
         field.classList.toggle('input-validation-error', Boolean(message));
-    }
-
-    function bindAvailableSpecFilter() {
-        const availableSearch = document.getElementById('availableSpecSearch');
-        const availableList = document.getElementById('availableSpecList');
-
-        if (!availableSearch || !availableList) {
-            return;
-        }
-
-        availableSearch.addEventListener('input', () => {
-            const term = availableSearch.value.toLowerCase().trim();
-
-            availableList.querySelectorAll('[data-spec-item]').forEach(item => {
-                const text = `${item.dataset.name ?? ''} ${item.dataset.key ?? ''}`.toLowerCase();
-                item.style.display = !term || text.includes(term) ? '' : 'none';
-            });
-        });
     }
 
     function bindInlineUpdates() {
@@ -188,36 +234,41 @@
                     SpecificationId: specificationId,
                     GroupName: groupName,
                     SortOrder: Number.isNaN(sortOrder) ? 0 : sortOrder,
-                    IsRequired: isRequired,
+                    IsRequired: String(isRequired),
                 }),
             });
 
             const data = await response.json();
-            showToast(data.succeeded ? 'success' : 'error', data.message);
+            showToast(data.succeeded ? 'success' : 'error', data.message || 'Không thể cập nhật thông số.');
         } catch {
             showToast('error', 'Lỗi kết nối, vui lòng thử lại.');
         }
     }
 
     function showToast(type, message) {
-        const existing = document.getElementById('inlineToast');
-        existing?.remove();
+        document.getElementById('inlineToast')?.remove();
 
         const colors = type === 'success'
             ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
             : 'bg-red-50 border-red-200 text-red-700';
-
         const icon = type === 'success' ? 'check' : 'alert-circle';
 
         const element = document.createElement('div');
         element.id = 'inlineToast';
-        element.className = `fixed bottom-5 right-5 z-50 flex items-center gap-3 ${colors} border
-            rounded-xl px-4 py-3 text-sm shadow-lg spec-anim`;
-        element.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 flex-shrink-0"></i><span>${message}</span>`;
+        element.className = `fixed bottom-5 right-5 z-50 flex items-center gap-3 ${colors} border rounded-xl px-4 py-3 text-sm shadow-lg spec-anim`;
+
+        const iconElement = document.createElement('i');
+        iconElement.setAttribute('data-lucide', icon);
+        iconElement.className = 'w-4 h-4 flex-shrink-0';
+
+        const text = document.createElement('span');
+        text.textContent = message;
+
+        element.append(iconElement, text);
         document.body.appendChild(element);
 
         if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
+            lucide.createIcons({ nodes: [element] });
         }
 
         setTimeout(() => element.remove(), 4000);
