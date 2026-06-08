@@ -16,5 +16,6 @@ public sealed class CloudinaryOptions
         "image/png",
         "image/webp",
         "image/gif",
+        "image/svg+xml",
     ];
 }
