@@ -68,6 +68,8 @@ public class ProductVariant
     public decimal Price { get; set; }
     public int SoldCount { get; set; }
     public int Quantity { get; set; }
+    public string? ColorName { get; set; }
+    public string? ColorHex { get; set; }
     public bool IsDefault { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -87,11 +89,9 @@ public class ProductVariantImage
 {
     public long Id { get; set; }
     public long ProductVariantId { get; set; }
-    public string Color { get; set; } = string.Empty;
     public string ImagePath { get; set; } = string.Empty;
     public string? AltText { get; set; }
     public int Position { get; set; }
-
     public ProductVariant? ProductVariant { get; set; }
 }
 

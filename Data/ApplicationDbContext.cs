@@ -172,6 +172,8 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(variant => variant.Code).IsUnique();
             entity.Property(variant => variant.Code).HasMaxLength(80).IsRequired();
             entity.Property(variant => variant.Price).HasPrecision(18, 2);
+            entity.Property(variant => variant.ColorName).HasMaxLength(120);
+            entity.Property(variant => variant.ColorHex).HasMaxLength(7).IsUnicode(false);
             entity.HasOne(variant => variant.Product)
                 .WithMany(product => product.ProductVariants)
                 .HasForeignKey(variant => variant.ProductId);
@@ -180,7 +182,6 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ProductVariantImage>(entity =>
         {
             entity.ToTable("product_variant_images");
-            entity.Property(image => image.Color).HasMaxLength(80).IsRequired();
             entity.Property(image => image.ImagePath).HasMaxLength(500).IsRequired();
             entity.Property(image => image.AltText).HasMaxLength(255);
             entity.HasOne(image => image.ProductVariant)

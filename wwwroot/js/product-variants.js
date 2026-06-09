@@ -2,6 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     bindProductVariantFormValidation();
+    bindProductVariantColorControl();
     bindProductAttributeVisibility();
     bindVariantImageRows();
     bindVariantStatusToggles();
@@ -117,26 +118,17 @@ function validateImageRow(row, showError) {
         return true;
     }
 
-    const colorField = row.querySelector('[data-pv-image-field="Color"]');
     const pathField = row.querySelector('[data-pv-image-field="ImagePath"]');
     const fileField = row.querySelector('[data-pv-image-field="ImageFile"]');
     const altField = row.querySelector('[data-pv-image-field="AltText"]');
     const positionField = row.querySelector('[data-pv-image-field="Position"]');
 
-    const color = colorField?.value.trim() || '';
     const path = pathField?.value.trim() || '';
     const hasFile = Boolean(fileField?.files?.length);
     const alt = altField?.value.trim() || '';
-    const hasAnyValue = color !== '' || path !== '' || hasFile || alt !== '';
+    const hasAnyValue = path !== '' || hasFile || alt !== '';
 
     let isValid = true;
-    if (hasAnyValue && color === '') {
-        setFieldError(colorField, 'Màu ảnh là bắt buộc.', showError);
-        isValid = false;
-    } else {
-        setFieldError(colorField, '', showError);
-    }
-
     if (hasAnyValue && path === '' && !hasFile) {
         setFieldError(fileField, 'Vui lòng chọn ảnh để tải lên.', showError);
         isValid = false;
@@ -189,6 +181,33 @@ function setFormAlertVisible(alertBox, isVisible) {
     alertBox?.classList.toggle('hidden', !isVisible);
 }
 
+function bindProductVariantColorControl() {
+    const picker = document.querySelector('[data-pv-variant-color-picker]');
+    const text = document.querySelector('[data-pv-variant-color-text]');
+
+    if (!picker || !text) {
+        return;
+    }
+
+    const syncPicker = value => {
+        const normalized = (value || '').trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
+            picker.value = normalized;
+        }
+    };
+
+    syncPicker(text.value);
+
+    picker.addEventListener('input', () => {
+        text.value = picker.value.toUpperCase();
+        text.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    text.addEventListener('input', () => {
+        text.value = text.value.trim().toUpperCase();
+        syncPicker(text.value);
+    });
+}
 function bindProductAttributeVisibility() {
     const form = document.querySelector('[data-pv-form]');
     if (!form) {
@@ -243,12 +262,15 @@ function bindProductAttributeVisibility() {
 
 function bindVariantImageRows() {
     const imageRoot = document.querySelector('[data-pv-images]');
+    const imageToolbar = document.querySelector('[data-pv-image-toolbar]');
     const addButton = document.querySelector('[data-pv-add-image]');
     const template = document.querySelector('[data-pv-image-template]');
 
     if (!imageRoot || !addButton || !template) {
         return;
     }
+
+    bindVariantImageToolbar(imageToolbar, imageRoot, template);
 
     imageRoot.addEventListener('click', event => {
         const removeButton = event.target.closest('[data-pv-remove-image]');
@@ -274,18 +296,6 @@ function bindVariantImageRows() {
         reindexImageRows(document);
     });
 
-    imageRoot.addEventListener('input', event => {
-        const colorPicker = event.target.closest('[data-pv-color-picker]');
-        if (colorPicker) {
-            syncImageColorControl(colorPicker.closest('[data-pv-image-row]'), colorPicker.value);
-            return;
-        }
-
-        const colorText = event.target.closest('[data-pv-color-text]');
-        if (colorText) {
-            syncImageColorControl(colorText.closest('[data-pv-image-row]'), colorText.value, { fromText: true });
-        }
-    });
 
     imageRoot.addEventListener('change', event => {
         const fileInput = event.target.closest('[data-pv-file-input]');
@@ -293,7 +303,6 @@ function bindVariantImageRows() {
             return;
         }
 
-        expandSelectedImageFiles(fileInput, imageRoot, template);
         syncImageFileLabel(fileInput);
         syncImagePreview(fileInput.closest('[data-pv-image-row]'), fileInput);
         validateImageRow(fileInput.closest('[data-pv-image-row]'), true);
@@ -311,8 +320,6 @@ function bindVariantImageRows() {
         if (window.lucide?.createIcons) {
             window.lucide.createIcons();
         }
-
-        row.querySelector('[data-pv-color-text]')?.focus();
     });
 
     reindexImageRows(document);
@@ -320,39 +327,54 @@ function bindVariantImageRows() {
     imageRoot.querySelectorAll('[data-pv-image-row]').forEach(row => syncImagePreview(row));
 }
 
-function createImageRowFromTemplate(imageRoot, template) {
-    const index = imageRoot.querySelectorAll('[data-pv-image-row]').length;
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = template.innerHTML.replaceAll('__index__', String(index)).trim();
-    return wrapper.firstElementChild;
-}
-
-function expandSelectedImageFiles(fileInput, imageRoot, template) {
-    const files = Array.from(fileInput.files || []);
-    if (files.length <= 1) {
+function bindVariantImageToolbar(toolbar, imageRoot, template) {
+    if (!toolbar) {
         return;
     }
 
-    const currentRow = fileInput.closest('[data-pv-image-row]');
-    const colorPicker = currentRow?.querySelector('[data-pv-color-picker]');
-    const selectedColor = colorPicker?.value || '#111827';
+    const fileInput = toolbar.querySelector('[data-pv-bulk-file-input]');
+    const fileLabel = toolbar.querySelector('[data-pv-bulk-file-label]');
 
-    setFileInputFiles(fileInput, [files[0]]);
-    syncImageColorControl(currentRow, selectedColor);
+    fileInput?.addEventListener('change', () => {
+        const selectedCount = fileInput.files?.length || 0;
+        const addedCount = appendSharedImageFiles(fileInput, imageRoot, template);
+        if (fileLabel) {
+            fileLabel.textContent = addedCount === selectedCount && addedCount > 0
+                ? `${addedCount} ảnh đã thêm`
+                : `${selectedCount} ảnh sẽ được tải lên khi lưu`;
+        }
 
-    files.slice(1).forEach(file => {
+        if (addedCount === selectedCount) {
+            fileInput.value = '';
+        }
+    });
+}
+
+function appendSharedImageFiles(fileInput, imageRoot, template) {
+    const files = Array.from(fileInput.files || []);
+    if (!files.length || typeof DataTransfer === 'undefined') {
+        return 0;
+    }
+
+    removeReusableEmptyImageRows(imageRoot);
+
+    let addedCount = 0;
+    files.forEach(file => {
         const row = createImageRowFromTemplate(imageRoot, template);
         if (!row) {
             return;
         }
 
         imageRoot.appendChild(row);
-        syncImageColorControl(row, selectedColor);
 
-        const newFileInput = row.querySelector('[data-pv-file-input]');
-        if (newFileInput && setFileInputFiles(newFileInput, [file])) {
-            syncImageFileLabel(newFileInput);
-            syncImagePreview(row, newFileInput);
+        const rowFileInput = row.querySelector('[data-pv-file-input]');
+        if (rowFileInput && setFileInputFiles(rowFileInput, [file])) {
+            syncImageFileLabel(rowFileInput);
+            syncImagePreview(row, rowFileInput);
+            validateImageRow(row, true);
+            addedCount += 1;
+        } else {
+            row.remove();
         }
     });
 
@@ -361,6 +383,39 @@ function expandSelectedImageFiles(fileInput, imageRoot, template) {
     if (window.lucide?.createIcons) {
         window.lucide.createIcons();
     }
+
+    return addedCount;
+}
+
+function removeReusableEmptyImageRows(imageRoot) {
+    Array.from(imageRoot.querySelectorAll('[data-pv-image-row]'))
+        .filter(row => row.dataset.existing !== 'true')
+        .filter(row => !row.classList.contains('is-removed'))
+        .filter(row => !hasImageRowValue(row))
+        .forEach(row => row.remove());
+}
+
+function hasImageRowValue(row) {
+    const id = row.querySelector('[data-pv-image-field="Id"]')?.value.trim() || '';
+    const path = row.querySelector('[data-pv-image-field="ImagePath"]')?.value.trim() || '';
+    const fileInput = row.querySelector('[data-pv-image-field="ImageFile"]');
+    const alt = row.querySelector('[data-pv-image-field="AltText"]')?.value.trim() || '';
+    return id !== '' || path !== '' || Boolean(fileInput?.files?.length) || alt !== '';
+}
+
+function updateImageRowEmptyState(row) {
+    if (!row) {
+        return;
+    }
+
+    row.classList.toggle('is-empty-row', !hasImageRowValue(row));
+}
+
+function createImageRowFromTemplate(imageRoot, template) {
+    const index = imageRoot.querySelectorAll('[data-pv-image-row]').length;
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = template.innerHTML.replaceAll('__index__', String(index)).trim();
+    return wrapper.firstElementChild;
 }
 
 function setFileInputFiles(fileInput, files) {
@@ -374,45 +429,10 @@ function setFileInputFiles(fileInput, files) {
     return true;
 }
 
-function syncImageColorControl(row, color, options = {}) {
-    if (!row) {
-        return;
-    }
-
-    const normalizedColor = (color || '').trim();
-    const colorValue = row.querySelector('[data-pv-color-value]');
-    const colorPicker = row.querySelector('[data-pv-color-picker]');
-    const colorText = row.querySelector('[data-pv-color-text]');
-
-    if (colorValue) {
-        colorValue.value = normalizedColor;
-    }
-
-    if (colorText && !options.fromText) {
-        colorText.value = normalizedColor ? normalizedColor.toUpperCase() : '';
-    }
-
-    if (colorPicker && isHexColor(normalizedColor)) {
-        colorPicker.value = normalizedColor;
-    }
-}
-
-function isHexColor(value) {
-    return /^#[0-9a-fA-F]{6}$/.test((value || '').trim());
-}
-
 function syncImageFileLabel(fileInput) {
     const row = fileInput?.closest('[data-pv-image-row]');
     const label = row?.querySelector('[data-pv-file-label]');
     const fileName = fileInput?.files?.[0]?.name;
-
-    if (fileName) {
-        const colorValue = row?.querySelector('[data-pv-color-value]');
-        const colorPicker = row?.querySelector('[data-pv-color-picker]');
-        if (colorValue && colorPicker && colorValue.value.trim() === '') {
-            syncImageColorControl(row, colorPicker.value);
-        }
-    }
 
     if (label) {
         label.textContent = fileName || 'Chọn ảnh từ máy';
@@ -441,17 +461,21 @@ function syncImagePreview(row, fileInput = null) {
         const objectUrl = URL.createObjectURL(selectedFile);
         preview.dataset.objectUrl = objectUrl;
         renderImagePreview(preview, objectUrl, selectedFile.name);
+        row.classList.remove('is-empty-row');
         return;
     }
 
     if (existingPath) {
         renderImagePreview(preview, existingPath, 'Ảnh biến thể hiện tại');
+        row.classList.remove('is-empty-row');
         return;
     }
 
     preview.removeAttribute('data-object-url');
     preview.classList.add('is-empty');
     preview.innerHTML = '<span class="pv-preview-icon"><i data-lucide="image-plus" class="w-5 h-5"></i></span><p>Chưa chọn ảnh</p>';
+
+    updateImageRowEmptyState(row);
 
     if (window.lucide?.createIcons) {
         window.lucide.createIcons();
@@ -476,17 +500,6 @@ function reindexImageRows(scope) {
 
     const rows = Array.from(imageRoot.querySelectorAll('[data-pv-image-row]'));
     rows.forEach((row, index) => {
-        const colorText = row.querySelector('[data-pv-color-text]');
-        const colorLabel = row.querySelector('[data-pv-color-label]');
-
-        if (colorText) {
-            colorText.id = `Images_${index}__ColorText`;
-        }
-
-        if (colorLabel) {
-            colorLabel.setAttribute('for', `Images_${index}__ColorText`);
-        }
-
         row.querySelectorAll('[data-pv-image-field]').forEach(field => {
             const property = field.dataset.pvImageField;
             field.name = `Images[${index}].${property}`;
@@ -500,7 +513,6 @@ function reindexImageRows(scope) {
             }
 
             const suffixMap = {
-                Color: 'color',
                 ImagePath: 'path',
                 ImageFile: 'file',
                 Position: 'position',
@@ -518,7 +530,6 @@ function reindexImageRows(scope) {
         });
     });
 }
-
 function getAntiForgeryToken(scope) {
     return scope?.querySelector('input[name="__RequestVerificationToken"]')?.value
         ?? document.querySelector('input[name="__RequestVerificationToken"]')?.value

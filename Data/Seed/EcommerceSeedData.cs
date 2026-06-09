@@ -414,6 +414,8 @@ public static class EcommerceSeedData
                 Price = 29990000m,
                 SoldCount = 185,
                 Quantity = 42,
+                ColorName = "Black Titanium",
+                ColorHex = "#111827",
                 IsDefault = true,
                 IsActive = true,
                 CreatedAt = CreatedAt,
@@ -427,6 +429,8 @@ public static class EcommerceSeedData
                 Price = 31990000m,
                 SoldCount = 132,
                 Quantity = 35,
+                ColorName = "Titanium Gray",
+                ColorHex = "#71717A",
                 IsDefault = true,
                 IsActive = true,
                 CreatedAt = CreatedAt,
@@ -440,6 +444,8 @@ public static class EcommerceSeedData
                 Price = 38990000m,
                 SoldCount = 58,
                 Quantity = 18,
+                ColorName = "Platinum Silver",
+                ColorHex = "#D6D3D1",
                 IsDefault = true,
                 IsActive = true,
                 CreatedAt = CreatedAt,
@@ -453,6 +459,8 @@ public static class EcommerceSeedData
                 Price = 2890000m,
                 SoldCount = 224,
                 Quantity = 76,
+                ColorName = "White",
+                ColorHex = "#FFFFFF",
                 IsDefault = true,
                 IsActive = true,
                 CreatedAt = CreatedAt,
@@ -466,6 +474,8 @@ public static class EcommerceSeedData
                 Price = 4200000m,
                 SoldCount = 94,
                 Quantity = 51,
+                ColorName = "Core Black",
+                ColorHex = "#111827",
                 IsDefault = true,
                 IsActive = true,
                 CreatedAt = CreatedAt,
@@ -477,7 +487,6 @@ public static class EcommerceSeedData
             {
                 Id = 1,
                 ProductVariantId = 1,
-                Color = "Black Titanium",
                 ImagePath = "/uploads/products/iphone-15-pro-max-black.jpg",
                 AltText = "iPhone 15 Pro Max Black Titanium",
                 Position = 1
@@ -486,7 +495,6 @@ public static class EcommerceSeedData
             {
                 Id = 2,
                 ProductVariantId = 2,
-                Color = "Titanium Gray",
                 ImagePath = "/uploads/products/galaxy-s24-ultra-gray.jpg",
                 AltText = "Samsung Galaxy S24 Ultra Titanium Gray",
                 Position = 1
@@ -495,7 +503,6 @@ public static class EcommerceSeedData
             {
                 Id = 3,
                 ProductVariantId = 3,
-                Color = "Platinum Silver",
                 ImagePath = "/uploads/products/dell-xps-13-silver.jpg",
                 AltText = "Dell XPS 13 Platinum Silver",
                 Position = 1
@@ -504,7 +511,6 @@ public static class EcommerceSeedData
             {
                 Id = 4,
                 ProductVariantId = 4,
-                Color = "White",
                 ImagePath = "/uploads/products/nike-af1-white.jpg",
                 AltText = "Nike Air Force 1 White",
                 Position = 1
@@ -513,7 +519,6 @@ public static class EcommerceSeedData
             {
                 Id = 5,
                 ProductVariantId = 5,
-                Color = "Core Black",
                 ImagePath = "/uploads/products/adidas-ultraboost-black.jpg",
                 AltText = "Adidas Ultraboost Light Core Black",
                 Position = 1

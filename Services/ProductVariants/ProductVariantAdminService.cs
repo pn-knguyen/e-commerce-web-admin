@@ -1,6 +1,8 @@
 using e_commerce_web_admin.Data;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Entities;
 using e_commerce_web_admin.Models.Enums;
+using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.Services.Uploads;
 using e_commerce_web_admin.ViewModels.ProductVariants;
 using Microsoft.EntityFrameworkCore;
@@ -13,13 +15,16 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
     private const string ProductVariantImageFolder = "product-variants";
 
     private readonly ApplicationDbContext _db;
+    private readonly ICategoryHierarchyService _categoryHierarchy;
     private readonly IImageUploadService _imageUploadService;
 
     public ProductVariantAdminService(
         ApplicationDbContext db,
+        ICategoryHierarchyService categoryHierarchy,
         IImageUploadService imageUploadService)
     {
         _db = db;
+        _categoryHierarchy = categoryHierarchy;
         _imageUploadService = imageUploadService;
     }
 
@@ -168,6 +173,8 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             Code = entity.Code,
             Price = entity.Price,
             Quantity = entity.Quantity,
+            ColorName = entity.ColorName,
+            ColorHex = entity.ColorHex,
             IsDefault = entity.IsDefault,
             IsActive = entity.IsActive,
             Attributes = entity.VariantAttributes
@@ -185,7 +192,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
                 .Select(image => new ProductVariantImageInputViewModel
                 {
                     Id = image.Id,
-                    Color = image.Color,
                     ImagePath = image.ImagePath,
                     AltText = image.AltText,
                     Position = image.Position,
@@ -225,6 +231,7 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         ProductVariantFormViewModel form,
         CancellationToken ct = default)
     {
+        MergeBulkImageFiles(form);
         NormalizeForm(form);
         form = await PrepareFormAsync(form, ct);
 
@@ -249,6 +256,8 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             Code = form.Code,
             Price = form.Price!.Value,
             Quantity = 0,
+            ColorName = form.ColorName,
+            ColorHex = form.ColorHex,
             IsDefault = form.IsDefault || !hasExistingVariants,
             IsActive = form.IsActive,
             CreatedAt = DateTime.UtcNow,
@@ -267,7 +276,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         {
             entity.ProductVariantImages.Add(new ProductVariantImage
             {
-                Color = image.Color!,
                 ImagePath = image.ImagePath!,
                 AltText = image.AltText,
                 Position = image.Position!.Value,
@@ -292,6 +300,7 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         ProductVariantFormViewModel form,
         CancellationToken ct = default)
     {
+        MergeBulkImageFiles(form);
         NormalizeForm(form);
 
         var entity = await _db.ProductVariants
@@ -325,6 +334,8 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
 
         entity.Code = form.Code;
         entity.Price = form.Price!.Value;
+        entity.ColorName = form.ColorName;
+        entity.ColorHex = form.ColorHex;
         entity.IsDefault = form.IsDefault;
         entity.IsActive = form.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
@@ -495,36 +506,48 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             .GroupBy(item => new { item.CategoryId, item.AttributeId })
             .ToDictionary(group => group.Key, group => group.Last());
 
+        var categories = await _categoryHierarchy.GetNodesAsync(ct);
+
         var categoryAttributes = await _db.CategoryVariantAttributes
             .AsNoTracking()
+            .Where(item => item.Attribute!.Code != CatalogAttributeCodes.Color)
             .Include(item => item.Attribute)
                 .ThenInclude(attribute => attribute!.AttributeOptions)
             .OrderBy(item => item.CategoryId)
             .ThenBy(item => item.Attribute!.Name)
             .ToListAsync(ct);
 
-        return categoryAttributes.Select(item =>
-        {
-            valueMap.TryGetValue(new { item.CategoryId, item.AttributeId }, out var existing);
-
-            return new ProductVariantAttributeInputViewModel
+        return _categoryHierarchy.ResolveEffectiveAssignments(
+                categories,
+                categoryAttributes,
+                assignment => assignment.CategoryId,
+                assignment => assignment.AttributeId)
+            .OrderBy(item => item.CategoryId)
+            .ThenBy(item => item.Assignment.Attribute!.Name)
+            .Select(item =>
             {
-                CategoryId = item.CategoryId,
-                AttributeId = item.AttributeId,
-                AttributeCode = item.Attribute!.Code,
-                AttributeName = item.Attribute.Name,
-                SelectedOptionId = existing?.SelectedOptionId,
-                Options = item.Attribute.AttributeOptions
-                    .OrderBy(option => option.Label)
-                    .Select(option => new ProductVariantAttributeOptionViewModel
-                    {
-                        Id = option.Id,
-                        Value = option.Value,
-                        Label = option.Label,
-                    })
-                    .ToList(),
-            };
-        }).ToList();
+                var assignment = item.Assignment;
+                valueMap.TryGetValue(new { item.CategoryId, assignment.AttributeId }, out var existing);
+
+                return new ProductVariantAttributeInputViewModel
+                {
+                    CategoryId = item.CategoryId,
+                    AttributeId = assignment.AttributeId,
+                    AttributeCode = assignment.Attribute!.Code,
+                    AttributeName = assignment.Attribute.Name,
+                    SelectedOptionId = existing?.SelectedOptionId,
+                    Options = assignment.Attribute.AttributeOptions
+                        .OrderBy(option => option.Label)
+                        .Select(option => new ProductVariantAttributeOptionViewModel
+                        {
+                            Id = option.Id,
+                            Value = option.Value,
+                            Label = option.Label,
+                        })
+                        .ToList(),
+                };
+            })
+            .ToList();
     }
 
     private async Task<ProductSnapshot?> GetProductSnapshotAsync(long productId, CancellationToken ct)
@@ -580,6 +603,7 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             errors.Add(new ProductVariantValidationError(nameof(form.Price), "Giá bán không được âm."));
         }
 
+        ValidateColorInputs(form, errors);
         ValidateAttributeInputs(form, product.CategoryId, errors);
         ValidateImageInputs(form, errors);
 
@@ -589,6 +613,36 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         }
 
         return errors;
+    }
+
+    private static void ValidateColorInputs(
+        ProductVariantFormViewModel form,
+        ICollection<ProductVariantValidationError> errors)
+    {
+        var hasColorName = !string.IsNullOrWhiteSpace(form.ColorName);
+        var hasColorHex = !string.IsNullOrWhiteSpace(form.ColorHex);
+
+        if (hasColorName && form.ColorName!.Length > 120)
+        {
+            errors.Add(new ProductVariantValidationError(
+                nameof(form.ColorName),
+                "Tên màu tối đa 120 ký tự."));
+        }
+
+        if (hasColorHex && !IsValidColorHex(form.ColorHex!))
+        {
+            errors.Add(new ProductVariantValidationError(
+                nameof(form.ColorHex),
+                "Mã màu phải đúng định dạng #RRGGBB."));
+        }
+
+        if (hasColorName != hasColorHex)
+        {
+            var fieldName = hasColorName ? nameof(form.ColorHex) : nameof(form.ColorName);
+            errors.Add(new ProductVariantValidationError(
+                fieldName,
+                "Vui lòng nhập đầy đủ tên màu và mã màu."));
+        }
     }
 
     private static void ValidateAttributeInputs(
@@ -634,7 +688,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
 
             var hasAnyValue =
                 item.image.Id.HasValue ||
-                !string.IsNullOrWhiteSpace(item.image.Color) ||
                 !string.IsNullOrWhiteSpace(item.image.ImagePath) ||
                 (item.image.ImageFile is not null && item.image.ImageFile.Length > 0) ||
                 !string.IsNullOrWhiteSpace(item.image.AltText);
@@ -643,20 +696,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             {
                 continue;
             }
-
-            if (string.IsNullOrWhiteSpace(item.image.Color))
-            {
-                errors.Add(new ProductVariantValidationError(
-                    $"{nameof(form.Images)}[{item.index}].{nameof(ProductVariantImageInputViewModel.Color)}",
-                    "Màu ảnh là bắt buộc."));
-            }
-            else if (item.image.Color.Length > 80)
-            {
-                errors.Add(new ProductVariantValidationError(
-                    $"{nameof(form.Images)}[{item.index}].{nameof(ProductVariantImageInputViewModel.Color)}",
-                    "Màu ảnh tối đa 80 ký tự."));
-            }
-
             if (string.IsNullOrWhiteSpace(item.image.ImagePath) &&
                 (item.image.ImageFile is null || item.image.ImageFile.Length <= 0))
             {
@@ -731,8 +770,10 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             .Select(item => item.SelectedOptionId!.Value)
             .OrderBy(id => id)
             .ToArray();
+        var colorName = NormalizeComparable(form.ColorName);
+        var colorHex = NormalizeComparable(form.ColorHex);
 
-        if (selectedOptionIds.Length == 0)
+        if (selectedOptionIds.Length == 0 && colorName.Length == 0 && colorHex.Length == 0)
         {
             return;
         }
@@ -743,16 +784,22 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
                 variant.ProductId == form.ProductId!.Value &&
                 (!existingId.HasValue || variant.Id != existingId.Value))
             .Include(variant => variant.VariantAttributes)
+                .ThenInclude(item => item.AttributeOption)
+                .ThenInclude(option => option!.Attribute)
             .ToListAsync(ct);
 
         var selectedSet = selectedOptionIds.ToHashSet();
         var duplicate = existingVariants.FirstOrDefault(variant =>
         {
             var existingSet = variant.VariantAttributes
+                .Where(item => item.AttributeOption?.Attribute?.Code != CatalogAttributeCodes.Color)
                 .Select(item => item.AttributeOptionId)
                 .ToHashSet();
 
-            return existingSet.Count == selectedSet.Count && existingSet.SetEquals(selectedSet);
+            return existingSet.Count == selectedSet.Count &&
+                existingSet.SetEquals(selectedSet) &&
+                NormalizeComparable(variant.ColorName) == colorName &&
+                NormalizeComparable(variant.ColorHex) == colorHex;
         });
 
         if (duplicate is not null)
@@ -795,7 +842,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             .Where(HasPersistableImageValue)
             .Select(item =>
             {
-                item.Color = item.Color!.Trim();
                 item.ImagePath = item.ImagePath!.Trim();
                 item.AltText = string.IsNullOrWhiteSpace(item.AltText) ? null : item.AltText.Trim();
                 item.Position = item.Position.HasValue ? item.Position.Value : nextPosition;
@@ -808,8 +854,7 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
 
     private static bool HasPersistableImageValue(ProductVariantImageInputViewModel image)
     {
-        return !string.IsNullOrWhiteSpace(image.Color) &&
-               !string.IsNullOrWhiteSpace(image.ImagePath);
+        return !string.IsNullOrWhiteSpace(image.ImagePath);
     }
 
     private void ApplyVariantAttributes(
@@ -861,8 +906,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
                 variant.ProductVariantImages.Remove(existing);
                 continue;
             }
-
-            existing.Color = selected.Color!;
             existing.ImagePath = selected.ImagePath!;
             existing.AltText = selected.AltText;
             existing.Position = selected.Position!.Value;
@@ -873,7 +916,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             variant.ProductVariantImages.Add(new ProductVariantImage
             {
                 ProductVariantId = variant.Id,
-                Color = selected.Color!,
                 ImagePath = selected.ImagePath!,
                 AltText = selected.AltText,
                 Position = selected.Position!.Value,
@@ -914,6 +956,8 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             Price = variant.Price,
             SoldCount = variant.SoldCount,
             Quantity = variant.Quantity,
+            ColorName = variant.ColorName,
+            ColorHex = variant.ColorHex,
             IsDefault = variant.IsDefault,
             IsActive = variant.IsActive,
             AttributeSummary = BuildAttributeSummary(variant),
@@ -924,13 +968,44 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
 
     private static string BuildAttributeSummary(ProductVariant variant)
     {
-        var labels = variant.VariantAttributes
-            .Where(item => item.AttributeOption?.Attribute is not null)
+        var labels = new List<string>();
+        if (!string.IsNullOrWhiteSpace(variant.ColorName))
+        {
+            labels.Add($"Màu: {variant.ColorName}");
+        }
+
+        labels.AddRange(variant.VariantAttributes
+            .Where(item =>
+                item.AttributeOption?.Attribute is not null &&
+                item.AttributeOption.Attribute.Code != CatalogAttributeCodes.Color)
             .OrderBy(item => item.AttributeOption!.Attribute!.Name)
-            .Select(item => $"{item.AttributeOption!.Attribute!.Name}: {item.AttributeOption.Label}")
-            .ToList();
+            .Select(item => $"{item.AttributeOption!.Attribute!.Name}: {item.AttributeOption.Label}"));
 
         return labels.Count == 0 ? "Chưa gán thuộc tính" : string.Join(" · ", labels);
+    }
+
+    private static bool IsValidColorHex(string value)
+    {
+        var color = value.Trim();
+        return color.Length == 7 && color[0] == '#' && color.Skip(1).All(Uri.IsHexDigit);
+    }
+
+    private static string NormalizeComparable(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToUpperInvariant();
+    }
+
+    private static void MergeBulkImageFiles(ProductVariantFormViewModel form)
+    {
+        foreach (var file in form.BulkImageFiles.Where(file => file.Length > 0))
+        {
+            form.Images.Add(new ProductVariantImageInputViewModel
+            {
+                ImageFile = file,
+            });
+        }
+
+        form.BulkImageFiles.Clear();
     }
 
     private static string BuildProductMeta(string? brandName, string? categoryName)
@@ -997,9 +1072,11 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             ? string.Empty
             : form.Code.Trim().ToUpperInvariant();
 
+        form.ColorName = string.IsNullOrWhiteSpace(form.ColorName) ? null : form.ColorName.Trim();
+        form.ColorHex = string.IsNullOrWhiteSpace(form.ColorHex) ? null : form.ColorHex.Trim().ToUpperInvariant();
+
         foreach (var image in form.Images)
         {
-            image.Color = string.IsNullOrWhiteSpace(image.Color) ? null : image.Color.Trim();
             image.ImagePath = string.IsNullOrWhiteSpace(image.ImagePath) ? null : image.ImagePath.Trim();
             image.AltText = string.IsNullOrWhiteSpace(image.AltText) ? null : image.AltText.Trim();
         }

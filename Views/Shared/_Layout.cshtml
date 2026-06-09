@@ -55,7 +55,6 @@
         * {
         font-family: 'Inter', system-ui, sans-serif;
         }
-
         /* Scrollbar mỏng */
         ::-webkit-scrollbar {
         width: 4px;
@@ -347,7 +346,7 @@
     <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/40 z-20 hidden lg:hidden" aria-hidden="true"
          onclick="closeSidebar()"></div>
 
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex min-h-screen">
 
         @* ═══════════ SIDEBAR ═══════════ *@
         <aside id="adminSidebar" class="fixed top-0 left-0 h-screen w-64 bg-slate-900 z-30
@@ -501,7 +500,7 @@
                     </aside>
 
                     @* ═══════════ MAIN ═══════════ *@
-                    <div class="flex-1 flex flex-col min-w-0 lg:ml-64 overflow-y-auto">
+                    <div class="flex-1 flex flex-col min-w-0 lg:ml-64">
 
                         @* Topbar *@
                         <header id="adminTopbar"

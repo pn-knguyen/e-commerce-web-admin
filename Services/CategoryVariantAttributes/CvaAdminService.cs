@@ -1,5 +1,7 @@
 using e_commerce_web_admin.Data;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Entities;
+using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.ViewModels.CategoryVariantAttributes;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,8 +11,15 @@ public sealed class CvaAdminService : ICvaAdminService
 {
     private const int DefaultPageSize = 30;
     private readonly ApplicationDbContext _db;
+    private readonly ICategoryHierarchyService _categoryHierarchy;
 
-    public CvaAdminService(ApplicationDbContext db) => _db = db;
+    public CvaAdminService(
+        ApplicationDbContext db,
+        ICategoryHierarchyService categoryHierarchy)
+    {
+        _db = db;
+        _categoryHierarchy = categoryHierarchy;
+    }
 
     // ── Index ──────────────────────────────────────────────────────────────
 
@@ -25,7 +34,9 @@ public sealed class CvaAdminService : ICvaAdminService
         var page = Math.Max(1, query.Page);
 
         var assignedQuery = _db.CategoryVariantAttributes
-            .Where(cva => cva.CategoryId == categoryId)
+            .Where(cva =>
+                cva.CategoryId == categoryId &&
+                cva.Attribute!.Code != CatalogAttributeCodes.Color)
             .AsNoTracking();
 
         var assignedAttributeIdsQuery = assignedQuery.Select(cva => cva.AttributeId);
@@ -39,6 +50,7 @@ public sealed class CvaAdminService : ICvaAdminService
         }
 
         var totalAssigned = await assignedQuery.CountAsync(ct);
+        var categoryIds = await _categoryHierarchy.GetSelfAndDescendantIdsAsync(categoryId, ct);
 
         var pageItems = await assignedQuery
             .OrderBy(cva => cva.Attribute!.Name)
@@ -53,7 +65,7 @@ public sealed class CvaAdminService : ICvaAdminService
                 OptionCount = cva.Attribute.AttributeOptions.Count(),
                 VariantUsageCount = cva.Attribute.AttributeOptions
                     .SelectMany(o => o.VariantAttributes)
-                    .Where(va => va.ProductVariant!.Product!.CategoryId == categoryId)
+                    .Where(va => categoryIds.Contains(va.ProductVariant!.Product!.CategoryId))
                     .Count(),
                 AssignedAt = cva.CreatedAt,
             })
@@ -61,7 +73,9 @@ public sealed class CvaAdminService : ICvaAdminService
 
         // Attributes chưa gán (dành cho dropdown assign)
         var available = await _db.Attributes
-            .Where(a => !assignedAttributeIdsQuery.Contains(a.Id))
+            .Where(a =>
+                a.Code != CatalogAttributeCodes.Color &&
+                !assignedAttributeIdsQuery.Contains(a.Id))
             .OrderBy(a => a.Name)
             .Select(a => new CvaAvailableOption
             {
@@ -101,6 +115,13 @@ public sealed class CvaAdminService : ICvaAdminService
         if (attribute is null)
             return new CvaSaveResult(false, "Không tìm thấy thuộc tính.");
 
+        if (attribute.Code == CatalogAttributeCodes.Color)
+        {
+            return new CvaSaveResult(
+                false,
+                "Màu sắc được quản lý trực tiếp trên biến thể sản phẩm.");
+        }
+
         var alreadyAssigned = await _db.CategoryVariantAttributes.AnyAsync(
             cva => cva.CategoryId == form.CategoryId && cva.AttributeId == form.AttributeId, ct);
 
@@ -130,11 +151,11 @@ public sealed class CvaAdminService : ICvaAdminService
 
         if (entity is null) return CvaRemoveResult.NotFound();
 
-        // Kiểm tra: có biến thể sản phẩm trong danh mục này đang dùng option của attribute không?
+        var categoryIds = await _categoryHierarchy.GetSelfAndDescendantIdsAsync(categoryId, ct);
         var inUse = await _db.VariantAttributes
             .AnyAsync(va =>
                 va.AttributeOption!.AttributeId == attributeId &&
-                va.ProductVariant!.Product!.CategoryId == categoryId, ct);
+                categoryIds.Contains(va.ProductVariant!.Product!.CategoryId), ct);
 
         if (inUse)
             return CvaRemoveResult.Blocked(

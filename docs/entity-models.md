@@ -364,7 +364,7 @@ Quan hệ:
 - Một `Product` thuộc về một `Brand`.
 - Một `Product` thuộc về một `Category`.
 - Một `Product` có nhiều `ProductVariant`.
-- Một `Product` có nhiều `ProductColorImage`.
+- Một `Product` có nhiều ảnh gián tiếp qua `ProductVariant.ProductVariantImages`.
 - Một `Product` có nhiều `ProductSpecification`.
 
 ### `ProductVariant`
@@ -384,6 +384,8 @@ Field quan trọng:
 - `Price`: giá bán của biến thể.
 - `SoldCount`: số lượng đã bán.
 - `Quantity`: tồn kho hiện tại.
+- `ColorName`: tên màu của biến thể, tối đa 120 ký tự.
+- `ColorHex`: mã màu dạng `#RRGGBB`, tối đa 7 ký tự.
 - `IsDefault`: biến thể mặc định khi mở sản phẩm.
 - `IsActive`: biến thể còn bán hay không.
 
@@ -391,6 +393,7 @@ Quan hệ:
 
 - Một `ProductVariant` thuộc về một `Product`.
 - Một `ProductVariant` có nhiều `VariantAttribute`.
+- Một `ProductVariant` có nhiều `ProductVariantImage`.
 - Một `ProductVariant` có thể xuất hiện trong `CartItem`.
 - Một `ProductVariant` có thể xuất hiện trong `Wishlist`.
 - Một `ProductVariant` có thể xuất hiện trong `OrderItem`.
@@ -400,22 +403,26 @@ Lưu ý quan trọng:
 
 - `Code` không dùng số `1`, `2`, `3`.
 - `Code` nên là SKU thực tế có ý nghĩa nghiệp vụ.
+- Màu được quản lý trực tiếp bằng `ColorName` và `ColorHex`.
+- Attribute code `color` chỉ là dữ liệu legacy và không còn là chiều tạo biến thể mới.
 
-### `ProductColorImage`
+### `ProductVariantImage`
 
-Đại diện ảnh sản phẩm theo màu.
+Đại diện ảnh thuộc một biến thể sản phẩm.
 
 Field quan trọng:
 
-- `ProductId`: FK đến `Product`.
-- `Color`: tên/mã màu.
+- `ProductVariantId`: FK đến `ProductVariant`.
 - `ImagePath`: đường dẫn ảnh.
 - `AltText`: mô tả ảnh.
 - `Position`: thứ tự hiển thị.
 
 Quan hệ:
 
-- Nhiều `ProductColorImage` thuộc về một `Product`.
+- Nhiều `ProductVariantImage` thuộc về một `ProductVariant`.
+
+Ảnh không lưu màu riêng. Tên màu và mã màu được lấy từ biến thể cha để tránh
+nhiều nguồn dữ liệu mô tả cùng một màu.
 
 ### `Specification`
 
@@ -462,6 +469,14 @@ Khóa chính:
 
 - Composite key: `CategoryId + SpecificationId`.
 
+Quy tắc hiệu lực:
+
+- Danh mục con kế thừa specification được gán ở danh mục cha.
+- Nếu cha và con cùng gán một specification, assignment gần danh mục con nhất
+  được ưu tiên.
+- Assignment vẫn được lưu trực tiếp theo từng danh mục; service cây danh mục
+  chịu trách nhiệm phân giải bộ cấu hình hiệu lực.
+
 ### `ProductSpecification`
 
 Đại diện giá trị thông số cụ thể của một sản phẩm.
@@ -489,9 +504,9 @@ Khóa chính:
 
 Ví dụ:
 
-- `color`
 - `size`
 - `storage`
+- `processor`
 
 Field quan trọng:
 
@@ -503,15 +518,18 @@ Quan hệ:
 - Một `Attribute` có nhiều `AttributeOption`.
 - Một `Attribute` có thể được gắn với nhiều `Category` qua `CategoryVariantAttribute`.
 
+Mã `color` được dành riêng cho dữ liệu cũ. Module quản trị không hiển thị,
+tạo, sửa hoặc xóa option màu qua hệ thống attribute.
+
 ### `AttributeOption`
 
 Đại diện lựa chọn cụ thể của một thuộc tính.
 
 Ví dụ:
 
-- Attribute `color`: option `black`, `white`, `red`.
 - Attribute `size`: option `S`, `M`, `L`, `XL`.
 - Attribute `storage`: option `128GB`, `256GB`, `512GB`.
+- Attribute `processor`: option `i5`, `i7`, `ultra-7`.
 
 Field quan trọng:
 
@@ -530,8 +548,9 @@ Bảng nối giữa `Category` và `Attribute`.
 Mục đích:
 
 - Xác định danh mục nào được phép dùng thuộc tính nào để tạo biến thể.
-- Ví dụ danh mục điện thoại dùng `color`, `storage`.
-- Danh mục quần áo dùng `color`, `size`.
+- Ví dụ danh mục điện thoại dùng `storage`.
+- Danh mục quần áo dùng `size`.
+- Màu không đi qua bảng này vì được lưu trực tiếp trên `ProductVariant`.
 
 Field quan trọng:
 
@@ -542,6 +561,9 @@ Field quan trọng:
 Khóa chính:
 
 - Composite key: `CategoryId + AttributeId`.
+
+Danh mục con kế thừa attribute từ danh mục cha. Nếu cùng `AttributeId` xuất
+hiện ở nhiều cấp, assignment gần danh mục con nhất được dùng.
 
 ### `VariantAttribute`
 
@@ -863,7 +885,7 @@ Các `DbSet` tương ứng với bảng:
 - `Categories`
 - `Products`
 - `ProductVariants`
-- `ProductColorImages`
+- `ProductVariantImages`
 - `Specifications`
 - `CategorySpecifications`
 - `ProductSpecifications`

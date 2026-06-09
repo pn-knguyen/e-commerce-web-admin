@@ -1,4 +1,5 @@
 using e_commerce_web_admin.Data;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.ViewModels.Attributes;
 using Microsoft.EntityFrameworkCore;
 using AttributeEntity = e_commerce_web_admin.Models.Entities.Attribute;
@@ -21,7 +22,9 @@ public sealed class AttributeAdminService : IAttributeAdminService
         var page = Math.Max(1, query.Page);
 
         // Base query without heavy includes — use projections for efficiency
-        var baseQuery = _db.Attributes.AsNoTracking();
+        var baseQuery = _db.Attributes
+            .AsNoTracking()
+            .Where(attribute => attribute.Code != CatalogAttributeCodes.Color);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -121,7 +124,9 @@ public sealed class AttributeAdminService : IAttributeAdminService
             .Include(a => a.AttributeOptions)
                 .ThenInclude(o => o.VariantAttributes)
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == id, ct);
+            .FirstOrDefaultAsync(
+                a => a.Id == id && a.Code != CatalogAttributeCodes.Color,
+                ct);
 
         if (entity is null) return null;
 
@@ -144,6 +149,15 @@ public sealed class AttributeAdminService : IAttributeAdminService
         if (entity is null)
             return AttrSaveResult.Failed([new AttrValidationError(string.Empty, "Không tìm thấy thuộc tính.")]);
 
+        if (entity.Code == CatalogAttributeCodes.Color)
+        {
+            return AttrSaveResult.Failed([
+                new AttrValidationError(
+                    string.Empty,
+                    "Màu sắc được quản lý trực tiếp trên biến thể sản phẩm.")
+            ]);
+        }
+
         // Code is immutable after creation — only update Name
         form.Name = form.Name.Trim();
         entity.Name = form.Name;
@@ -161,6 +175,12 @@ public sealed class AttributeAdminService : IAttributeAdminService
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 
         if (entity is null) return AttrDeleteResult.NotFound();
+
+        if (entity.Code == CatalogAttributeCodes.Color)
+        {
+            return AttrDeleteResult.Failed(
+                "Màu sắc được quản lý trực tiếp trên biến thể sản phẩm.");
+        }
 
         if (entity.CategoryVariantAttributes.Count > 0)
             return AttrDeleteResult.Failed(
@@ -184,7 +204,9 @@ public sealed class AttributeAdminService : IAttributeAdminService
             .Include(a => a.AttributeOptions)
                 .ThenInclude(o => o.VariantAttributes)
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == attributeId, ct);
+            .FirstOrDefaultAsync(
+                a => a.Id == attributeId && a.Code != CatalogAttributeCodes.Color,
+                ct);
 
         return entity is null ? null : MapToOptionsViewModel(entity);
     }
@@ -194,7 +216,9 @@ public sealed class AttributeAdminService : IAttributeAdminService
     {
         NormalizeOptionForm(form);
 
-        var attrExists = await _db.Attributes.AnyAsync(a => a.Id == form.AttributeId, ct);
+        var attrExists = await _db.Attributes.AnyAsync(
+            a => a.Id == form.AttributeId && a.Code != CatalogAttributeCodes.Color,
+            ct);
         if (!attrExists)
             return AttrOptionSaveResult.Failed("Không tìm thấy thuộc tính.");
 
@@ -217,9 +241,17 @@ public sealed class AttributeAdminService : IAttributeAdminService
     public async Task<AttrOptionSaveResult> UpdateOptionAsync(
         AttributeOptionUpdateViewModel form, CancellationToken ct = default)
     {
-        var option = await _db.AttributeOptions.FirstOrDefaultAsync(o => o.Id == form.Id, ct);
+        var option = await _db.AttributeOptions
+            .Include(o => o.Attribute)
+            .FirstOrDefaultAsync(o => o.Id == form.Id, ct);
         if (option is null)
             return AttrOptionSaveResult.Failed("Không tìm thấy option.");
+
+        if (option.Attribute?.Code == CatalogAttributeCodes.Color)
+        {
+            return AttrOptionSaveResult.Failed(
+                "Màu sắc được quản lý trực tiếp trên biến thể sản phẩm.");
+        }
 
         option.Label = form.Label.Trim();
         await _db.SaveChangesAsync(ct);
@@ -229,10 +261,17 @@ public sealed class AttributeAdminService : IAttributeAdminService
     public async Task<AttrOptionDeleteResult> DeleteOptionAsync(long optionId, CancellationToken ct = default)
     {
         var option = await _db.AttributeOptions
+            .Include(o => o.Attribute)
             .Include(o => o.VariantAttributes)
             .FirstOrDefaultAsync(o => o.Id == optionId, ct);
 
         if (option is null) return AttrOptionDeleteResult.NotFound();
+
+        if (option.Attribute?.Code == CatalogAttributeCodes.Color)
+        {
+            return AttrOptionDeleteResult.Failed(
+                "Màu sắc được quản lý trực tiếp trên biến thể sản phẩm.");
+        }
 
         if (option.VariantAttributes.Count > 0)
             return AttrOptionDeleteResult.Failed(
@@ -250,7 +289,14 @@ public sealed class AttributeAdminService : IAttributeAdminService
     {
         var errors = new List<AttrValidationError>();
 
-        if (await _db.Attributes.AnyAsync(
+        if (form.Code == CatalogAttributeCodes.Color)
+        {
+            errors.Add(new AttrValidationError(
+                nameof(form.Code),
+                "Mã color được dành riêng cho màu của biến thể sản phẩm."));
+        }
+
+        else if (await _db.Attributes.AnyAsync(
                 a => a.Code == form.Code && (!existingId.HasValue || a.Id != existingId.Value), ct))
         {
             errors.Add(new AttrValidationError(nameof(form.Code), $"Mã thuộc tính \"{form.Code}\" đã tồn tại."));

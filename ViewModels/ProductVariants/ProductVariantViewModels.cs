@@ -50,6 +50,8 @@ public sealed class ProductVariantRowViewModel
     public decimal Price { get; set; }
     public int SoldCount { get; set; }
     public int Quantity { get; set; }
+    public string? ColorName { get; set; }
+    public string? ColorHex { get; set; }
     public bool IsDefault { get; set; }
     public bool IsActive { get; set; }
     public string AttributeSummary { get; set; } = string.Empty;
@@ -81,12 +83,20 @@ public sealed class ProductVariantFormViewModel
 
     public int Quantity { get; set; }
 
+    [StringLength(120, ErrorMessage = "Tên màu tối đa 120 ký tự.")]
+    public string? ColorName { get; set; }
+
+    [StringLength(7, ErrorMessage = "Mã màu tối đa 7 ký tự.")]
+    [RegularExpression(@"^#[0-9a-fA-F]{6}$", ErrorMessage = "Mã màu phải đúng định dạng #RRGGBB.")]
+    public string? ColorHex { get; set; }
+
     public bool IsDefault { get; set; }
     public bool IsActive { get; set; } = true;
 
     public List<ProductVariantProductOptionViewModel> ProductOptions { get; set; } = [];
     public List<ProductVariantAttributeInputViewModel> Attributes { get; set; } = [];
     public List<ProductVariantImageInputViewModel> Images { get; set; } = [];
+    public List<IFormFile> BulkImageFiles { get; set; } = [];
 }
 
 public sealed class ProductVariantProductOptionViewModel
@@ -126,7 +136,6 @@ public sealed class ProductVariantAttributeOptionViewModel
 public sealed class ProductVariantImageInputViewModel
 {
     public long? Id { get; set; }
-    public string? Color { get; set; }
     public string? ImagePath { get; set; }
     public IFormFile? ImageFile { get; set; }
     public string? AltText { get; set; }

@@ -4,6 +4,9 @@
     var selectedProduct = Model.ProductOptions.FirstOrDefault(product => product.Id == Model.ProductId);
     var attributeItems = Model.Attributes.Select((attribute, index) => new { attribute, index }).ToList();
     var imageItems = Model.Images.Select((image, index) => new { image, index }).ToList();
+    var priceValue = Model.Price.HasValue
+        ? Model.Price.Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture)
+        : string.Empty;
 
     string PickerColor(string? color)
     {
@@ -16,24 +19,32 @@
 
 <input type="hidden" asp-for="Id" />
 
-<div class="pv-form-grid">
-    <section class="pv-form-main">
-        <div class="pv-form-card">
-            <div class="pv-form-card-head">
-                <span class="pv-form-head-icon">
-                    <i data-lucide="barcode" class="w-5 h-5"></i>
-                </span>
-                <div>
-                    <h2>Thông tin biến thể</h2>
-                    <p>Thông tin SKU, giá bán và tồn kho dùng cho quy trình bán hàng.</p>
-                </div>
-            </div>
+<div class="pv-form-card pv-form-unified">
+    <div class="pv-form-card-head">
+        <span class="pv-form-head-icon">
+            <i data-lucide="layers-3" class="w-5 h-5"></i>
+        </span>
+        <div>
+            <h2>Thông tin biến thể</h2>
+            <p>Quản lý SKU, giá bán, thuộc tính, ảnh và trạng thái trong cùng một biểu mẫu.</p>
+        </div>
+    </div>
 
-            <div data-pv-form-alert class="pv-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
-                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+    <div class="pv-form-body">
+        <div data-pv-form-alert class="pv-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            <div>
+                <p>Vui lòng kiểm tra lại thông tin.</p>
+                <div asp-validation-summary="ModelOnly"></div>
+            </div>
+        </div>
+
+        <section class="pv-form-section">
+            <div class="pv-form-section-title">
+                <span><i data-lucide="barcode" class="w-4 h-4"></i></span>
                 <div>
-                    <p>Vui lòng kiểm tra lại thông tin.</p>
-                    <div asp-validation-summary="ModelOnly"></div>
+                    <h3>Tổng quan</h3>
+                    <p>Chọn sản phẩm, nhập mã SKU và giá bán cho biến thể.</p>
                 </div>
             </div>
 
@@ -101,7 +112,9 @@
                             <strong>*</strong>
                         </label>
                         <div class="pv-money-wrap">
-                            <input asp-for="Price"
+                            <input id="Price"
+                                   name="Price"
+                                   value="@priceValue"
                                    type="number"
                                    min="0"
                                    step="1000"
@@ -114,6 +127,43 @@
                             <span>đ</span>
                         </div>
                         <span asp-validation-for="Price" id="pv-price-error" class="pv-field-error"></span>
+                    </div>
+                </div>
+                <div class="pv-field-row">
+                    <div class="pv-field" data-pv-field>
+                        <label asp-for="ColorName" class="pv-label">
+                            <span>Tên màu</span>
+                        </label>
+                        <input asp-for="ColorName"
+                               class="pv-input"
+                               maxlength="120"
+                               autocomplete="off"
+                               data-pv-error-target="pv-color-name-error"
+                               placeholder="Ví dụ: Titan Đen" />
+                        <span asp-validation-for="ColorName" id="pv-color-name-error" class="pv-field-error"></span>
+                    </div>
+
+                    <div class="pv-field" data-pv-field>
+                        <label asp-for="ColorHex" class="pv-label">
+                            <span>Mã màu</span>
+                        </label>
+                        <div class="pv-color-control">
+                            <input type="color"
+                                   value="@PickerColor(Model.ColorHex)"
+                                   class="pv-color-picker"
+                                   data-pv-variant-color-picker
+                                   aria-label="Chọn mã màu biến thể" />
+                            <input asp-for="ColorHex"
+                                   class="pv-color-text"
+                                   maxlength="7"
+                                   autocomplete="off"
+                                   data-pv-variant-color-text
+                                   data-pv-pattern="^#[0-9a-fA-F]{6}$"
+                                   data-pv-pattern-message="Mã màu phải đúng định dạng #RRGGBB."
+                                   data-pv-error-target="pv-color-hex-error"
+                                   placeholder="#111827" />
+                        </div>
+                        <span asp-validation-for="ColorHex" id="pv-color-hex-error" class="pv-field-error"></span>
                     </div>
                 </div>
 
@@ -138,15 +188,13 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="pv-form-card">
-            <div class="pv-form-card-head">
-                <span class="pv-form-head-icon">
-                    <i data-lucide="list-filter" class="w-5 h-5"></i>
-                </span>
+        <section class="pv-form-section">
+            <div class="pv-form-section-title">
+                <span><i data-lucide="list-filter" class="w-4 h-4"></i></span>
                 <div>
-                    <h2>Thuộc tính biến thể</h2>
+                    <h3>Thuộc tính biến thể</h3>
                     <p>Chọn giá trị thuộc tính theo cấu hình danh mục của sản phẩm.</p>
                 </div>
             </div>
@@ -189,70 +237,57 @@
                     </div>
                 }
             </div>
-        </div>
+        </section>
 
-        <div class="pv-form-card">
-            <div class="pv-form-card-head">
-                <span class="pv-form-head-icon">
-                    <i data-lucide="images" class="w-5 h-5"></i>
-                </span>
+        <section class="pv-form-section">
+            <div class="pv-form-section-title">
+                <span><i data-lucide="images" class="w-4 h-4"></i></span>
                 <div>
-                    <h2>Ảnh biến thể</h2>
-                    <p>Mỗi biến thể có thể có nhiều ảnh riêng theo màu. Ảnh được tải lên Cloudinary và lưu URL vào hệ thống.</p>
+                    <h3>Ảnh biến thể</h3>
+                    <p>Chọn một hoặc nhiều ảnh trong cùng khung quản lý. Ảnh được tải lên Cloudinary và lưu URL vào hệ thống.</p>
                 </div>
             </div>
 
+            <div class="pv-image-toolbar pv-image-toolbar-single" data-pv-image-toolbar>
+                <div class="pv-field" data-pv-field>
+                    <label class="pv-label" for="PvBulkImageFile">
+                        <span>Ảnh tải lên</span>
+                    </label>
+                    <label class="pv-file-drop pv-bulk-file-drop">
+                        <input id="PvBulkImageFile"
+                               name="BulkImageFiles"
+                               type="file"
+                               accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                               multiple
+                               data-pv-bulk-file-input />
+                        <span class="pv-file-icon"><i data-lucide="upload-cloud" class="w-4 h-4"></i></span>
+                        <span data-pv-bulk-file-label>Chọn một hoặc nhiều ảnh</span>
+                    </label>
+                </div>
+            </div>
             <div class="pv-image-list" data-pv-images>
                 @foreach (var item in imageItems)
                 {
                     var rowClass = item.image.Remove ? "is-removed" : string.Empty;
                     <div class="pv-image-row @rowClass" data-pv-image-row data-existing="@(item.image.Id.HasValue ? "true" : "false")">
                         <input type="hidden" name="Images[@item.index].Id" value="@item.image.Id" data-pv-image-field="Id" />
-                        <input type="hidden" name="Images[@item.index].Remove" value="@item.image.Remove.ToString().ToLowerInvariant()" data-pv-image-field="Remove" data-pv-image-remove-value />
+                        <input type="hidden"
+                               name="Images[@item.index].Remove"
+                               value="@item.image.Remove.ToString().ToLowerInvariant()"
+                               data-pv-image-field="Remove"
+                               data-pv-image-remove-value />
 
                         <div class="pv-image-row-grid">
-                            <div class="pv-field" data-pv-field>
-                                <label class="pv-label" for="Images_@(item.index)__ColorText" data-pv-color-label>
-                                    <span>Màu ảnh</span>
-                                </label>
-                                <div class="pv-color-control">
-                                    <input type="hidden"
-                                           id="Images_@(item.index)__Color"
-                                           name="Images[@item.index].Color"
-                                           value="@item.image.Color"
-                                           data-pv-image-field="Color"
-                                           data-pv-color-value
-                                           data-pv-error-target="pv-image-@(item.index)-color-error" />
-                                    <input type="color"
-                                           value="@PickerColor(item.image.Color)"
-                                           class="pv-color-picker"
-                                           data-pv-color-picker
-                                           aria-label="Chọn màu ảnh" />
-                                    <input type="text"
-                                           id="Images_@(item.index)__ColorText"
-                                           value="@(string.IsNullOrWhiteSpace(item.image.Color) ? "#111827" : item.image.Color)"
-                                           maxlength="80"
-                                           class="pv-color-text"
-                                           data-pv-color-text
-                                           aria-label="Nhập mã màu ảnh" />
-                                </div>
-                                @Html.ValidationMessage($"Images[{item.index}].Color", null, new { id = $"pv-image-{item.index}-color-error", @class = "pv-field-error" })
-                            </div>
-
                             <div class="pv-field pv-image-path-field" data-pv-field>
                                 <label class="pv-label" for="Images_@(item.index)__ImageFile">
                                     <span>Ảnh tải lên</span>
                                 </label>
-                                <input type="hidden"
-                                       name="Images[@item.index].ImagePath"
-                                       value="@item.image.ImagePath"
-                                       data-pv-image-field="ImagePath" />
+                                <input type="hidden" name="Images[@item.index].ImagePath" value="@item.image.ImagePath" data-pv-image-field="ImagePath" />
                                 <label class="pv-file-drop">
                                     <input id="Images_@(item.index)__ImageFile"
                                            name="Images[@item.index].ImageFile"
                                            type="file"
                                            accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
-                                           multiple
                                            data-pv-image-field="ImageFile"
                                            data-pv-file-input
                                            data-pv-error-target="pv-image-@(item.index)-file-error" />
@@ -335,85 +370,104 @@
                     <input type="hidden" name="Images[__index__].Remove" value="false" data-pv-image-field="Remove" data-pv-image-remove-value />
 
                     <div class="pv-image-row-grid">
-                        <div class="pv-field" data-pv-field>
-                            <label class="pv-label" for="Images___index____ColorText" data-pv-color-label><span>Màu ảnh</span></label>
-                            <div class="pv-color-control">
-                                <input type="hidden" id="Images___index____Color" name="Images[__index__].Color" value="" data-pv-image-field="Color" data-pv-color-value data-pv-error-target="pv-image-__index__-color-error" />
-                                <input type="color" value="#111827" class="pv-color-picker" data-pv-color-picker aria-label="Chọn màu ảnh" />
-                                <input type="text" id="Images___index____ColorText" value="#111827" maxlength="80" class="pv-color-text" data-pv-color-text aria-label="Nhập mã màu ảnh" />
-                            </div>
-                            <span id="pv-image-__index__-color-error" class="pv-field-error"></span>
-                        </div>
                         <div class="pv-field pv-image-path-field" data-pv-field>
-                            <label class="pv-label" for="Images___index____ImageFile"><span>Ảnh tải lên</span></label>
+                            <label class="pv-label" for="Images___index____ImageFile">
+                                <span>Ảnh tải lên</span>
+                            </label>
                             <input type="hidden" name="Images[__index__].ImagePath" value="" data-pv-image-field="ImagePath" />
                             <label class="pv-file-drop">
-                                <input id="Images___index____ImageFile" name="Images[__index__].ImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple data-pv-image-field="ImageFile" data-pv-file-input data-pv-error-target="pv-image-__index__-file-error" />
+                                <input id="Images___index____ImageFile"
+                                       name="Images[__index__].ImageFile"
+                                       type="file"
+                                       accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                                       data-pv-image-field="ImageFile"
+                                       data-pv-file-input
+                                       data-pv-error-target="pv-image-__index__-file-error" />
                                 <span class="pv-file-icon"><i data-lucide="upload-cloud" class="w-4 h-4"></i></span>
                                 <span data-pv-file-label>Chọn ảnh từ máy</span>
                             </label>
                             <span id="pv-image-__index__-file-error" class="pv-field-error"></span>
                             <span id="pv-image-__index__-path-error" class="pv-field-error"></span>
                         </div>
+
                         <div class="pv-field" data-pv-field>
-                            <label class="pv-label" for="Images___index____Position"><span>Thứ tự</span></label>
-                            <input id="Images___index____Position" name="Images[__index__].Position" type="number" min="0" step="1" class="pv-input" data-pv-image-field="Position" data-pv-error-target="pv-image-__index__-position-error" placeholder="Tự động" />
+                            <label class="pv-label" for="Images___index____Position">
+                                <span>Thứ tự</span>
+                            </label>
+                            <input id="Images___index____Position"
+                                   name="Images[__index__].Position"
+                                   type="number"
+                                   min="0"
+                                   step="1"
+                                   class="pv-input"
+                                   data-pv-image-field="Position"
+                                   data-pv-error-target="pv-image-__index__-position-error"
+                                   placeholder="Tự động" />
                             <span id="pv-image-__index__-position-error" class="pv-field-error"></span>
                         </div>
                     </div>
+
                     <div class="pv-image-preview is-empty" data-pv-image-preview>
                         <span class="pv-preview-icon"><i data-lucide="image-plus" class="w-5 h-5"></i></span>
                         <p>Chưa chọn ảnh</p>
                     </div>
+
                     <div class="pv-field" data-pv-field>
-                        <label class="pv-label" for="Images___index____AltText"><span>Alt text</span></label>
-                        <input id="Images___index____AltText" name="Images[__index__].AltText" maxlength="255" class="pv-input" data-pv-image-field="AltText" data-pv-error-target="pv-image-__index__-alt-error" placeholder="Mô tả ngắn cho ảnh" />
+                        <label class="pv-label" for="Images___index____AltText">
+                            <span>Alt text</span>
+                        </label>
+                        <input id="Images___index____AltText"
+                               name="Images[__index__].AltText"
+                               maxlength="255"
+                               class="pv-input"
+                               data-pv-image-field="AltText"
+                               data-pv-error-target="pv-image-__index__-alt-error"
+                               placeholder="Mô tả ngắn cho ảnh" />
                         <span id="pv-image-__index__-alt-error" class="pv-field-error"></span>
                     </div>
+
                     <button type="button" class="pv-remove-image-btn" data-pv-remove-image>
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         <span>Xóa ảnh</span>
                     </button>
                 </div>
             </template>
-        </div>
-    </section>
+        </section>
 
-    <aside class="pv-form-side">
-        <section class="pv-form-card pv-status-panel">
-            <div class="pv-form-card-head compact">
-                <span class="pv-form-head-icon">
-                    <i data-lucide="badge-check" class="w-5 h-5"></i>
-                </span>
+        <section class="pv-form-section pv-status-section">
+            <div class="pv-form-section-title">
+                <span><i data-lucide="badge-check" class="w-4 h-4"></i></span>
                 <div>
-                    <h2>Trạng thái bán hàng</h2>
+                    <h3>Trạng thái bán hàng</h3>
                     <p>Bật để biến thể có thể xuất hiện trong quy trình bán.</p>
                 </div>
             </div>
 
-            <label class="pv-switch-row">
-                <input asp-for="IsActive" type="checkbox" class="pv-switch-input" />
-                <span class="pv-switch-track"><span class="pv-switch-thumb"></span></span>
-                <span>Cho phép bán</span>
-            </label>
+            <div class="pv-status-grid">
+                <label class="pv-switch-row">
+                    <input asp-for="IsActive" type="checkbox" class="pv-switch-input" />
+                    <span class="pv-switch-track"><span class="pv-switch-thumb"></span></span>
+                    <span>Cho phép bán</span>
+                </label>
 
-            <label class="pv-switch-row">
-                <input asp-for="IsDefault" type="checkbox" class="pv-switch-input" />
-                <span class="pv-switch-track"><span class="pv-switch-thumb"></span></span>
-                <span>Biến thể mặc định</span>
-            </label>
+                <label class="pv-switch-row">
+                    <input asp-for="IsDefault" type="checkbox" class="pv-switch-input" />
+                    <span class="pv-switch-track"><span class="pv-switch-thumb"></span></span>
+                    <span>Biến thể mặc định</span>
+                </label>
+            </div>
         </section>
+    </div>
 
-        <section class="pv-form-card pv-submit-panel">
-            <button type="submit" class="pv-submit-btn">
-                <i data-lucide="save" class="w-4 h-4"></i>
-                <span>@(isEdit ? "Lưu thay đổi" : "Tạo biến thể")</span>
-            </button>
+    <div class="pv-submit-panel">
+        <button type="submit" class="pv-submit-btn">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>@(isEdit ? "Lưu thay đổi" : "Tạo biến thể")</span>
+        </button>
 
-            <a asp-action="Index" class="pv-cancel-btn">
-                <i data-lucide="x" class="w-4 h-4"></i>
-                <span>Hủy bỏ</span>
-            </a>
-        </section>
-    </aside>
+        <a asp-action="Index" class="pv-cancel-btn">
+            <i data-lucide="x" class="w-4 h-4"></i>
+            <span>Hủy bỏ</span>
+        </a>
+    </div>
 </div>

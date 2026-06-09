@@ -1,5 +1,6 @@
 using e_commerce_web_admin.Data;
 using e_commerce_web_admin.Models.Entities;
+using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.ViewModels.CategorySpecifications;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,8 +13,15 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
     private const int MaxSortOrder = 9999;
 
     private readonly ApplicationDbContext _db;
+    private readonly ICategoryHierarchyService _categoryHierarchy;
 
-    public CategorySpecAdminService(ApplicationDbContext db) => _db = db;
+    public CategorySpecAdminService(
+        ApplicationDbContext db,
+        ICategoryHierarchyService categoryHierarchy)
+    {
+        _db = db;
+        _categoryHierarchy = categoryHierarchy;
+    }
 
     public async Task<CategorySpecIndexViewModel?> GetIndexAsync(
         long categoryId,
@@ -53,9 +61,10 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
             .ThenBy(item => item.Specification!.Name)
             .ToList();
 
+        var categoryIds = await _categoryHierarchy.GetSelfAndDescendantIdsAsync(categoryId, ct);
         var categoryProductIds = await _db.Products
             .AsNoTracking()
-            .Where(item => item.CategoryId == categoryId)
+            .Where(item => categoryIds.Contains(item.CategoryId))
             .Select(item => item.Id)
             .ToListAsync(ct);
 
@@ -229,9 +238,10 @@ public sealed class CategorySpecAdminService : ICategorySpecAdminService
             return new CategorySpecRemoveResult(false, false, "Không tìm thấy liên kết.");
         }
 
+        var categoryIds = await _categoryHierarchy.GetSelfAndDescendantIdsAsync(categoryId, ct);
         var inUse = await _db.ProductSpecifications.AnyAsync(
             productSpec => productSpec.SpecificationId == specId &&
-                           _db.Products.Any(product => product.Id == productSpec.ProductId && product.CategoryId == categoryId),
+                           _db.Products.Any(product => product.Id == productSpec.ProductId && categoryIds.Contains(product.CategoryId)),
             ct);
 
         if (inUse)

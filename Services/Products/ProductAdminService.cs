@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using e_commerce_web_admin.Data;
 using e_commerce_web_admin.Models.Entities;
+using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.ViewModels.Products;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,8 +14,15 @@ public sealed class ProductAdminService : IProductAdminService
     private const int DefaultPageSize = 30;
 
     private readonly ApplicationDbContext _db;
+    private readonly ICategoryHierarchyService _categoryHierarchy;
 
-    public ProductAdminService(ApplicationDbContext db) => _db = db;
+    public ProductAdminService(
+        ApplicationDbContext db,
+        ICategoryHierarchyService categoryHierarchy)
+    {
+        _db = db;
+        _categoryHierarchy = categoryHierarchy;
+    }
 
     private sealed class ProductIndexItem
     {
@@ -65,7 +73,9 @@ public sealed class ProductAdminService : IProductAdminService
 
         if (query.CategoryId.HasValue)
         {
-            var categoryIds = await GetCategoryAndDescendantIdsAsync(query.CategoryId.Value, ct);
+            var categoryIds = await _categoryHierarchy.GetSelfAndDescendantIdsAsync(
+                query.CategoryId.Value,
+                ct);
             dbQuery = categoryIds.Count == 0
                 ? dbQuery.Where(product => false)
                 : dbQuery.Where(product => categoryIds.Contains(product.CategoryId));
@@ -426,6 +436,8 @@ public sealed class ProductAdminService : IProductAdminService
                 group => group.Key,
                 group => group.Last());
 
+        var categories = await _categoryHierarchy.GetNodesAsync(ct);
+
         var categorySpecifications = await _db.CategorySpecifications
             .AsNoTracking()
             .Include(item => item.Specification)
@@ -435,26 +447,37 @@ public sealed class ProductAdminService : IProductAdminService
             .ThenBy(item => item.Specification!.Name)
             .ToListAsync(ct);
 
-        return categorySpecifications.Select(item =>
-        {
-            valueMap.TryGetValue(
-                new { item.CategoryId, item.SpecificationId },
-                out var existing);
-
-            return new ProductSpecificationInputViewModel
+        return _categoryHierarchy.ResolveEffectiveAssignments(
+                categories,
+                categorySpecifications,
+                assignment => assignment.CategoryId,
+                assignment => assignment.SpecificationId)
+            .OrderBy(item => item.CategoryId)
+            .ThenBy(item => item.Assignment.GroupName)
+            .ThenBy(item => item.Assignment.SortOrder)
+            .ThenBy(item => item.Assignment.Specification!.Name)
+            .Select(item =>
             {
-                CategoryId = item.CategoryId,
-                SpecificationId = item.SpecificationId,
-                Key = item.Specification!.Key,
-                Name = item.Specification.Name,
-                Unit = item.Specification.Unit,
-                GroupName = item.GroupName,
-                IsRequired = item.IsRequired,
-                SortOrder = item.SortOrder,
-                Value = string.IsNullOrWhiteSpace(existing?.Value) ? null : existing.Value.Trim(),
-                IsHighlight = existing?.IsHighlight ?? false,
-            };
-        }).ToList();
+                var assignment = item.Assignment;
+                valueMap.TryGetValue(
+                    new { item.CategoryId, assignment.SpecificationId },
+                    out var existing);
+
+                return new ProductSpecificationInputViewModel
+                {
+                    CategoryId = item.CategoryId,
+                    SpecificationId = assignment.SpecificationId,
+                    Key = assignment.Specification!.Key,
+                    Name = assignment.Specification.Name,
+                    Unit = assignment.Specification.Unit,
+                    GroupName = assignment.GroupName,
+                    IsRequired = assignment.IsRequired,
+                    SortOrder = assignment.SortOrder,
+                    Value = string.IsNullOrWhiteSpace(existing?.Value) ? null : existing.Value.Trim(),
+                    IsHighlight = existing?.IsHighlight ?? false,
+                };
+            })
+            .ToList();
     }
 
     private static List<ProductSpecificationInputViewModel> GetSelectedSpecificationInputs(ProductFormViewModel form)
@@ -541,36 +564,6 @@ public sealed class ProductAdminService : IProductAdminService
 
         var result = new List<ProductCategorySelectItem>();
         AppendCategoryOptions(categories, parentId: null, depth: 0, result);
-        return result;
-    }
-
-    private async Task<List<long>> GetCategoryAndDescendantIdsAsync(long categoryId, CancellationToken ct)
-    {
-        var categories = await _db.Categories
-            .AsNoTracking()
-            .Select(category => new { category.Id, category.ParentId })
-            .ToListAsync(ct);
-
-        if (!categories.Any(category => category.Id == categoryId))
-        {
-            return [];
-        }
-
-        var result = new List<long>();
-        var queue = new Queue<long>();
-        queue.Enqueue(categoryId);
-
-        while (queue.Count > 0)
-        {
-            var currentId = queue.Dequeue();
-            result.Add(currentId);
-
-            foreach (var child in categories.Where(category => category.ParentId == currentId))
-            {
-                queue.Enqueue(child.Id);
-            }
-        }
-
         return result;
     }
 
