@@ -4,6 +4,7 @@ using e_commerce_web_admin.Services.Brands;
 using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.Services.CategorySpecifications;
 using e_commerce_web_admin.Services.CategoryVariantAttributes;
+using e_commerce_web_admin.Services.Inventory;
 using e_commerce_web_admin.Services.Orders;
 using e_commerce_web_admin.Services.PaymentMethods;
 using e_commerce_web_admin.Services.Products;
@@ -37,6 +38,7 @@ builder.Services.AddScoped<IRatingAdminService, RatingAdminService>();
 builder.Services.AddScoped<IPromotionAdminService, PromotionAdminService>();
 builder.Services.AddScoped<ISupplierAdminService, SupplierAdminService>();
 builder.Services.AddScoped<IVoucherAdminService, VoucherAdminService>();
+builder.Services.AddScoped<IInventoryAdminService, InventoryAdminService>();
 builder.Services.Configure<CloudinaryOptions>(
     builder.Configuration.GetSection(CloudinaryOptions.SectionName));
 builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();

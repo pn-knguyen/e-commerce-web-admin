@@ -41,6 +41,8 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         ProductVariantIndexQuery query,
         CancellationToken ct = default)
     {
+        await NormalizeDuplicateDefaultsAsync(ct);
+
         var page = Math.Max(1, query.Page);
         var dbQuery = _db.ProductVariants.AsNoTracking();
 
@@ -247,8 +249,13 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             return ProductVariantSaveResult.Failed(form, uploadErrors);
         }
 
-        var hasExistingVariants = await _db.ProductVariants
-            .AnyAsync(variant => variant.ProductId == form.ProductId!.Value, ct);
+        var selectedAttributes = GetSelectedAttributeInputs(form);
+        var selectedVersionOptionIds = GetVersionAttributeOptionIds(selectedAttributes);
+        var hasExistingVersionVariants = await HasExistingVariantInVersionAsync(
+            form.ProductId!.Value,
+            selectedVersionOptionIds,
+            existingId: null,
+            ct);
 
         var entity = new ProductVariant
         {
@@ -258,12 +265,12 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             Quantity = 0,
             ColorName = form.ColorName,
             ColorHex = form.ColorHex,
-            IsDefault = form.IsDefault || !hasExistingVariants,
+            IsDefault = form.IsDefault || !hasExistingVersionVariants,
             IsActive = form.IsActive,
             CreatedAt = DateTime.UtcNow,
         };
 
-        foreach (var selected in GetSelectedAttributeInputs(form))
+        foreach (var selected in selectedAttributes)
         {
             entity.VariantAttributes.Add(new VariantAttribute
             {
@@ -286,7 +293,7 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
 
         if (entity.IsDefault)
         {
-            await ClearSiblingDefaultsAsync(entity.ProductId, entity.Id, ct);
+            await ClearSiblingDefaultsAsync(entity.ProductId, entity.Id, selectedVersionOptionIds, ct);
         }
 
         await _db.SaveChangesAsync(ct);
@@ -332,6 +339,9 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             return ProductVariantSaveResult.Failed(form, uploadErrors);
         }
 
+        var selectedAttributes = GetSelectedAttributeInputs(form);
+        var selectedVersionOptionIds = GetVersionAttributeOptionIds(selectedAttributes);
+
         entity.Code = form.Code;
         entity.Price = form.Price!.Value;
         entity.ColorName = form.ColorName;
@@ -340,12 +350,12 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         entity.IsActive = form.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
 
-        ApplyVariantAttributes(entity, GetSelectedAttributeInputs(form));
+        ApplyVariantAttributes(entity, selectedAttributes);
         ApplyVariantImages(entity, GetSelectedImageInputs(form));
 
         if (entity.IsDefault)
         {
-            await ClearSiblingDefaultsAsync(entity.ProductId, entity.Id, ct);
+            await ClearSiblingDefaultsAsync(entity.ProductId, entity.Id, selectedVersionOptionIds, ct);
         }
 
         await _db.SaveChangesAsync(ct);
@@ -449,7 +459,11 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         long id,
         CancellationToken ct = default)
     {
-        var entity = await _db.ProductVariants.FirstOrDefaultAsync(variant => variant.Id == id, ct);
+        var entity = await _db.ProductVariants
+            .Include(variant => variant.VariantAttributes)
+                .ThenInclude(item => item.AttributeOption)
+                    .ThenInclude(option => option!.Attribute)
+            .FirstOrDefaultAsync(variant => variant.Id == id, ct);
         if (entity is null)
         {
             return null;
@@ -457,7 +471,11 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
 
         entity.IsDefault = true;
         entity.UpdatedAt = DateTime.UtcNow;
-        await ClearSiblingDefaultsAsync(entity.ProductId, entity.Id, ct);
+        await ClearSiblingDefaultsAsync(
+            entity.ProductId,
+            entity.Id,
+            GetVersionAttributeOptionIds(entity.VariantAttributes),
+            ct);
         await _db.SaveChangesAsync(ct);
         return new ProductVariantToggleResult(entity.IsDefault);
     }
@@ -655,18 +673,32 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             .Where(item => item.attribute.CategoryId == categoryId)
             .ToList();
 
-        foreach (var item in categoryAttributes)
+        if (categoryAttributes.Count == 0)
+        {
+            return;
+        }
+
+        var selectedAttributes = categoryAttributes
+            .Where(item => item.attribute.SelectedOptionId.HasValue)
+            .ToList();
+
+        if (selectedAttributes.Count == 0)
+        {
+            var firstItem = categoryAttributes[0];
+            var fieldName = $"{nameof(form.Attributes)}[{firstItem.index}].{nameof(ProductVariantAttributeInputViewModel.SelectedOptionId)}";
+            var message = categoryAttributes.Count == 1
+                ? $"Vui lòng chọn {firstItem.attribute.AttributeName}."
+                : "Vui lòng chọn ít nhất một thuộc tính biến thể.";
+
+            errors.Add(new ProductVariantValidationError(fieldName, message));
+            return;
+        }
+
+        foreach (var item in selectedAttributes)
         {
             var fieldName = $"{nameof(form.Attributes)}[{item.index}].{nameof(ProductVariantAttributeInputViewModel.SelectedOptionId)}";
-            if (!item.attribute.SelectedOptionId.HasValue)
-            {
-                errors.Add(new ProductVariantValidationError(
-                    fieldName,
-                    $"Vui lòng chọn {item.attribute.AttributeName}."));
-                continue;
-            }
-
-            if (!item.attribute.Options.Any(option => option.Id == item.attribute.SelectedOptionId.Value))
+            var selectedOptionId = item.attribute.SelectedOptionId.GetValueOrDefault();
+            if (!item.attribute.Options.Any(option => option.Id == selectedOptionId))
             {
                 errors.Add(new ProductVariantValidationError(
                     fieldName,
@@ -810,6 +842,59 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         }
     }
 
+    private async Task<bool> HasExistingVariantInVersionAsync(
+        long productId,
+        IReadOnlyCollection<long> versionOptionIds,
+        long? existingId,
+        CancellationToken ct)
+    {
+        var versionOptionSet = versionOptionIds.ToHashSet();
+        var variants = await _db.ProductVariants
+            .AsNoTracking()
+            .Where(variant =>
+                variant.ProductId == productId &&
+                (!existingId.HasValue || variant.Id != existingId.Value))
+            .Include(variant => variant.VariantAttributes)
+                .ThenInclude(item => item.AttributeOption)
+                    .ThenInclude(option => option!.Attribute)
+            .ToListAsync(ct);
+
+        return variants.Any(variant => HasSameVersion(variant.VariantAttributes, versionOptionSet));
+    }
+
+    private static long[] GetVersionAttributeOptionIds(
+        IEnumerable<ProductVariantAttributeInputViewModel> selectedAttributes)
+    {
+        return selectedAttributes
+            .Where(item => !string.Equals(
+                item.AttributeCode,
+                CatalogAttributeCodes.Color,
+                StringComparison.OrdinalIgnoreCase))
+            .Where(item => item.SelectedOptionId.HasValue)
+            .Select(item => item.SelectedOptionId!.Value)
+            .OrderBy(id => id)
+            .ToArray();
+    }
+
+    private static long[] GetVersionAttributeOptionIds(
+        IEnumerable<VariantAttribute> variantAttributes)
+    {
+        return variantAttributes
+            .Where(item => item.AttributeOption?.Attribute?.Code != CatalogAttributeCodes.Color)
+            .Select(item => item.AttributeOptionId)
+            .OrderBy(id => id)
+            .ToArray();
+    }
+
+    private static bool HasSameVersion(
+        IEnumerable<VariantAttribute> variantAttributes,
+        IReadOnlySet<long> versionOptionIds)
+    {
+        var variantOptionIds = GetVersionAttributeOptionIds(variantAttributes).ToHashSet();
+        return variantOptionIds.Count == versionOptionIds.Count &&
+            variantOptionIds.SetEquals(versionOptionIds);
+    }
+
     private static List<ProductVariantAttributeInputViewModel> GetSelectedAttributeInputs(
         ProductVariantFormViewModel form)
     {
@@ -923,19 +1008,66 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         }
     }
 
+    private async Task NormalizeDuplicateDefaultsAsync(CancellationToken ct)
+    {
+        var defaultVariants = await _db.ProductVariants
+            .Where(variant => variant.IsDefault)
+            .Include(variant => variant.VariantAttributes)
+                .ThenInclude(item => item.AttributeOption)
+                    .ThenInclude(option => option!.Attribute)
+            .ToListAsync(ct);
+
+        var changed = false;
+        var duplicateGroups = defaultVariants
+            .GroupBy(variant => BuildDefaultVersionKey(variant.ProductId, variant.VariantAttributes))
+            .Where(group => group.Count() > 1);
+
+        foreach (var group in duplicateGroups)
+        {
+            var keeper = group
+                .OrderByDescending(variant => variant.UpdatedAt ?? variant.CreatedAt)
+                .ThenByDescending(variant => variant.Id)
+                .First();
+
+            foreach (var duplicate in group.Where(variant => variant.Id != keeper.Id))
+            {
+                duplicate.IsDefault = false;
+                duplicate.UpdatedAt = DateTime.UtcNow;
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
+    private static string BuildDefaultVersionKey(
+        long productId,
+        IEnumerable<VariantAttribute> variantAttributes)
+    {
+        return $"{productId}:{string.Join(',', GetVersionAttributeOptionIds(variantAttributes))}";
+    }
+
     private async Task ClearSiblingDefaultsAsync(
         long productId,
         long currentVariantId,
+        IReadOnlyCollection<long> versionOptionIds,
         CancellationToken ct)
     {
+        var versionOptionSet = versionOptionIds.ToHashSet();
         var siblings = await _db.ProductVariants
             .Where(variant =>
                 variant.ProductId == productId &&
                 variant.Id != currentVariantId &&
                 variant.IsDefault)
+            .Include(variant => variant.VariantAttributes)
+                .ThenInclude(item => item.AttributeOption)
+                    .ThenInclude(option => option!.Attribute)
             .ToListAsync(ct);
 
-        foreach (var sibling in siblings)
+        foreach (var sibling in siblings.Where(sibling => HasSameVersion(sibling.VariantAttributes, versionOptionSet)))
         {
             sibling.IsDefault = false;
             sibling.UpdatedAt = DateTime.UtcNow;

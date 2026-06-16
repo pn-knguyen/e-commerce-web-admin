@@ -1,0 +1,439 @@
+@model e_commerce_web_admin.ViewModels.Inventory.InventoryIndexViewModel
+@using System.Globalization
+@using e_commerce_web_admin.ViewModels.Inventory
+@{
+    ViewData["Title"] = "Quản lý tồn kho";
+    Layout = "_Layout";
+
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
+    string DateText(DateTime? value) => value.HasValue ? value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", vi) : "Chưa có";
+    var activeFilterCount = new[]
+    {
+        !string.IsNullOrWhiteSpace(Model.Search),
+        !string.IsNullOrWhiteSpace(Model.Stock),
+        !string.IsNullOrWhiteSpace(Model.ReceiptStatus),
+        Model.SupplierId.HasValue,
+        Model.CategoryId.HasValue,
+    }.Count(isActive => isActive);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/inventory.css" asp-append-version="true" />
+}
+
+<main class="inv-page">
+    <section class="inv-hero inv-anim" style="animation-delay:0.04s">
+        <div class="inv-page-mark">Kho hàng</div>
+        <div class="inv-title-row">
+            <div>
+                <h1>Quản lý tồn kho</h1>
+                <p>Theo dõi số lượng SKU, cảnh báo tồn thấp và xử lý phiếu nhập hàng.</p>
+            </div>
+            <a asp-action="Create" class="inv-primary-action">
+                <span>Tạo phiếu nhập</span>
+                <span class="inv-action-icon">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                </span>
+            </a>
+        </div>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div id="toastSuccess" class="inv-flash inv-flash-success inv-anim" style="animation-delay:0.06s">
+            <span class="inv-flash-icon"><i data-lucide="check" class="w-4 h-4"></i></span>
+            <span>@TempData["Success"]</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div id="toastError" class="inv-flash inv-flash-error inv-anim" style="animation-delay:0.06s">
+            <span class="inv-flash-icon"><i data-lucide="alert-circle" class="w-4 h-4"></i></span>
+            <span>@TempData["Error"]</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <section class="inv-metrics inv-anim" style="animation-delay:0.08s" aria-label="Thống kê tồn kho">
+        <article class="inv-metric">
+            <span class="inv-metric-icon"><i data-lucide="boxes" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.TotalVariantCount</p>
+                <span>SKU đang quản lý</span>
+            </div>
+        </article>
+        <article class="inv-metric">
+            <span class="inv-metric-icon is-stock"><i data-lucide="warehouse" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.TotalStockQuantity</p>
+                <span>Tổng tồn kho</span>
+            </div>
+        </article>
+        <article class="inv-metric">
+            <span class="inv-metric-icon is-low"><i data-lucide="triangle-alert" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.LowStockCount</p>
+                <span>SKU sắp hết</span>
+            </div>
+        </article>
+        <article class="inv-metric">
+            <span class="inv-metric-icon is-pending"><i data-lucide="clipboard-clock" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.PendingReceiptCount</p>
+                <span>Phiếu chờ duyệt</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="inv-console inv-anim" style="animation-delay:0.12s">
+        <form method="get" asp-action="Index" class="inv-filter-grid">
+            <label class="inv-search-field">
+                <i data-lucide="search" class="w-4 h-4"></i>
+                <input type="text"
+                       name="search"
+                       value="@Model.Search"
+                       placeholder="Tìm SKU, sản phẩm, thương hiệu, phiếu nhập..." />
+            </label>
+
+            <label class="inv-select-field">
+                <span>Danh mục</span>
+                <select name="categoryId">
+                    <option value="" selected="@(Model.CategoryId.HasValue ? null : "selected")">Tất cả</option>
+                    @foreach (var option in Model.CategoryOptions)
+                    {
+                        <option value="@option.Value" selected="@(option.Selected ? "selected" : null)">@option.Text</option>
+                    }
+                </select>
+            </label>
+
+            <label class="inv-select-field">
+                <span>Tồn kho</span>
+                <select name="stock">
+                    <option value="" selected="@(string.IsNullOrWhiteSpace(Model.Stock) ? "selected" : null)">Tất cả</option>
+                    <option value="in-stock" selected="@(Model.Stock == "in-stock" ? "selected" : null)">Còn hàng</option>
+                    <option value="low-stock" selected="@(Model.Stock == "low-stock" ? "selected" : null)">Sắp hết</option>
+                    <option value="out-of-stock" selected="@(Model.Stock == "out-of-stock" ? "selected" : null)">Hết hàng</option>
+                </select>
+            </label>
+
+            <label class="inv-select-field">
+                <span>Nhà cung cấp</span>
+                <select name="supplierId">
+                    <option value="" selected="@(Model.SupplierId.HasValue ? null : "selected")">Tất cả</option>
+                    @foreach (var option in Model.SupplierOptions)
+                    {
+                        <option value="@option.Value" selected="@(option.Selected ? "selected" : null)">@option.Text</option>
+                    }
+                </select>
+            </label>
+
+            <label class="inv-select-field">
+                <span>Phiếu nhập</span>
+                <select name="receiptStatus">
+                    <option value="" selected="@(string.IsNullOrWhiteSpace(Model.ReceiptStatus) ? "selected" : null)">Tất cả</option>
+                    @foreach (var option in Model.ReceiptStatusOptions)
+                    {
+                        <option value="@option.Value" selected="@(option.Selected ? "selected" : null)">@option.Text</option>
+                    }
+                </select>
+            </label>
+
+            <button type="submit" class="inv-filter-submit">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                <span>Lọc</span>
+                @if (activeFilterCount > 0)
+                {
+                    <span class="inv-filter-count">@activeFilterCount</span>
+                }
+            </button>
+
+            @if (Model.HasFilters)
+            {
+                <a asp-action="Index" class="inv-filter-clear">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Xóa lọc</span>
+                </a>
+            }
+        </form>
+    </section>
+
+    <section class="inv-section inv-anim" style="animation-delay:0.16s">
+        <header class="inv-section-head">
+            <div>
+                <h2>Tồn kho theo SKU</h2>
+                <p>@Model.StockTotalCount SKU trong bộ lọc</p>
+            </div>
+        </header>
+
+        @if (!Model.StockRows.Any())
+        {
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="package-search" class="w-9 h-9"></i>
+                </span>
+                <h2>Không tìm thấy SKU</h2>
+                <p>Điều chỉnh từ khóa hoặc bộ lọc để xem lại tồn kho.</p>
+                <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
+            </div>
+        }
+        else
+        {
+            <div class="inv-table-scroll">
+                <div class="inv-stock-grid inv-table-head">
+                    <span>SKU</span>
+                    <span>Sản phẩm</span>
+                    <span class="text-center">Tồn kho</span>
+                    <span class="text-right">Giá trị</span>
+                    <span class="text-center">Lần nhập gần nhất</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div class="inv-table-body">
+                    @{
+                        var stockAnimIndex = 0;
+                    }
+                    @foreach (var row in Model.StockRows)
+                    {
+                        <article class="inv-row inv-stock-grid inv-anim" style="animation-delay:@(0.18 + stockAnimIndex++ * 0.02)s">
+                            <div class="inv-sku-cell">
+                                <span class="inv-avatar"><i data-lucide="barcode" class="w-4 h-4"></i></span>
+                                <div>
+                                    <h3>@row.VariantCode</h3>
+                                    <p>@(row.IsActive ? "Đang bán" : "Đang tắt")</p>
+                                </div>
+                            </div>
+
+                            <div class="inv-product-cell">
+                                <h3>@row.ProductName</h3>
+                                <p>@row.BrandName · @row.CategoryName</p>
+                            </div>
+
+                            <div class="inv-stock-cell">
+                                <span class="inv-stock-badge @InventoryDisplay.GetStockClass(row.Quantity)">
+                                    @InventoryDisplay.GetStockLabel(row.Quantity)
+                                </span>
+                                <strong>@row.Quantity</strong>
+                                <small>@row.SoldCount đã bán</small>
+                            </div>
+
+                            <div class="inv-value-cell">
+                                <strong>@Money(row.StockValue)</strong>
+                                <span>@Money(row.Price) / sp</span>
+                            </div>
+
+                            <div class="inv-date-cell">@DateText(row.LastReceiptAt)</div>
+
+                            <div class="inv-actions">
+                                <a asp-action="Create"
+                                   asp-route-variantId="@row.VariantId"
+                                   class="inv-action-btn inv-action-edit">
+                                    <i data-lucide="package-plus" class="w-3.5 h-3.5"></i>
+                                    <span>Nhập thêm</span>
+                                </a>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            @if (Model.StockTotalPages > 1)
+            {
+                <footer class="inv-pagination">
+                    <p>
+                        Trang <strong>@Model.StockPage</strong> / @Model.StockTotalPages
+                        <span>@Model.StockTotalCount SKU</span>
+                    </p>
+                    <nav aria-label="Phân trang tồn kho">
+                        @if (Model.HasPrevStock)
+                        {
+                            <a asp-action="Index"
+                               asp-route-stockPage="@(Model.StockPage - 1)"
+                               asp-route-receiptPage="@Model.ReceiptPage"
+                               asp-route-search="@Model.Search"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-receiptStatus="@Model.ReceiptStatus"
+                               asp-route-supplierId="@Model.SupplierId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="inv-page-btn">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (int p = Math.Max(1, Model.StockPage - 2); p <= Math.Min(Model.StockTotalPages, Model.StockPage + 2); p++)
+                        {
+                            <a asp-action="Index"
+                               asp-route-stockPage="@p"
+                               asp-route-receiptPage="@Model.ReceiptPage"
+                               asp-route-search="@Model.Search"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-receiptStatus="@Model.ReceiptStatus"
+                               asp-route-supplierId="@Model.SupplierId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="inv-page-btn @(p == Model.StockPage ? "is-current" : "")">
+                                @p
+                            </a>
+                        }
+                        @if (Model.HasNextStock)
+                        {
+                            <a asp-action="Index"
+                               asp-route-stockPage="@(Model.StockPage + 1)"
+                               asp-route-receiptPage="@Model.ReceiptPage"
+                               asp-route-search="@Model.Search"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-receiptStatus="@Model.ReceiptStatus"
+                               asp-route-supplierId="@Model.SupplierId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="inv-page-btn">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </nav>
+                </footer>
+            }
+        }
+    </section>
+
+    <section class="inv-section inv-anim" style="animation-delay:0.2s">
+        <header class="inv-section-head">
+            <div>
+                <h2>Phiếu nhập hàng</h2>
+                <p>@Model.ReceiptTotalCount phiếu trong bộ lọc</p>
+            </div>
+            <a asp-action="Create" class="inv-secondary-action">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Tạo phiếu</span>
+            </a>
+        </header>
+
+        @if (!Model.Receipts.Any())
+        {
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="receipt-text" class="w-9 h-9"></i>
+                </span>
+                <h2>Chưa có phiếu nhập phù hợp</h2>
+                <p>Tạo phiếu nhập đầu tiên hoặc điều chỉnh bộ lọc hiện tại.</p>
+                <a asp-action="Create" class="admin-empty-action">Tạo phiếu nhập</a>
+            </div>
+        }
+        else
+        {
+            <div class="inv-table-scroll">
+                <div class="inv-receipt-grid inv-table-head">
+                    <span>Phiếu nhập</span>
+                    <span>Nhà cung cấp</span>
+                    <span class="text-center">Trạng thái</span>
+                    <span class="text-center">Số lượng</span>
+                    <span class="text-right">Tổng tiền</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div class="inv-table-body">
+                    @{
+                        var receiptAnimIndex = 0;
+                    }
+                    @foreach (var receipt in Model.Receipts)
+                    {
+                        <article class="inv-row inv-receipt-grid inv-anim" style="animation-delay:@(0.22 + receiptAnimIndex++ * 0.02)s">
+                            <div class="inv-code-cell">
+                                <h3>@receipt.ReceiptCode</h3>
+                                <p>@DateText(receipt.CreatedAt)</p>
+                                <p>@receipt.CreatedByName</p>
+                            </div>
+
+                            <div class="inv-product-cell">
+                                <h3>@receipt.SupplierName</h3>
+                                <p>Cập nhật @DateText(receipt.UpdatedAt)</p>
+                            </div>
+
+                            <div class="inv-status-cell">
+                                <span class="inv-receipt-badge @InventoryDisplay.GetGoodsReceiptStatusClass(receipt.Status)">
+                                    @InventoryDisplay.GetGoodsReceiptStatusLabel(receipt.Status)
+                                </span>
+                            </div>
+
+                            <div class="inv-count-cell">
+                                <strong>@receipt.TotalQuantity</strong>
+                                <span>@receipt.ItemCount dòng</span>
+                            </div>
+
+                            <div class="inv-value-cell">
+                                <strong>@Money(receipt.TotalAmount)</strong>
+                            </div>
+
+                            <div class="inv-actions">
+                                <a asp-action="Details" asp-route-id="@receipt.Id" class="inv-action-btn inv-action-view">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                    <span>Chi tiết</span>
+                                </a>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            @if (Model.ReceiptTotalPages > 1)
+            {
+                <footer class="inv-pagination">
+                    <p>
+                        Trang <strong>@Model.ReceiptPage</strong> / @Model.ReceiptTotalPages
+                        <span>@Model.ReceiptTotalCount phiếu nhập</span>
+                    </p>
+                    <nav aria-label="Phân trang phiếu nhập">
+                        @if (Model.HasPrevReceipt)
+                        {
+                            <a asp-action="Index"
+                               asp-route-stockPage="@Model.StockPage"
+                               asp-route-receiptPage="@(Model.ReceiptPage - 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-receiptStatus="@Model.ReceiptStatus"
+                               asp-route-supplierId="@Model.SupplierId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="inv-page-btn">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (int p = Math.Max(1, Model.ReceiptPage - 2); p <= Math.Min(Model.ReceiptTotalPages, Model.ReceiptPage + 2); p++)
+                        {
+                            <a asp-action="Index"
+                               asp-route-stockPage="@Model.StockPage"
+                               asp-route-receiptPage="@p"
+                               asp-route-search="@Model.Search"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-receiptStatus="@Model.ReceiptStatus"
+                               asp-route-supplierId="@Model.SupplierId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="inv-page-btn @(p == Model.ReceiptPage ? "is-current" : "")">
+                                @p
+                            </a>
+                        }
+                        @if (Model.HasNextReceipt)
+                        {
+                            <a asp-action="Index"
+                               asp-route-stockPage="@Model.StockPage"
+                               asp-route-receiptPage="@(Model.ReceiptPage + 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-stock="@Model.Stock"
+                               asp-route-receiptStatus="@Model.ReceiptStatus"
+                               asp-route-supplierId="@Model.SupplierId"
+                               asp-route-categoryId="@Model.CategoryId"
+                               class="inv-page-btn">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </nav>
+                </footer>
+            }
+        }
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/inventory.js" asp-append-version="true"></script>
+}

@@ -24,8 +24,9 @@ function bindProductVariantFormValidation() {
         const requiredFieldsValid = getValidatableFields(form)
             .map(field => validateField(field, showErrors))
             .every(Boolean);
+        const attributesValid = validateAttributeInputs(form, showErrors);
         const imagesValid = validateImageRows(form, showErrors);
-        const isValid = requiredFieldsValid && imagesValid;
+        const isValid = requiredFieldsValid && attributesValid && imagesValid;
 
         if (showErrors) {
             setFormAlertVisible(alertBox, !isValid);
@@ -45,6 +46,9 @@ function bindProductVariantFormValidation() {
         }
 
         validateField(field, true);
+        if (field.matches('[data-pv-attribute-select]')) {
+            validateAttributeInputs(form, true);
+        }
         if (field.closest('[data-pv-image-row]')) {
             validateImageRows(form, true);
         }
@@ -61,6 +65,10 @@ function bindProductVariantFormValidation() {
         }
 
         validateField(field, true);
+        if (field.matches('[data-pv-attribute-select]') ||
+            (hasSubmitted && field.matches('[data-pv-product-select]'))) {
+            validateAttributeInputs(form, true);
+        }
         if (hasSubmitted) {
             setFormAlertVisible(alertBox, !validateForm(false));
         }
@@ -111,6 +119,39 @@ function validateImageRows(scope, showError) {
     return Array.from(scope.querySelectorAll('[data-pv-image-row]'))
         .map(row => validateImageRow(row, showError))
         .every(Boolean);
+}
+
+function validateAttributeInputs(scope, showError) {
+    const selects = getVisibleAttributeSelects(scope);
+    if (selects.length === 0) {
+        return true;
+    }
+
+    const selectedCount = selects.filter(select => select.value.trim() !== '').length;
+    let message = '';
+
+    if (selectedCount === 0) {
+        if (selects.length === 1) {
+            const attributeName = selects[0].dataset.pvAttributeName || 'thuộc tính biến thể';
+            message = `Vui lòng chọn ${attributeName}.`;
+        } else {
+            message = 'Vui lòng chọn ít nhất một thuộc tính biến thể.';
+        }
+    }
+
+    selects.forEach(select => setFieldError(select, '', showError));
+    if (message) {
+        setFieldError(selects[0], message, showError);
+    }
+
+    return message === '';
+}
+
+function getVisibleAttributeSelects(scope) {
+    return Array.from(scope.querySelectorAll('[data-pv-attribute-field]'))
+        .filter(field => !field.hidden)
+        .map(field => field.querySelector('[data-pv-attribute-select]'))
+        .filter(select => select && !select.disabled);
 }
 
 function validateImageRow(row, showError) {
@@ -230,6 +271,7 @@ function bindProductAttributeVisibility() {
     const sync = () => {
         const selectedCategoryId = getSelectedCategoryId();
         let visibleCount = 0;
+        const visibleFields = [];
 
         attributeFields.forEach(field => {
             const isVisible = Boolean(selectedCategoryId) && field.dataset.categoryId === selectedCategoryId;
@@ -245,6 +287,15 @@ function bindProductAttributeVisibility() {
 
             if (isVisible) {
                 visibleCount += 1;
+                visibleFields.push(field);
+            }
+        });
+
+        const requiredField = visibleFields.length === 1 ? visibleFields[0] : null;
+        attributeFields.forEach(field => {
+            const marker = field.querySelector('[data-pv-attribute-required-marker]');
+            if (marker) {
+                marker.hidden = field !== requiredField;
             }
         });
 

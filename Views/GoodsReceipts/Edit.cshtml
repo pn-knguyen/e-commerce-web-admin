@@ -1,0 +1,43 @@
+@model e_commerce_web_admin.ViewModels.Inventory.GoodsReceiptFormViewModel
+@{
+    ViewData["Title"] = $"Sửa phiếu nhập - {Model.ReceiptCode}";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/inventory.css" asp-append-version="true" />
+}
+
+<main class="inv-page">
+    <section class="inv-hero inv-anim" style="animation-delay:0.04s">
+        <nav class="inv-breadcrumb" aria-label="Điều hướng">
+            <a asp-action="Index">Quản lý tồn kho</a>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            <a asp-action="Details" asp-route-id="@Model.Id">@Model.ReceiptCode</a>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            <span>Chỉnh sửa</span>
+        </nav>
+
+        <div class="inv-title-row">
+            <div>
+                <h1>Chỉnh sửa phiếu nhập</h1>
+                <p>Cập nhật nhà cung cấp và các dòng SKU trước khi phiếu được duyệt.</p>
+            </div>
+        </div>
+    </section>
+
+    <form asp-action="Edit"
+          asp-route-id="@Model.Id"
+          method="post"
+          class="inv-anim"
+          style="animation-delay:0.1s"
+          data-inv-form
+          novalidate>
+        @Html.AntiForgeryToken()
+        <partial name="_Form" model="Model" />
+    </form>
+</main>
+
+@section Scripts {
+    <script src="~/js/inventory.js" asp-append-version="true"></script>
+}

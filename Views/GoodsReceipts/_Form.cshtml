@@ -1,0 +1,349 @@
+@model e_commerce_web_admin.ViewModels.Inventory.GoodsReceiptFormViewModel
+@using System.Globalization
+@{
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
+    var isEdit = Model.Id > 0;
+    var disabled = Model.IsLocked ? "disabled" : null;
+}
+
+<input type="hidden" asp-for="Id" />
+<input type="hidden" asp-for="Status" />
+
+<section class="inv-form-card inv-form-unified">
+    <header class="inv-form-head">
+        <span class="inv-panel-icon"><i data-lucide="receipt-text" class="w-5 h-5"></i></span>
+        <div>
+            <h2>Phiếu nhập hàng</h2>
+            <p>Quản lý thông tin phiếu, nhà cung cấp và các dòng SKU trong cùng một khung.</p>
+        </div>
+    </header>
+
+    <div data-inv-form-alert class="inv-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <div>
+            <p>Vui lòng kiểm tra lại thông tin phiếu nhập.</p>
+            <div asp-validation-summary="ModelOnly"></div>
+        </div>
+    </div>
+
+    @if (Model.IsLocked)
+    {
+        <div class="inv-lock-note">
+            <i data-lucide="lock" class="w-4 h-4"></i>
+            <span>Phiếu nhập đã duyệt hoặc đã hủy nên không thể chỉnh sửa.</span>
+        </div>
+    }
+
+    <div class="inv-form-body">
+        <section class="inv-form-section">
+            <div class="inv-form-section-title">
+                <span><i data-lucide="file-text" class="w-4 h-4"></i></span>
+                <div>
+                    <h3>Thông tin phiếu nhập</h3>
+                    <p>Mã phiếu và nhà cung cấp dùng để đối soát lịch sử nhập kho.</p>
+                </div>
+            </div>
+
+            <div class="inv-form-fields">
+                <div class="inv-field-row">
+                    <div class="inv-field" data-inv-field>
+                        <label asp-for="ReceiptCode" class="inv-label">
+                            <span>Mã phiếu nhập</span>
+                            <strong>*</strong>
+                        </label>
+                        <input asp-for="ReceiptCode"
+                               class="inv-input"
+                               maxlength="50"
+                               data-inv-code
+                               data-inv-required="Mã phiếu nhập là bắt buộc."
+                               data-inv-pattern="^[A-Z0-9][A-Z0-9_-]{2,49}$"
+                               data-inv-pattern-message="Mã phiếu chỉ gồm chữ in hoa, số, dấu gạch ngang hoặc gạch dưới."
+                               data-inv-error-target="receipt-code-error"
+                               disabled="@disabled" />
+                        <span asp-validation-for="ReceiptCode" id="receipt-code-error" class="inv-field-error"></span>
+                    </div>
+
+                    <div class="inv-field" data-inv-field>
+                        <label asp-for="SupplierId" class="inv-label">
+                            <span>Nhà cung cấp</span>
+                            <strong>*</strong>
+                        </label>
+                        <label class="inv-select-control">
+                            <select asp-for="SupplierId"
+                                    data-inv-required="Vui lòng chọn nhà cung cấp."
+                                    data-inv-error-target="supplier-error"
+                                    disabled="@disabled">
+                                <option value="">Chọn nhà cung cấp</option>
+                                @foreach (var supplier in Model.SupplierOptions)
+                                {
+                                    <option value="@supplier.Id" selected="@(Model.SupplierId == supplier.Id ? "selected" : null)">
+                                        @supplier.Text
+                                    </option>
+                                }
+                            </select>
+                        </label>
+                        <span asp-validation-for="SupplierId" id="supplier-error" class="inv-field-error"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="inv-form-section">
+            <div class="inv-form-section-title">
+                <span><i data-lucide="package-plus" class="w-4 h-4"></i></span>
+                <div>
+                    <h3>Dòng hàng nhập</h3>
+                    <p>Chọn SKU, số lượng và giá nhập cho từng dòng hàng.</p>
+                </div>
+            </div>
+
+            <div class="inv-item-toolbar">
+                <div class="inv-total-box">
+                    <span>Tạm tính</span>
+                    <strong data-inv-total>@Money(Model.TotalAmount)</strong>
+                </div>
+                @if (!Model.IsLocked)
+                {
+                    <button type="button" class="inv-add-item-btn" data-inv-add-item>
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Thêm dòng</span>
+                    </button>
+                }
+            </div>
+
+            <div class="inv-item-list" data-inv-items>
+                @for (var index = 0; index < Model.Items.Count; index++)
+                {
+                    var item = Model.Items[index];
+                    var selectedVariant = Model.ProductVariantOptions.FirstOrDefault(variant => variant.Id == item.ProductVariantId);
+                    var lineTotal = (item.Quantity ?? 0) * (item.ImportPrice ?? 0m);
+
+            <article class="inv-item-form-row"
+                     data-inv-item-row
+                     data-existing="@(item.Id.HasValue ? "true" : "false")">
+                <input type="hidden"
+                       name="Items[@index].Id"
+                       value="@item.Id"
+                       data-inv-item-field="Id" />
+                <input type="hidden"
+                       name="Items[@index].Remove"
+                       value="false"
+                       data-inv-item-field="Remove"
+                       data-inv-item-remove-value />
+
+                <div class="inv-field inv-item-variant" data-inv-field>
+                    <label for="Items_@(index)__ProductVariantId" class="inv-label">
+                        <span>SKU</span>
+                        <strong>*</strong>
+                    </label>
+                    <label class="inv-select-control">
+                        <select id="Items_@(index)__ProductVariantId"
+                                name="Items[@index].ProductVariantId"
+                                data-inv-item-field="ProductVariantId"
+                                data-inv-required="Vui lòng chọn biến thể."
+                                data-inv-error-target="inv-item-@index-variant-error"
+                                disabled="@disabled">
+                            <option value="">Chọn SKU</option>
+                            @foreach (var variant in Model.ProductVariantOptions)
+                            {
+                                <option value="@variant.Id"
+                                        data-stock="@variant.CurrentQuantity"
+                                        data-price="@variant.Price.ToString("0.##", CultureInfo.InvariantCulture)"
+                                        selected="@(item.ProductVariantId == variant.Id ? "selected" : null)">
+                                    @variant.Text
+                                </option>
+                            }
+                        </select>
+                    </label>
+                    <span id="inv-item-@index-variant-error" class="inv-field-error">
+                        @Html.ValidationMessage($"Items[{index}].ProductVariantId")
+                    </span>
+                    <small class="inv-stock-note" data-inv-stock-note>
+                        @(selectedVariant is null ? "Chưa chọn SKU" : $"Tồn hiện tại: {selectedVariant.CurrentQuantity}")
+                    </small>
+                </div>
+
+                <div class="inv-field" data-inv-field>
+                    <label for="Items_@(index)__Quantity" class="inv-label">
+                        <span>Số lượng</span>
+                        <strong>*</strong>
+                    </label>
+                    <input id="Items_@(index)__Quantity"
+                           name="Items[@index].Quantity"
+                           type="number"
+                           min="1"
+                           step="1"
+                           value="@item.Quantity"
+                           class="inv-input"
+                           data-inv-item-field="Quantity"
+                           data-inv-required="Số lượng là bắt buộc."
+                           data-inv-number-min="1"
+                           data-inv-number-message="Số lượng phải lớn hơn 0."
+                           data-inv-error-target="inv-item-@index-quantity-error"
+                           disabled="@disabled" />
+                    <span id="inv-item-@index-quantity-error" class="inv-field-error">
+                        @Html.ValidationMessage($"Items[{index}].Quantity")
+                    </span>
+                </div>
+
+                <div class="inv-field" data-inv-field>
+                    <label for="Items_@(index)__ImportPrice" class="inv-label">
+                        <span>Giá nhập</span>
+                        <strong>*</strong>
+                    </label>
+                    <div class="inv-money-wrap">
+                        <input id="Items_@(index)__ImportPrice"
+                               name="Items[@index].ImportPrice"
+                               type="number"
+                               min="0"
+                               step="1000"
+                               value="@item.ImportPrice?.ToString("0.##", CultureInfo.InvariantCulture)"
+                               class="inv-input"
+                               data-inv-item-field="ImportPrice"
+                               data-inv-required="Giá nhập là bắt buộc."
+                               data-inv-number-min="0"
+                               data-inv-number-message="Giá nhập không được âm."
+                               data-inv-error-target="inv-item-@index-price-error"
+                               disabled="@disabled" />
+                        <span>đ</span>
+                    </div>
+                    <span id="inv-item-@index-price-error" class="inv-field-error">
+                        @Html.ValidationMessage($"Items[{index}].ImportPrice")
+                    </span>
+                </div>
+
+                <div class="inv-line-total">
+                    <span>Thành tiền</span>
+                    <strong data-inv-line-total>@Money(lineTotal)</strong>
+                </div>
+
+                @if (!Model.IsLocked)
+                {
+                    <button type="button" class="inv-remove-item-btn" data-inv-remove-item>
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        <span>Xóa</span>
+                    </button>
+                }
+            </article>
+                }
+            </div>
+        </section>
+    </div>
+
+    <section class="inv-submit-panel">
+    @if (!Model.IsLocked)
+    {
+        <button type="submit" class="inv-submit-btn">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>@(isEdit ? "Lưu thay đổi" : "Tạo phiếu nhập")</span>
+        </button>
+    }
+
+    @if (isEdit)
+    {
+        <a asp-action="Details" asp-route-id="@Model.Id" class="inv-cancel-btn">
+            <i data-lucide="x" class="w-4 h-4"></i>
+            <span>@(Model.IsLocked ? "Quay lại" : "Hủy bỏ")</span>
+        </a>
+    }
+    else
+    {
+        <a asp-action="Index" class="inv-cancel-btn">
+            <i data-lucide="x" class="w-4 h-4"></i>
+            <span>Hủy bỏ</span>
+        </a>
+    }
+    </section>
+</section>
+
+<template data-inv-item-template>
+    <article class="inv-item-form-row" data-inv-item-row data-existing="false">
+        <input type="hidden"
+               name="Items[__index__].Id"
+               value=""
+               data-inv-item-field="Id" />
+        <input type="hidden"
+               name="Items[__index__].Remove"
+               value="false"
+               data-inv-item-field="Remove"
+               data-inv-item-remove-value />
+
+        <div class="inv-field inv-item-variant" data-inv-field>
+            <label for="Items___index____ProductVariantId" class="inv-label">
+                <span>SKU</span>
+                <strong>*</strong>
+            </label>
+            <label class="inv-select-control">
+                <select id="Items___index____ProductVariantId"
+                        name="Items[__index__].ProductVariantId"
+                        data-inv-item-field="ProductVariantId"
+                        data-inv-required="Vui lòng chọn biến thể."
+                        data-inv-error-target="inv-item-__index__-variant-error">
+                    <option value="">Chọn SKU</option>
+                    @foreach (var variant in Model.ProductVariantOptions)
+                    {
+                        <option value="@variant.Id"
+                                data-stock="@variant.CurrentQuantity"
+                                data-price="@variant.Price.ToString("0.##", CultureInfo.InvariantCulture)">
+                            @variant.Text
+                        </option>
+                    }
+                </select>
+            </label>
+            <span id="inv-item-__index__-variant-error" class="inv-field-error"></span>
+            <small class="inv-stock-note" data-inv-stock-note>Chưa chọn SKU</small>
+        </div>
+
+        <div class="inv-field" data-inv-field>
+            <label for="Items___index____Quantity" class="inv-label">
+                <span>Số lượng</span>
+                <strong>*</strong>
+            </label>
+            <input id="Items___index____Quantity"
+                   name="Items[__index__].Quantity"
+                   type="number"
+                   min="1"
+                   step="1"
+                   class="inv-input"
+                   data-inv-item-field="Quantity"
+                   data-inv-required="Số lượng là bắt buộc."
+                   data-inv-number-min="1"
+                   data-inv-number-message="Số lượng phải lớn hơn 0."
+                   data-inv-error-target="inv-item-__index__-quantity-error" />
+            <span id="inv-item-__index__-quantity-error" class="inv-field-error"></span>
+        </div>
+
+        <div class="inv-field" data-inv-field>
+            <label for="Items___index____ImportPrice" class="inv-label">
+                <span>Giá nhập</span>
+                <strong>*</strong>
+            </label>
+            <div class="inv-money-wrap">
+                <input id="Items___index____ImportPrice"
+                       name="Items[__index__].ImportPrice"
+                       type="number"
+                       min="0"
+                       step="1000"
+                       class="inv-input"
+                       data-inv-item-field="ImportPrice"
+                       data-inv-required="Giá nhập là bắt buộc."
+                       data-inv-number-min="0"
+                       data-inv-number-message="Giá nhập không được âm."
+                       data-inv-error-target="inv-item-__index__-price-error" />
+                <span>đ</span>
+            </div>
+            <span id="inv-item-__index__-price-error" class="inv-field-error"></span>
+        </div>
+
+        <div class="inv-line-total">
+            <span>Thành tiền</span>
+            <strong data-inv-line-total>0 đ</strong>
+        </div>
+
+        <button type="button" class="inv-remove-item-btn" data-inv-remove-item>
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <span>Xóa</span>
+        </button>
+    </article>
+</template>

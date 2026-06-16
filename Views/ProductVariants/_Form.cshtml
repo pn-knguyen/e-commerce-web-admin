@@ -216,13 +216,13 @@
 
                         <label for="Attributes_@(item.index)__SelectedOptionId" class="pv-label">
                             <span>@item.attribute.AttributeName</span>
-                            <strong>*</strong>
+                            <strong data-pv-attribute-required-marker hidden>*</strong>
                         </label>
                         <label class="pv-select-control">
                             <select id="Attributes_@(item.index)__SelectedOptionId"
                                     name="@fieldName"
                                     data-pv-attribute-select
-                                    data-pv-required="Vui lòng chọn @item.attribute.AttributeName."
+                                    data-pv-attribute-name="@item.attribute.AttributeName"
                                     data-pv-error-target="pv-attribute-@(item.index)-error">
                                 <option value="">Chọn @item.attribute.AttributeName.ToLowerInvariant()</option>
                                 @foreach (var option in item.attribute.Options)

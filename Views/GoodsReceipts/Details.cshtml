@@ -1,0 +1,221 @@
+@model e_commerce_web_admin.ViewModels.Inventory.GoodsReceiptDetailsViewModel
+@using System.Globalization
+@using e_commerce_web_admin.ViewModels.Inventory
+@{
+    ViewData["Title"] = $"Phiếu nhập {Model.ReceiptCode}";
+    Layout = "_Layout";
+
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
+    string DateText(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", vi);
+    string DateTextNullable(DateTime? value) => value.HasValue ? DateText(value.Value) : "Chưa cập nhật";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/inventory.css" asp-append-version="true" />
+}
+
+<main class="inv-page inv-detail-page">
+    <section class="inv-hero inv-anim" style="animation-delay:0.04s">
+        <nav class="inv-breadcrumb" aria-label="Điều hướng">
+            <a asp-action="Index">Quản lý tồn kho</a>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            <span>@Model.ReceiptCode</span>
+        </nav>
+
+        <div class="inv-title-row">
+            <div>
+                <h1>@Model.ReceiptCode</h1>
+                <p>Tạo lúc @DateText(Model.CreatedAt) · Cập nhật @DateTextNullable(Model.UpdatedAt)</p>
+            </div>
+            <a asp-action="Index" class="inv-secondary-action">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                <span>Danh sách</span>
+            </a>
+        </div>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div id="toastSuccess" class="inv-flash inv-flash-success inv-anim" style="animation-delay:0.06s">
+            <span class="inv-flash-icon"><i data-lucide="check" class="w-4 h-4"></i></span>
+            <span>@TempData["Success"]</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div id="toastError" class="inv-flash inv-flash-error inv-anim" style="animation-delay:0.06s">
+            <span class="inv-flash-icon"><i data-lucide="alert-circle" class="w-4 h-4"></i></span>
+            <span>@TempData["Error"]</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <section class="inv-detail-grid">
+        <div class="inv-detail-main">
+            <section class="inv-panel inv-anim" style="animation-delay:0.08s">
+                <header class="inv-panel-head">
+                    <span class="inv-panel-icon"><i data-lucide="package-check" class="w-5 h-5"></i></span>
+                    <div>
+                        <h2>Dòng hàng nhập</h2>
+                        <p>@Model.TotalQuantity sản phẩm từ @Model.Items.Count dòng SKU</p>
+                    </div>
+                </header>
+
+                <div class="inv-items-table">
+                    <div class="inv-items-head">
+                        <span>SKU</span>
+                        <span class="text-center">SL nhập</span>
+                        <span class="text-right">Giá nhập</span>
+                        <span class="text-right">Thành tiền</span>
+                        <span class="text-center">Tồn hiện tại</span>
+                    </div>
+                    @foreach (var item in Model.Items)
+                    {
+                        <article class="inv-item-row">
+                            <div>
+                                <h3>@item.VariantCode</h3>
+                                <p>@item.ProductName · @item.BrandName · @item.CategoryName</p>
+                            </div>
+                            <span class="inv-quantity-pill">@item.Quantity</span>
+                            <span class="text-right">@Money(item.ImportPrice)</span>
+                            <strong class="text-right">@Money(item.LineTotal)</strong>
+                            <span class="inv-stock-badge @InventoryDisplay.GetStockClass(item.CurrentStock)">
+                                @item.CurrentStock
+                            </span>
+                        </article>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <aside class="inv-detail-side">
+            <section class="inv-panel inv-anim" style="animation-delay:0.1s">
+                <header class="inv-panel-head">
+                    <span class="inv-panel-icon"><i data-lucide="workflow" class="w-5 h-5"></i></span>
+                    <div>
+                        <h2>Trạng thái</h2>
+                        <p>
+                            <span class="inv-receipt-badge @InventoryDisplay.GetGoodsReceiptStatusClass(Model.Status)">
+                                @InventoryDisplay.GetGoodsReceiptStatusLabel(Model.Status)
+                            </span>
+                        </p>
+                    </div>
+                </header>
+
+                <dl class="inv-info-list">
+                    <div>
+                        <dt>Người tạo</dt>
+                        <dd>@Model.CreatedByName</dd>
+                    </div>
+                    <div>
+                        <dt>Người duyệt</dt>
+                        <dd>@(string.IsNullOrWhiteSpace(Model.ApprovedByName) ? "Chưa duyệt" : Model.ApprovedByName)</dd>
+                    </div>
+                    <div>
+                        <dt>Tổng số lượng</dt>
+                        <dd>@Model.TotalQuantity</dd>
+                    </div>
+                    <div class="is-total">
+                        <dt>Tổng tiền</dt>
+                        <dd>@Money(Model.TotalAmount)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="inv-panel inv-anim" style="animation-delay:0.14s">
+                <header class="inv-panel-head">
+                    <span class="inv-panel-icon"><i data-lucide="truck" class="w-5 h-5"></i></span>
+                    <div>
+                        <h2>Nhà cung cấp</h2>
+                        <p>@Model.SupplierName</p>
+                    </div>
+                </header>
+
+                <dl class="inv-info-list compact">
+                    <div>
+                        <dt>Số điện thoại</dt>
+                        <dd>@(string.IsNullOrWhiteSpace(Model.SupplierPhone) ? "Chưa có" : Model.SupplierPhone)</dd>
+                    </div>
+                    <div>
+                        <dt>Email</dt>
+                        <dd>@(string.IsNullOrWhiteSpace(Model.SupplierEmail) ? "Chưa có" : Model.SupplierEmail)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="inv-panel inv-anim" style="animation-delay:0.18s">
+                <header class="inv-panel-head">
+                    <span class="inv-panel-icon"><i data-lucide="settings-2" class="w-5 h-5"></i></span>
+                    <div>
+                        <h2>Thao tác</h2>
+                        <p>Phiếu đã duyệt sẽ khóa chỉnh sửa để tránh cộng tồn kho nhiều lần.</p>
+                    </div>
+                </header>
+
+                <div class="inv-action-stack">
+                    @if (Model.CanEdit)
+                    {
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="inv-wide-action is-edit">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                            <span>Chỉnh sửa phiếu</span>
+                        </a>
+                    }
+
+                    @if (Model.CanSubmit)
+                    {
+                        <form asp-action="Submit" asp-route-id="@Model.Id" method="post" data-inv-confirm="Chuyển phiếu nhập này sang trạng thái chờ duyệt?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="inv-wide-action is-submit">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                                <span>Gửi chờ duyệt</span>
+                            </button>
+                        </form>
+                    }
+
+                    @if (Model.CanApprove)
+                    {
+                        <form asp-action="Approve" asp-route-id="@Model.Id" method="post" data-inv-confirm="Duyệt phiếu này và cộng số lượng vào tồn kho?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="inv-wide-action is-approve">
+                                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                <span>Duyệt và cộng tồn</span>
+                            </button>
+                        </form>
+                    }
+
+                    @if (Model.CanCancel)
+                    {
+                        <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" data-inv-confirm="Hủy phiếu nhập này?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="inv-wide-action is-cancel">
+                                <i data-lucide="ban" class="w-4 h-4"></i>
+                                <span>Hủy phiếu</span>
+                            </button>
+                        </form>
+                    }
+
+                    @if (Model.CanDelete)
+                    {
+                        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" data-inv-confirm="Xóa phiếu nhập này? Hành động này không thể hoàn tác.">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="inv-wide-action is-delete">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                <span>Xóa phiếu</span>
+                            </button>
+                        </form>
+                    }
+                </div>
+            </section>
+        </aside>
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/inventory.js" asp-append-version="true"></script>
+}
