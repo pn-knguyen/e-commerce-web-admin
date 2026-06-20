@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.Inventory;
 using e_commerce_web_admin.ViewModels.Inventory;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("GoodsReceipts", Permissions.View)]
 public sealed class GoodsReceiptsController : Controller
 {
     private readonly IInventoryAdminService _inventoryService;
@@ -43,10 +46,12 @@ public sealed class GoodsReceiptsController : Controller
         return viewModel is null ? NotFound() : View(viewModel);
     }
 
+    [RbacAuthorize("GoodsReceipts", Permissions.Create)]
     public async Task<IActionResult> Create(long? variantId, CancellationToken ct)
         => View(await _inventoryService.GetCreateFormAsync(variantId, ct));
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("GoodsReceipts", Permissions.Create)]
     public async Task<IActionResult> Create(GoodsReceiptFormViewModel viewModel, CancellationToken ct)
     {
         var result = await _inventoryService.CreateAsync(viewModel, ct);
@@ -61,6 +66,7 @@ public sealed class GoodsReceiptsController : Controller
         return RedirectToAction(nameof(Details), new { id = result.Form.Id });
     }
 
+    [RbacAuthorize("GoodsReceipts", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken ct)
     {
         var viewModel = await _inventoryService.GetEditFormAsync(id, ct);
@@ -68,6 +74,7 @@ public sealed class GoodsReceiptsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("GoodsReceipts", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, GoodsReceiptFormViewModel viewModel, CancellationToken ct)
     {
         if (id != viewModel.Id)
@@ -88,6 +95,7 @@ public sealed class GoodsReceiptsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("GoodsReceipts", Permissions.Edit)]
     public async Task<IActionResult> Submit(long id, CancellationToken ct)
         => await HandleReceiptActionAsync(
             id,
@@ -96,6 +104,7 @@ public sealed class GoodsReceiptsController : Controller
             ct);
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("GoodsReceipts", Permissions.Approve)]
     public async Task<IActionResult> Approve(long id, CancellationToken ct)
         => await HandleReceiptActionAsync(
             id,
@@ -104,6 +113,7 @@ public sealed class GoodsReceiptsController : Controller
             ct);
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("GoodsReceipts", Permissions.Edit)]
     public async Task<IActionResult> Cancel(long id, CancellationToken ct)
         => await HandleReceiptActionAsync(
             id,
@@ -112,6 +122,7 @@ public sealed class GoodsReceiptsController : Controller
             ct);
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("GoodsReceipts", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
         => await HandleReceiptActionAsync(
             id,

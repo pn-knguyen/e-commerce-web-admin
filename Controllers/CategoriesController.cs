@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.ViewModels.Categories;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Categories", Permissions.View)]
 public sealed class CategoriesController : Controller
 {
     private readonly ICategoryAdminService _categoryService;
@@ -31,6 +34,7 @@ public sealed class CategoriesController : Controller
         return View(viewModel);
     }
 
+    [RbacAuthorize("Categories", Permissions.Create)]
     public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
         return View(await _categoryService.GetCreateFormAsync(cancellationToken));
@@ -38,6 +42,7 @@ public sealed class CategoriesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Create)]
     public async Task<IActionResult> Create(
         CategoryFormViewModel viewModel,
         CancellationToken cancellationToken)
@@ -58,6 +63,7 @@ public sealed class CategoriesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [RbacAuthorize("Categories", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken cancellationToken)
     {
         var viewModel = await _categoryService.GetEditFormAsync(id, cancellationToken);
@@ -66,6 +72,7 @@ public sealed class CategoriesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Edit)]
     public async Task<IActionResult> Edit(
         long id,
         CategoryFormViewModel viewModel,
@@ -94,6 +101,7 @@ public sealed class CategoriesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
     {
         var result = await _categoryService.DeleteAsync(id, cancellationToken);
@@ -108,6 +116,7 @@ public sealed class CategoriesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Edit)]
     public async Task<IActionResult> ToggleActive(long id, CancellationToken cancellationToken)
     {
         var result = await _categoryService.ToggleActiveAsync(id, cancellationToken);

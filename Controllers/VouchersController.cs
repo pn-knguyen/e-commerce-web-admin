@@ -1,3 +1,5 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Enums;
 using e_commerce_web_admin.Services.Vouchers;
 using e_commerce_web_admin.ViewModels.Vouchers;
@@ -5,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Vouchers", Permissions.View)]
 public sealed class VouchersController : Controller
 {
     private readonly IVoucherAdminService _voucherService;
@@ -32,6 +35,7 @@ public sealed class VouchersController : Controller
         return View(ToIndexViewModel(result));
     }
 
+    [RbacAuthorize("Vouchers", Permissions.Create)]
     public IActionResult Create()
     {
         return View(ToFormViewModel(_voucherService.GetCreateForm()));
@@ -39,6 +43,7 @@ public sealed class VouchersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RbacAuthorize("Vouchers", Permissions.Create)]
     public async Task<IActionResult> Create(
         VoucherFormViewModel viewModel,
         CancellationToken cancellationToken)
@@ -59,6 +64,7 @@ public sealed class VouchersController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [RbacAuthorize("Vouchers", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken cancellationToken)
     {
         var form = await _voucherService.GetEditFormAsync(id, cancellationToken);
@@ -67,6 +73,7 @@ public sealed class VouchersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RbacAuthorize("Vouchers", Permissions.Edit)]
     public async Task<IActionResult> Edit(
         long id,
         VoucherFormViewModel viewModel,
@@ -95,6 +102,7 @@ public sealed class VouchersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RbacAuthorize("Vouchers", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
     {
         var result = await _voucherService.DeleteAsync(id, cancellationToken);
@@ -109,6 +117,7 @@ public sealed class VouchersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RbacAuthorize("Vouchers", Permissions.Edit)]
     public async Task<IActionResult> ToggleActive(long id, CancellationToken cancellationToken)
     {
         var result = await _voucherService.ToggleActiveAsync(id, cancellationToken);

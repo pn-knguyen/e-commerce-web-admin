@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.Orders;
 using e_commerce_web_admin.ViewModels.Orders;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Orders", Permissions.View)]
 public sealed class OrdersController : Controller
 {
     private readonly IOrderAdminService _orderService;
@@ -42,6 +45,7 @@ public sealed class OrdersController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Orders", Permissions.Approve)]
     public async Task<IActionResult> UpdateStatus(
         long id,
         OrderStatusUpdateViewModel form,

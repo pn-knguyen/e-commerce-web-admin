@@ -1,0 +1,213 @@
+@model e_commerce_web_admin.ViewModels.Staff.StaffIndexViewModel
+@{
+    ViewData["Title"] = "Nhân sự quản trị";
+    Layout = "_Layout";
+
+    var staffRows = Model.Staff;
+    var hasSearch = !string.IsNullOrWhiteSpace(Model.Search);
+    var activeCount = staffRows.Count(staff => staff.IsActive);
+    var lockedCount = staffRows.Count - activeCount;
+    var roleAssignmentCount = staffRows.Sum(staff => staff.Roles.Count);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/identity-admin.css" asp-append-version="true" />
+}
+
+<main class="surface-page identity-page">
+    <div class="surface-hero product-anim surface-anim" style="animation-delay:0.04s">
+        <div>
+            <h1>Nhân sự quản trị</h1>
+            <p>Quản lý tài khoản đăng nhập trang quản trị bằng bảng staff và ASP.NET Core Identity.</p>
+        </div>
+        <a asp-action="Create">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            Thêm nhân sự
+        </a>
+    </div>
+
+    @if (TempData["Success"] is string success)
+    {
+        <div id="toastSuccess" class="surface-flash surface-flash-success product-anim surface-anim" style="animation-delay:0.06s">
+            <span><i data-lucide="check" class="w-4 h-4"></i></span>
+            <span>@success</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div id="toastError" class="surface-flash surface-flash-error product-anim surface-anim" style="animation-delay:0.06s">
+            <span><i data-lucide="alert-circle" class="w-4 h-4"></i></span>
+            <span>@error</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <section class="surface-metrics product-anim surface-anim" style="animation-delay:0.08s" aria-label="Thống kê nhân sự">
+        <article>
+            <span><i data-lucide="users-round" class="w-5 h-5"></i></span>
+            <div>
+                <p>@staffRows.Count</p>
+                <p>Tổng nhân sự</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="check-circle-2" class="w-5 h-5"></i></span>
+            <div>
+                <p>@activeCount</p>
+                <p>Đang hoạt động</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="lock" class="w-5 h-5"></i></span>
+            <div>
+                <p>@lockedCount</p>
+                <p>Tạm khóa</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="shield-check" class="w-5 h-5"></i></span>
+            <div>
+                <p>@roleAssignmentCount</p>
+                <p>Lượt gán vai trò</p>
+            </div>
+        </article>
+    </section>
+
+    <section class="surface-console surface-table-card product-anim surface-anim" style="animation-delay:0.12s">
+        <div class="product-toolbar">
+            <form method="get" asp-action="Index" class="identity-filter-grid">
+                <label class="product-search-field">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <input type="text"
+                           name="search"
+                           value="@Model.Search"
+                           placeholder="Tìm theo tên, email, username hoặc số điện thoại..." />
+                </label>
+
+                <button type="submit" class="product-filter-submit">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Lọc</span>
+                </button>
+
+                @if (hasSearch)
+                {
+                    <a asp-action="Index" class="product-filter-clear">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Xóa lọc</span>
+                    </a>
+                }
+            </form>
+        </div>
+
+        @if (!staffRows.Any())
+        {
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="user-search" class="w-9 h-9"></i>
+                </span>
+                <h2>Không tìm thấy nhân sự</h2>
+                @if (hasSearch)
+                {
+                    <p>Điều chỉnh từ khóa hoặc xóa bộ lọc để xem lại toàn bộ tài khoản staff.</p>
+                    <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
+                }
+                else
+                {
+                    <p>Tạo tài khoản nhân sự đầu tiên để phân quyền truy cập trang quản trị.</p>
+                    <a asp-action="Create" class="admin-empty-action">Thêm nhân sự</a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="surface-table-scroll">
+                <div class="surface-table-head identity-staff-grid px-6 py-3.5">
+                    <span>Nhân sự</span>
+                    <span>Liên hệ</span>
+                    <span>Vai trò</span>
+                    <span class="text-center">Trạng thái</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div>
+                    @{
+                        var animIndex = 0;
+                    }
+                    @foreach (var staff in staffRows)
+                    {
+                        <article class="surface-row identity-staff-grid px-6 py-3.5 product-anim"
+                                 style="animation-delay:@(0.14 + animIndex++ * 0.025)s">
+                            <div class="identity-person-cell">
+                                <span class="identity-avatar @(staff.IsActive ? string.Empty : "is-muted")">
+                                    <i data-lucide="user-round" class="w-4 h-4"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <h2 class="identity-cell-title truncate">@staff.FullName</h2>
+                                        @if (staff.IsCurrentStaff)
+                                        {
+                                            <span class="identity-muted-pill">Bạn</span>
+                                        }
+                                    </div>
+                                    <p class="identity-code truncate">@staff.UserName</p>
+                                    <p class="identity-cell-subtitle">Tạo ngày @staff.CreatedAt.ToString("dd/MM/yyyy")</p>
+                                </div>
+                            </div>
+
+                            <div class="min-w-0">
+                                <p class="identity-cell-title truncate">@staff.Email</p>
+                                <p class="identity-cell-subtitle truncate">@(string.IsNullOrWhiteSpace(staff.PhoneNumber) ? "Chưa có SĐT" : staff.PhoneNumber)</p>
+                            </div>
+
+                            <div class="flex flex-wrap gap-1.5">
+                                @if (staff.Roles.Any())
+                                {
+                                    @foreach (var role in staff.Roles)
+                                    {
+                                        <span class="identity-role-pill">
+                                            <i data-lucide="shield" class="w-3 h-3"></i>
+                                            @role
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="identity-muted-pill">Chưa gán role</span>
+                                }
+                            </div>
+
+                            <div class="text-center">
+                                <span class="product-status-btn @(staff.IsActive ? "is-active" : "is-inactive")">
+                                    <span class="dot"></span>
+                                    <span>@(staff.IsActive ? "Hoạt động" : "Tạm khóa")</span>
+                                </span>
+                            </div>
+
+                            <div class="identity-actions">
+                                <a asp-action="Edit" asp-route-id="@staff.Id" class="product-action-btn product-action-edit">
+                                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                    <span>Sửa</span>
+                                </a>
+                                <form asp-action="ToggleActive" asp-route-id="@staff.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit"
+                                            disabled="@staff.IsCurrentStaff"
+                                            class="product-action-btn @(staff.IsActive ? "identity-action-lock" : "identity-action-muted") disabled:opacity-40">
+                                        <i data-lucide="@(staff.IsActive ? "lock" : "unlock")" class="w-3.5 h-3.5"></i>
+                                        <span>@(staff.IsActive ? "Khóa" : "Mở")</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+        }
+    </section>
+</main>

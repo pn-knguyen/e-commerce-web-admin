@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.CategorySpecifications;
 using e_commerce_web_admin.ViewModels.CategorySpecifications;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Categories", Permissions.View)]
 public sealed class CategorySpecificationsController : Controller
 {
     private readonly ICategorySpecAdminService _service;
@@ -23,6 +26,7 @@ public sealed class CategorySpecificationsController : Controller
 
     // POST /CategorySpecifications/Assign
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Edit)]
     public async Task<IActionResult> Assign(CategorySpecAssignViewModel form, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -38,6 +42,7 @@ public sealed class CategorySpecificationsController : Controller
 
     // POST /CategorySpecifications/Update
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Edit)]
     public async Task<IActionResult> Update(CategorySpecUpdateViewModel form, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -51,6 +56,7 @@ public sealed class CategorySpecificationsController : Controller
 
     // POST /CategorySpecifications/Remove
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Delete)]
     public async Task<IActionResult> Remove(long categoryId, long specId, CancellationToken ct)
     {
         var result = await _service.RemoveAsync(categoryId, specId, ct);

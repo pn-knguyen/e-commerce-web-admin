@@ -1,5 +1,15 @@
+@using e_commerce_web_admin.Models.Constants
+@using System.Security.Claims
 @{
     var pageTitle = ViewData["Title"] as string ?? "Admin";
+    var fullName  = User.FindFirst(AppClaimTypes.FullName)?.Value ?? "Admin";
+    var staffRoles = User.Claims
+        .Where(claim => claim.Type == ClaimTypes.Role)
+        .Select(claim => claim.Value)
+        .ToArray();
+    var userEmail = User.FindFirst(AppClaimTypes.Email)?.Value ?? "";
+    var initials  = string.Join("", fullName.Split(' ').Take(2).Select(w => w.Length > 0 ? w[0].ToString() : "")).ToUpper();
+    var roleLabel = staffRoles.Length == 0 ? "Nhân sự" : string.Join(", ", staffRoles);
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -380,12 +390,22 @@
                 </div>
 
                 <div class="mb-3">
-                    <p class="text-slate-500 text-[10px] font-semibold uppercase tracking-widest px-3 mb-1">Người dùng
+                    <p class="text-slate-500 text-[10px] font-semibold uppercase tracking-widest px-3 mb-1">Khách hàng
                     </p>
-                    <a href="/Users"
+                    <a href="/Customers"
+                       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
+                        <i data-lucide="user-round" class="w-4 h-4 shrink-0"></i>
+                        Quản lý khách hàng
+                    </a>
+                </div>
+
+                <div class="mb-3">
+                    <p class="text-slate-500 text-[10px] font-semibold uppercase tracking-widest px-3 mb-1">Nhân sự
+                    </p>
+                    <a href="/Staff"
                        class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
                         <i data-lucide="users" class="w-4 h-4 shrink-0"></i>
-                        Quản lý người dùng
+                        Quản lý nhân sự
                     </a>
                 </div>
 
@@ -476,27 +496,45 @@
                                 Chiến dịch
                             </a>
                             <a href="/Promotions"
-                               class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
-                                <i data-lucide="percent" class="w-4 h-4 shrink-0"></i>
-                                Khuyến mãi
-                            </a>
-                        </div>
+                           class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
+                            <i data-lucide="percent" class="w-4 h-4 shrink-0"></i>
+                            Khuyến mãi
+                        </a>
+                    </div>
+
+                    <div class="mb-3">
+                        <p class="text-slate-500 text-[10px] font-semibold uppercase tracking-widest px-3 mb-1">Hệ thống</p>
+                        <a href="/Roles"
+                           class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
+                            <i data-lucide="shield-check" class="w-4 h-4 shrink-0"></i>
+                            Phân quyền
+                        </a>
+                    </div>
 
                     </nav>
 
                     @* User footer *@
-                    <div class="px-4 py-4 border-t border-slate-800 flex items-center gap-3">
-                        <div
-                            class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                            AD</div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-white text-xs font-medium truncate">Admin</p>
-                                <p class="text-slate-500 text-[10px] truncate">admin@@ecommerce.vn</p>
+                    <div class="px-4 py-4 border-t border-slate-800">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600
+                                        flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                @initials
                             </div>
-                            <button class="text-slate-500 hover:text-slate-300 transition-colors" title="Đăng xuất">
-                                <i data-lucide="log-out" class="w-4 h-4"></i>
-                            </button>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-white text-xs font-medium truncate">@fullName</p>
+                                <p class="text-slate-500 text-[10px] truncate">@roleLabel</p>
+                            </div>
                         </div>
+                        <form asp-controller="Account" asp-action="Logout" method="post" class="w-full">
+                            @Html.AntiForgeryToken()
+                            <button type="submit"
+                                    class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg
+                                           text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-medium transition-all">
+                                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                                Đăng xuất
+                            </button>
+                        </form>
+                    </div>
                     </aside>
 
                     @* ═══════════ MAIN ═══════════ *@

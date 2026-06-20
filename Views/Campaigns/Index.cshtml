@@ -1,0 +1,34 @@
+@{
+    ViewData["Title"] = "Chiến dịch";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
+}
+
+<main class="surface-page">
+    <div class="surface-form-hero product-anim surface-anim" style="animation-delay:0.04s">
+        <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+            <span>Marketing</span>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            <span class="text-slate-600 font-medium">Chiến dịch</span>
+        </nav>
+        <h1>Chiến dịch</h1>
+        <p>Chức năng quản lý chiến dịch đang được chuẩn bị và sẽ phát triển sau.</p>
+    </div>
+
+    <section class="surface-console surface-table-card product-anim surface-anim" style="animation-delay:0.1s">
+        <div class="admin-empty">
+            <span class="admin-empty-icon">
+                <i data-lucide="megaphone" class="w-9 h-9"></i>
+            </span>
+            <h2>Chức năng sẽ phát triển sau</h2>
+            <p>Mục chiến dịch hiện chưa có thao tác quản trị. Khi hoàn thiện, khu vực này sẽ dùng để cấu hình banner, nhóm danh mục và các chiến dịch marketing theo thời gian.</p>
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <a asp-controller="Vouchers" asp-action="Index" class="admin-empty-action">Quản lý voucher</a>
+                <a asp-controller="Promotions" asp-action="Index" class="admin-empty-action">Quản lý khuyến mãi</a>
+            </div>
+        </div>
+    </section>
+</main>

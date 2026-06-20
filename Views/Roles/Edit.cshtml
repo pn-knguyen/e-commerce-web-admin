@@ -1,0 +1,131 @@
+@model e_commerce_web_admin.ViewModels.Roles.RoleEditViewModel
+@using e_commerce_web_admin.Models.Constants
+@{
+    ViewData["Title"] = "Cấu hình vai trò";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/identity-admin.css" asp-append-version="true" />
+}
+
+<main class="surface-page identity-page">
+    <div class="surface-form-hero product-anim surface-anim" style="animation-delay:0.04s">
+        <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+            <a asp-action="Index" class="hover:text-teal-600 transition-colors">Vai trò</a>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            <span class="text-slate-600 font-medium">@Model.Name</span>
+        </nav>
+        <h1>Cấu hình vai trò</h1>
+        <p>Chọn các quyền module/action. Dữ liệu được lưu bằng Identity role claims trong bảng staff_role_claims.</p>
+    </div>
+
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="product-anim surface-anim" style="animation-delay:0.1s">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <section class="surface-form-card product-form-unified identity-form-card bg-white rounded-2xl border border-slate-200">
+            <div class="product-form-card-head">
+                <span class="product-form-head-icon">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i>
+                </span>
+                <div>
+                    <h2>Thông tin vai trò</h2>
+                    <p>Tên role được Identity dùng để gán cho tài khoản staff.</p>
+                </div>
+            </div>
+
+            <div class="product-form-body">
+                <div data-surface-form-alert class="surface-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                    <div>
+                        <p>Vui lòng kiểm tra lại thông tin vai trò.</p>
+                        <div asp-validation-summary="ModelOnly"></div>
+                    </div>
+                </div>
+
+                <section class="product-form-section">
+                    <div class="product-form-section-title">
+                        <span><i data-lucide="text-cursor-input" class="w-4 h-4"></i></span>
+                        <div>
+                            <h3>Tên vai trò</h3>
+                            <p>Đặt tên ngắn gọn, dễ nhận biết trong màn gán nhân sự.</p>
+                        </div>
+                    </div>
+
+                    <div class="identity-form-grid">
+                        <div class="product-form-field">
+                            <label asp-for="Name" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                                Tên vai trò <span class="text-red-500">*</span>
+                            </label>
+                            <input asp-for="Name"
+                                   class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                            <span asp-validation-for="Name" class="text-xs text-red-500 mt-1 block"></span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="surface-console surface-table-card product-anim surface-anim identity-submit-bar" style="animation-delay:0.14s">
+            <div class="identity-permission-toolbar">
+                <div>
+                    <h2>Ma trận quyền</h2>
+                    <p>Admin vẫn có toàn quyền. Các role khác đi theo những ô được bật bên dưới.</p>
+                </div>
+                <span class="identity-role-pill">
+                    <i data-lucide="database" class="w-3 h-3"></i>
+                    staff_role_claims
+                </span>
+            </div>
+
+            <div class="surface-table-scroll">
+                <div class="surface-table-head identity-permission-grid px-6 py-3.5">
+                    <span>Module</span>
+                    @foreach (var permission in Model.PermissionActions)
+                    {
+                        <span class="text-center">@permission</span>
+                    }
+                </div>
+
+                <div>
+                    @foreach (var module in Model.Modules)
+                    {
+                        <article class="surface-row identity-permission-grid identity-permission-row px-6 py-3.5">
+                            <div class="identity-role-cell">
+                                <span class="identity-role-icon is-muted">
+                                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <h3 class="identity-cell-title truncate">@(Model.ModuleNames.TryGetValue(module, out var name) ? name : module)</h3>
+                                    <p class="identity-code">@module</p>
+                                </div>
+                            </div>
+
+                            @foreach (var permission in Model.PermissionActions)
+                            {
+                                var value = Permissions.Build(module, permission);
+                                <label class="identity-permission-toggle" title="@value">
+                                    <input type="checkbox"
+                                           name="SelectedPermissions"
+                                           value="@value"
+                                           checked="@Model.SelectedPermissions.Contains(value)" />
+                                    <span aria-hidden="true"></span>
+                                </label>
+                            }
+                        </article>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <div class="surface-submit-card product-submit-bar identity-submit-bar">
+            <button type="submit">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                Lưu quyền
+            </button>
+            <a asp-action="Index" class="surface-cancel-link">Hủy bỏ</a>
+        </div>
+    </form>
+</main>

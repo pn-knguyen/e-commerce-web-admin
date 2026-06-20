@@ -1,0 +1,184 @@
+@model e_commerce_web_admin.ViewModels.Staff.StaffFormViewModel
+@{
+    var isEdit = !Model.IsCreate;
+}
+
+<input type="hidden" asp-for="Id" />
+
+<div class="surface-form-grid identity-form-shell">
+    <div class="surface-form-card product-form-unified identity-form-card bg-white rounded-2xl border border-slate-200">
+        <div class="product-form-card-head">
+            <span class="product-form-head-icon">
+                <i data-lucide="user-round-cog" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <h2>Thông tin nhân sự</h2>
+                <p>Quản lý tài khoản đăng nhập, vai trò và trạng thái truy cập trang quản trị.</p>
+            </div>
+        </div>
+
+        <div class="product-form-body">
+            <div data-surface-form-alert class="surface-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                <div>
+                    <p>Vui lòng kiểm tra lại thông tin nhân sự.</p>
+                    <div asp-validation-summary="ModelOnly"></div>
+                </div>
+            </div>
+
+            <section class="product-form-section">
+                <div class="product-form-section-title">
+                    <span><i data-lucide="id-card" class="w-4 h-4"></i></span>
+                    <div>
+                        <h3>Tài khoản</h3>
+                        <p>Thông tin định danh để nhân sự đăng nhập và hiển thị trong hệ thống.</p>
+                    </div>
+                </div>
+
+                <div class="identity-form-grid">
+                    <div class="product-form-field">
+                        <label asp-for="UserName" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                            Tên đăng nhập <span class="text-red-500">*</span>
+                        </label>
+                        <input asp-for="UserName"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <span asp-validation-for="UserName" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="product-form-field">
+                        <label asp-for="Email" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                            Email <span class="text-red-500">*</span>
+                        </label>
+                        <input asp-for="Email"
+                               type="email"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <span asp-validation-for="Email" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="product-form-field">
+                        <label asp-for="FullName" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                            Họ tên <span class="text-red-500">*</span>
+                        </label>
+                        <input asp-for="FullName"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <span asp-validation-for="FullName" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="product-form-field">
+                        <label asp-for="PhoneNumber" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                            Số điện thoại
+                        </label>
+                        <input asp-for="PhoneNumber"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <span asp-validation-for="PhoneNumber" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="product-form-section">
+                <div class="product-form-section-title">
+                    <span><i data-lucide="shield-check" class="w-4 h-4"></i></span>
+                    <div>
+                        <h3>Vai trò</h3>
+                        <p>Role quyết định nhóm quyền mà tài khoản staff được sử dụng trong trang quản trị.</p>
+                    </div>
+                </div>
+
+                @if (Model.RoleOptions.Any())
+                {
+                    <div class="identity-role-options">
+                        @foreach (var role in Model.RoleOptions)
+                        {
+                            <label class="identity-role-option">
+                                <input type="checkbox" name="SelectedRoles" value="@role.Value" checked="@role.Selected" />
+                                <span class="min-w-0">
+                                    <strong class="block text-sm text-slate-800">@role.Text</strong>
+                                    <small class="block text-xs text-slate-500">Gán quyền theo role</small>
+                                </span>
+                            </label>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                        Chưa có role để gán. Tạo role trước trong màn Vai trò và quyền.
+                    </div>
+                }
+                <span asp-validation-for="SelectedRoles" class="text-xs text-red-500 mt-2 block"></span>
+            </section>
+
+            <section class="product-form-section">
+                <div class="product-form-section-title">
+                    <span><i data-lucide="key-round" class="w-4 h-4"></i></span>
+                    <div>
+                        <h3>Bảo mật</h3>
+                        <p>@(isEdit ? "Để trống mật khẩu nếu không muốn đổi." : "Thiết lập mật khẩu ban đầu cho tài khoản staff.")</p>
+                    </div>
+                </div>
+
+                <div class="identity-form-grid">
+                    <div class="product-form-field">
+                        <label asp-for="Password" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                            @(Model.IsCreate ? "Mật khẩu" : "Mật khẩu mới") @(Model.IsCreate ? Html.Raw("<span class=\"text-red-500\">*</span>") : null)
+                        </label>
+                        <input asp-for="Password"
+                               type="password"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <span asp-validation-for="Password" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="product-form-field">
+                        <label asp-for="ConfirmPassword" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                            Xác nhận mật khẩu
+                        </label>
+                        <input asp-for="ConfirmPassword"
+                               type="password"
+                               class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                        <span asp-validation-for="ConfirmPassword" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="product-form-section">
+                <div class="product-form-section-title">
+                    <span><i data-lucide="toggle-right" class="w-4 h-4"></i></span>
+                    <div>
+                        <h3>Trạng thái truy cập</h3>
+                        <p>Bật hoặc tạm khóa khả năng đăng nhập của nhân sự.</p>
+                    </div>
+                </div>
+
+                @if (Model.IsCurrentStaff)
+                {
+                    <input type="hidden" asp-for="IsActive" />
+                    <div class="identity-switch-card">
+                        <i data-lucide="info" class="w-4 h-4 text-teal-600"></i>
+                        <span>
+                            <strong class="block text-sm text-slate-800">Tài khoản đang đăng nhập</strong>
+                            <small class="block text-xs text-slate-500">Tài khoản hiện tại luôn được giữ hoạt động.</small>
+                        </span>
+                    </div>
+                }
+                else
+                {
+                    <label class="identity-switch-card">
+                        <input asp-for="IsActive" type="checkbox" />
+                        <span>
+                            <strong class="block text-sm text-slate-800">Cho phép đăng nhập</strong>
+                            <small class="block text-xs text-slate-500">Tắt lựa chọn này để khóa tạm thời tài khoản staff.</small>
+                        </span>
+                    </label>
+                }
+            </section>
+        </div>
+
+        <div class="surface-submit-card product-submit-bar">
+            <button type="submit">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                @(Model.IsCreate ? "Tạo nhân sự" : "Lưu thay đổi")
+            </button>
+            <a asp-action="Index" class="surface-cancel-link">Hủy bỏ</a>
+        </div>
+    </div>
+</div>

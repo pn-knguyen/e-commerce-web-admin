@@ -1,0 +1,263 @@
+@model e_commerce_web_admin.ViewModels.Customers.CustomerIndexViewModel
+@using System.Globalization
+@using e_commerce_web_admin.ViewModels.Customers
+@{
+    ViewData["Title"] = "Khách hàng";
+    Layout = "_Layout";
+
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
+    string DateText(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy", vi);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/customers.css" asp-append-version="true" />
+}
+
+<main class="surface-page">
+    <div class="surface-hero product-anim surface-anim" style="animation-delay:0.04s">
+        <div>
+            <h1>Khách hàng</h1>
+            <p>Quản lý hồ sơ khách hàng từ bảng users, theo dõi trạng thái tài khoản, đơn hàng, địa chỉ và đánh giá.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] is string success)
+    {
+        <div id="toastSuccess" class="surface-flash surface-flash-success product-anim surface-anim" style="animation-delay:0.06s">
+            <span><i data-lucide="check" class="w-4 h-4"></i></span>
+            <span>@success</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div id="toastError" class="surface-flash surface-flash-error product-anim surface-anim" style="animation-delay:0.06s">
+            <span><i data-lucide="alert-circle" class="w-4 h-4"></i></span>
+            <span>@error</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <section class="surface-metrics product-anim surface-anim" style="animation-delay:0.08s" aria-label="Thống kê khách hàng">
+        <article>
+            <span><i data-lucide="users-round" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.TotalCustomerCount</p>
+                <p>Tổng khách hàng</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="check-circle-2" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.ActiveCount</p>
+                <p>Đang hoạt động</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="user-plus" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.NewThisMonthCount</p>
+                <p>Mới trong tháng</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="badge-dollar-sign" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Money(Model.CompletedRevenue)</p>
+                <p>Doanh thu hoàn tất</p>
+            </div>
+        </article>
+    </section>
+
+    <section class="surface-console surface-table-card product-anim surface-anim" style="animation-delay:0.12s">
+        <div class="product-toolbar">
+            <form method="get" asp-action="Index" class="customer-filter-grid">
+                <label class="product-search-field">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <input type="text"
+                           name="search"
+                           value="@Model.Search"
+                           placeholder="Tìm theo tên, email, username hoặc số điện thoại..." />
+                </label>
+
+                <label class="product-select-field">
+                    <span>Trạng thái</span>
+                    <select name="status">
+                        @foreach (var option in Model.StatusOptions)
+                        {
+                            <option value="@option.Value" selected="@(option.Selected ? "selected" : null)">@option.Text</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="product-select-field">
+                    <span>Giới tính</span>
+                    <select name="gender">
+                        @foreach (var option in Model.GenderOptions)
+                        {
+                            <option value="@option.Value" selected="@(option.Selected ? "selected" : null)">@option.Text</option>
+                        }
+                    </select>
+                </label>
+
+                <button type="submit" class="product-filter-submit">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Lọc</span>
+                </button>
+
+                @if (Model.HasFilters)
+                {
+                    <a asp-action="Index" class="product-filter-clear">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Xóa lọc</span>
+                    </a>
+                }
+            </form>
+        </div>
+
+        @if (!Model.Customers.Any())
+        {
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="user-search" class="w-9 h-9"></i>
+                </span>
+                <h2>Không tìm thấy khách hàng</h2>
+                @if (Model.HasFilters)
+                {
+                    <p>Điều chỉnh bộ lọc hoặc xóa bộ lọc để xem lại toàn bộ khách hàng.</p>
+                    <a asp-action="Index" class="admin-empty-action">Xóa bộ lọc</a>
+                }
+                else
+                {
+                    <p>Chưa có khách hàng nào trong bảng users.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="surface-table-scroll">
+                <div class="surface-table-head customer-index-grid px-6 py-3.5">
+                    <span>Khách hàng</span>
+                    <span>Liên hệ</span>
+                    <span class="text-center">Đơn hàng</span>
+                    <span class="text-center">Địa chỉ</span>
+                    <span class="text-right">Chi tiêu</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div>
+                    @{
+                        var animIndex = 0;
+                    }
+                    @foreach (var customer in Model.Customers)
+                    {
+                        <article class="surface-row customer-index-grid px-6 py-3.5 product-anim"
+                                 style="animation-delay:@(0.14 + animIndex++ * 0.025)s">
+                            <div class="customer-profile-cell">
+                                <span class="customer-avatar @(customer.IsActive ? string.Empty : "is-muted")">
+                                    <i data-lucide="user-round" class="w-4 h-4"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <h2 class="customer-title truncate">@customer.FullName</h2>
+                                        <span class="product-status-btn @(customer.IsActive ? "is-active" : "is-inactive")">
+                                            <span class="dot"></span>
+                                            <span>@(customer.IsActive ? "Hoạt động" : "Tạm khóa")</span>
+                                        </span>
+                                    </div>
+                                    <p class="customer-code truncate">@customer.Username</p>
+                                    <p class="customer-subtitle">Tạo ngày @DateText(customer.CreatedAt) · @CustomerDisplay.GetGenderLabel(customer.Gender)</p>
+                                </div>
+                            </div>
+
+                            <div class="min-w-0">
+                                <p class="customer-title truncate">@customer.Email</p>
+                                <p class="customer-subtitle truncate">@(string.IsNullOrWhiteSpace(customer.Phone) ? "Chưa có SĐT" : customer.Phone)</p>
+                            </div>
+
+                            <div class="text-center">
+                                <span class="customer-pill is-primary">
+                                    <i data-lucide="shopping-bag" class="w-3 h-3"></i>
+                                    @customer.OrderCount đơn
+                                </span>
+                                <p class="customer-subtitle">@customer.CompletedOrderCount hoàn tất</p>
+                            </div>
+
+                            <div class="text-center">
+                                <span class="customer-pill">
+                                    <i data-lucide="map-pin" class="w-3 h-3"></i>
+                                    @customer.AddressCount địa chỉ
+                                </span>
+                                <p class="customer-subtitle">@customer.RatingCount đánh giá</p>
+                            </div>
+
+                            <div class="text-right">
+                                <strong class="customer-title">@Money(customer.TotalSpent)</strong>
+                                <p class="customer-subtitle">đã thanh toán</p>
+                            </div>
+
+                            <div class="customer-actions">
+                                <a asp-action="Details" asp-route-id="@customer.Id" class="product-action-btn product-action-edit">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                    <span>Chi tiết</span>
+                                </a>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <div class="surface-pagination px-6 py-4 flex items-center justify-between">
+                    <p class="text-xs text-slate-400">
+                        Trang <span class="font-semibold text-slate-600">@Model.Page</span> / @Model.TotalPages
+                        &nbsp;·&nbsp;
+                        <span class="font-semibold text-slate-600">@Model.TotalCount</span> khách hàng
+                    </p>
+                    <div class="flex items-center gap-1">
+                        @if (Model.HasPrev)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@(Model.Page - 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-gender="@Model.Gender"
+                               class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (var p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@p"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-gender="@Model.Gender"
+                               class="w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all @(p == Model.Page ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50")">
+                                @p
+                            </a>
+                        }
+                        @if (Model.HasNext)
+                        {
+                            <a asp-action="Index"
+                               asp-route-page="@(Model.Page + 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.Status"
+                               asp-route-gender="@Model.Gender"
+                               class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors shadow-sm">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </section>
+</main>

@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.Suppliers;
 using e_commerce_web_admin.ViewModels.Suppliers;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Suppliers", Permissions.View)]
 public sealed class SuppliersController : Controller
 {
     private readonly ISupplierAdminService _supplierService;
@@ -29,10 +32,12 @@ public sealed class SuppliersController : Controller
         return View(viewModel);
     }
 
+    [RbacAuthorize("Suppliers", Permissions.Create)]
     public async Task<IActionResult> Create(CancellationToken ct)
         => View(await _supplierService.GetCreateFormAsync(ct));
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Suppliers", Permissions.Create)]
     public async Task<IActionResult> Create(SupplierFormViewModel viewModel, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -51,6 +56,7 @@ public sealed class SuppliersController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [RbacAuthorize("Suppliers", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken ct)
     {
         var viewModel = await _supplierService.GetEditFormAsync(id, ct);
@@ -58,6 +64,7 @@ public sealed class SuppliersController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Suppliers", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, SupplierFormViewModel viewModel, CancellationToken ct)
     {
         if (id != viewModel.Id)
@@ -82,6 +89,7 @@ public sealed class SuppliersController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Suppliers", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
         var result = await _supplierService.DeleteAsync(id, ct);
@@ -112,6 +120,7 @@ public sealed class SuppliersController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Suppliers", Permissions.Edit)]
     public async Task<IActionResult> ToggleActive(long id, CancellationToken ct)
     {
         var result = await _supplierService.ToggleActiveAsync(id, ct);

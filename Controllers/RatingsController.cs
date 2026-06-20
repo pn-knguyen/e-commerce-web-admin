@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.Ratings;
 using e_commerce_web_admin.ViewModels.Ratings;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Ratings", Permissions.View)]
 public sealed class RatingsController : Controller
 {
     private readonly IRatingAdminService _ratingService;
@@ -32,6 +35,7 @@ public sealed class RatingsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Ratings", Permissions.Approve)]
     public async Task<IActionResult> ToggleApproval(long id, CancellationToken ct)
     {
         var result = await _ratingService.ToggleApprovalAsync(id, ct);
@@ -41,6 +45,7 @@ public sealed class RatingsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Ratings", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
         var result = await _ratingService.DeleteAsync(id, ct);

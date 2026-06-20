@@ -1,18 +1,21 @@
 using e_commerce_web_admin.Data.Seed;
 using e_commerce_web_admin.Models.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using AttributeEntity = e_commerce_web_admin.Models.Entities.Attribute;
 
 namespace e_commerce_web_admin.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>, long>
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
     }
 
-    public DbSet<User> Users => Set<User>();
+    public new DbSet<User> Users => Set<User>();
+    public DbSet<Staff> Staff => Set<Staff>();
     public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Wishlist> Wishlists => Set<Wishlist>();
@@ -49,6 +52,7 @@ public class ApplicationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        ConfigureIdentity(modelBuilder);
         ConfigureUsers(modelBuilder);
         ConfigureCatalog(modelBuilder);
         ConfigureOrders(modelBuilder);
@@ -60,6 +64,34 @@ public class ApplicationDbContext : DbContext
         {
             foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
         }
+    }
+
+    private static void ConfigureIdentity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Staff>(entity =>
+        {
+            entity.ToTable("staff");
+            entity.Property(staff => staff.UserName).HasMaxLength(100).IsRequired();
+            entity.Property(staff => staff.NormalizedUserName).HasMaxLength(100);
+            entity.Property(staff => staff.Email).HasMaxLength(255).IsRequired();
+            entity.Property(staff => staff.NormalizedEmail).HasMaxLength(255);
+            entity.Property(staff => staff.PhoneNumber).HasMaxLength(30);
+            entity.Property(staff => staff.FullName).HasMaxLength(255).IsRequired();
+            entity.Property(staff => staff.AvatarImage).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<IdentityRole<long>>(entity =>
+        {
+            entity.ToTable("staff_roles");
+            entity.Property(role => role.Name).HasMaxLength(100);
+            entity.Property(role => role.NormalizedName).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<IdentityUserRole<long>>(entity => entity.ToTable("staff_user_roles"));
+        modelBuilder.Entity<IdentityUserClaim<long>>(entity => entity.ToTable("staff_claims"));
+        modelBuilder.Entity<IdentityUserLogin<long>>(entity => entity.ToTable("staff_logins"));
+        modelBuilder.Entity<IdentityRoleClaim<long>>(entity => entity.ToTable("staff_role_claims"));
+        modelBuilder.Entity<IdentityUserToken<long>>(entity => entity.ToTable("staff_tokens"));
     }
 
     private static void ConfigureUsers(ModelBuilder modelBuilder)
@@ -463,11 +495,11 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(receipt => receipt.Supplier)
                 .WithMany(supplier => supplier.GoodsReceipts)
                 .HasForeignKey(receipt => receipt.SupplierId);
-            entity.HasOne(receipt => receipt.CreatedByUser)
-                .WithMany(user => user.CreatedGoodsReceipts)
+            entity.HasOne(receipt => receipt.CreatedByStaff)
+                .WithMany(staff => staff.CreatedGoodsReceipts)
                 .HasForeignKey(receipt => receipt.CreatedBy);
-            entity.HasOne(receipt => receipt.ApprovedByUser)
-                .WithMany(user => user.ApprovedGoodsReceipts)
+            entity.HasOne(receipt => receipt.ApprovedByStaff)
+                .WithMany(staff => staff.ApprovedGoodsReceipts)
                 .HasForeignKey(receipt => receipt.ApprovedBy);
         });
 
@@ -483,4 +515,5 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(item => item.ProductVariantId);
         });
     }
+
 }

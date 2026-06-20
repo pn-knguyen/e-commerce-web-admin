@@ -1,3 +1,5 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.Attributes;
 using e_commerce_web_admin.ViewModels.Attributes;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +7,7 @@ using Microsoft.AspNetCore.Antiforgery;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Attributes", Permissions.View)]
 public sealed class AttributesController : Controller
 {
     private readonly IAttributeAdminService _service;
@@ -26,6 +29,7 @@ public sealed class AttributesController : Controller
     }
 
     // GET /Attributes/Create
+    [RbacAuthorize("Attributes", Permissions.Create)]
     public async Task<IActionResult> Create(CancellationToken ct)
     {
         var vm = await _service.GetCreateFormAsync(ct);
@@ -34,6 +38,7 @@ public sealed class AttributesController : Controller
 
     // POST /Attributes/Create
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Attributes", Permissions.Create)]
     public async Task<IActionResult> Create(AttributeFormViewModel form, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -51,6 +56,7 @@ public sealed class AttributesController : Controller
     }
 
     // GET /Attributes/Edit/{id}
+    [RbacAuthorize("Attributes", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken ct)
     {
         var vm = await _service.GetEditViewAsync(id, ct);
@@ -59,6 +65,7 @@ public sealed class AttributesController : Controller
 
     // POST /Attributes/Edit/{id}
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Attributes", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, AttributeFormViewModel form, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -87,6 +94,7 @@ public sealed class AttributesController : Controller
 
     // POST /Attributes/Delete/{id}
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Attributes", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
         var result = await _service.DeleteAsync(id, ct);
@@ -106,6 +114,7 @@ public sealed class AttributesController : Controller
 
     // POST /Attributes/{id}/Options/Add
     [HttpPost("Attributes/{id:long}/Options/Add")]
+    [RbacAuthorize("Attributes", Permissions.Edit)]
     public async Task<IActionResult> OptionsAdd(long id, [FromBody] AttributeOptionFormViewModel form, CancellationToken ct)
     {
         if (!await IsValidAntiforgeryAsync()) return Forbid();
@@ -119,6 +128,7 @@ public sealed class AttributesController : Controller
 
     // POST /Attributes/Options/{optionId}/Update
     [HttpPost("Attributes/Options/{optionId:long}/Update")]
+    [RbacAuthorize("Attributes", Permissions.Edit)]
     public async Task<IActionResult> OptionUpdate(long optionId, [FromBody] AttributeOptionUpdateViewModel form, CancellationToken ct)
     {
         if (!await IsValidAntiforgeryAsync()) return Forbid();
@@ -132,6 +142,7 @@ public sealed class AttributesController : Controller
 
     // POST /Attributes/Options/{optionId}/Delete
     [HttpPost("Attributes/Options/{optionId:long}/Delete")]
+    [RbacAuthorize("Attributes", Permissions.Delete)]
     public async Task<IActionResult> OptionDelete(long optionId, CancellationToken ct)
     {
         if (!await IsValidAntiforgeryAsync()) return Forbid();

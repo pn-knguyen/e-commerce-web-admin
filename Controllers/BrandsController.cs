@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.Brands;
 using e_commerce_web_admin.ViewModels.Brands;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Brands", Permissions.View)]
 public sealed class BrandsController : Controller
 {
     private readonly IBrandAdminService _brandService;
@@ -22,11 +25,13 @@ public sealed class BrandsController : Controller
     }
 
     // GET /Brands/Create
+    [RbacAuthorize("Brands", Permissions.Create)]
     public async Task<IActionResult> Create(CancellationToken ct)
         => View(await _brandService.GetCreateFormAsync(ct));
 
     // POST /Brands/Create
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Brands", Permissions.Create)]
     public async Task<IActionResult> Create(BrandFormViewModel vm, CancellationToken ct)
     {
         if (!ModelState.IsValid) return View(vm);
@@ -43,6 +48,7 @@ public sealed class BrandsController : Controller
     }
 
     // GET /Brands/Edit/{id}
+    [RbacAuthorize("Brands", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken ct)
     {
         var vm = await _brandService.GetEditFormAsync(id, ct);
@@ -51,6 +57,7 @@ public sealed class BrandsController : Controller
 
     // POST /Brands/Edit/{id}
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Brands", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, BrandFormViewModel vm, CancellationToken ct)
     {
         if (id != vm.Id) return BadRequest();
@@ -69,6 +76,7 @@ public sealed class BrandsController : Controller
 
     // POST /Brands/Delete/{id}
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Brands", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
         var result = await _brandService.DeleteAsync(id, ct);
@@ -80,6 +88,7 @@ public sealed class BrandsController : Controller
 
     // POST /Brands/ToggleActive/{id}
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Brands", Permissions.Edit)]
     public async Task<IActionResult> ToggleActive(long id, CancellationToken ct)
     {
         var result = await _brandService.ToggleActiveAsync(id, ct);

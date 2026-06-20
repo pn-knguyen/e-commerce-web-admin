@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.ProductVariants;
 using e_commerce_web_admin.ViewModels.ProductVariants;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("ProductVariants", Permissions.View)]
 public sealed class ProductVariantsController : Controller
 {
     private readonly IProductVariantAdminService _variantService;
@@ -35,10 +38,12 @@ public sealed class ProductVariantsController : Controller
         return View(viewModel);
     }
 
+    [RbacAuthorize("ProductVariants", Permissions.Create)]
     public async Task<IActionResult> Create(long? productId, CancellationToken ct)
         => View(await _variantService.GetCreateFormAsync(productId, ct));
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("ProductVariants", Permissions.Create)]
     public async Task<IActionResult> Create(ProductVariantFormViewModel viewModel, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -57,6 +62,7 @@ public sealed class ProductVariantsController : Controller
         return RedirectToAction(nameof(Index), new { productId = result.Form.ProductId });
     }
 
+    [RbacAuthorize("ProductVariants", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken ct)
     {
         var viewModel = await _variantService.GetEditFormAsync(id, ct);
@@ -64,6 +70,7 @@ public sealed class ProductVariantsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("ProductVariants", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, ProductVariantFormViewModel viewModel, CancellationToken ct)
     {
         if (id != viewModel.Id)
@@ -89,6 +96,7 @@ public sealed class ProductVariantsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("ProductVariants", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
         var result = await _variantService.DeleteAsync(id, ct);
@@ -119,6 +127,7 @@ public sealed class ProductVariantsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("ProductVariants", Permissions.Edit)]
     public async Task<IActionResult> ToggleActive(long id, CancellationToken ct)
     {
         var result = await _variantService.ToggleActiveAsync(id, ct);
@@ -126,6 +135,7 @@ public sealed class ProductVariantsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("ProductVariants", Permissions.Edit)]
     public async Task<IActionResult> SetDefault(long id, CancellationToken ct)
     {
         var result = await _variantService.SetDefaultAsync(id, ct);

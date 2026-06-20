@@ -1,0 +1,165 @@
+@model e_commerce_web_admin.ViewModels.Roles.RoleIndexViewModel
+@{
+    ViewData["Title"] = "Vai trò và quyền";
+    Layout = "_Layout";
+
+    var roles = Model.Roles;
+    var permissionCount = roles.Sum(role => role.PermissionCount);
+    var staffCount = roles.Sum(role => role.StaffCount);
+    var deletableCount = roles.Count(role => role.CanDelete);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/identity-admin.css" asp-append-version="true" />
+}
+
+<main class="surface-page identity-page">
+    <div class="surface-hero product-anim surface-anim" style="animation-delay:0.04s">
+        <div>
+            <h1>Vai trò và quyền</h1>
+            <p>Tạo role và cấu hình quyền theo module/action bằng Identity role claims.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] is string success)
+    {
+        <div id="toastSuccess" class="surface-flash surface-flash-success product-anim surface-anim" style="animation-delay:0.06s">
+            <span><i data-lucide="check" class="w-4 h-4"></i></span>
+            <span>@success</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div id="toastError" class="surface-flash surface-flash-error product-anim surface-anim" style="animation-delay:0.06s">
+            <span><i data-lucide="alert-circle" class="w-4 h-4"></i></span>
+            <span>@error</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <section class="surface-metrics product-anim surface-anim" style="animation-delay:0.08s" aria-label="Thống kê vai trò">
+        <article>
+            <span><i data-lucide="shield" class="w-5 h-5"></i></span>
+            <div>
+                <p>@roles.Count</p>
+                <p>Tổng vai trò</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="list-checks" class="w-5 h-5"></i></span>
+            <div>
+                <p>@permissionCount</p>
+                <p>Quyền đang bật</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="users-round" class="w-5 h-5"></i></span>
+            <div>
+                <p>@staffCount</p>
+                <p>Lượt gán nhân sự</p>
+            </div>
+        </article>
+        <article>
+            <span><i data-lucide="trash-2" class="w-5 h-5"></i></span>
+            <div>
+                <p>@deletableCount</p>
+                <p>Có thể xóa</p>
+            </div>
+        </article>
+    </section>
+
+    <section class="surface-console surface-table-card product-anim surface-anim" style="animation-delay:0.12s">
+        <div class="product-toolbar">
+            <form asp-action="Create" method="post" class="identity-create-grid">
+                @Html.AntiForgeryToken()
+                <label class="product-search-field">
+                    <i data-lucide="shield-plus" class="w-4 h-4"></i>
+                    <input asp-for="NewRoleName" placeholder="Tên role mới, ví dụ: WarehouseLead" />
+                </label>
+                <button type="submit" class="product-filter-submit">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Thêm role</span>
+                </button>
+            </form>
+        </div>
+
+        @if (!roles.Any())
+        {
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="shield-question" class="w-9 h-9"></i>
+                </span>
+                <h2>Chưa có vai trò</h2>
+                <p>Tạo vai trò đầu tiên rồi cấu hình quyền module/action cho nhân sự quản trị.</p>
+            </div>
+        }
+        else
+        {
+            <div class="surface-table-scroll">
+                <div class="surface-table-head identity-role-grid px-6 py-3.5">
+                    <span>Vai trò</span>
+                    <span class="text-center">Quyền</span>
+                    <span class="text-center">Nhân sự</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div>
+                    @{
+                        var animIndex = 0;
+                    }
+                    @foreach (var role in roles)
+                    {
+                        <article class="surface-row identity-role-grid px-6 py-3.5 product-anim"
+                                 style="animation-delay:@(0.14 + animIndex++ * 0.025)s">
+                            <div class="identity-role-cell">
+                                <span class="identity-role-icon">
+                                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <h2 class="identity-cell-title truncate">@role.Name</h2>
+                                    <p class="identity-cell-subtitle">Identity role</p>
+                                </div>
+                            </div>
+
+                            <div class="text-center">
+                                <span class="identity-role-pill">
+                                    <i data-lucide="list-checks" class="w-3 h-3"></i>
+                                    @role.PermissionCount quyền
+                                </span>
+                            </div>
+
+                            <div class="text-center">
+                                <span class="identity-muted-pill">
+                                    <i data-lucide="users-round" class="w-3 h-3"></i>
+                                    @role.StaffCount nhân sự
+                                </span>
+                            </div>
+
+                            <div class="identity-actions">
+                                <a asp-action="Edit" asp-route-id="@role.Id" class="product-action-btn product-action-edit">
+                                    <i data-lucide="settings-2" class="w-3.5 h-3.5"></i>
+                                    <span>Cấu hình</span>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@role.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit"
+                                            disabled="@(!role.CanDelete)"
+                                            class="product-action-btn product-action-delete disabled:opacity-40">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Xóa</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+        }
+    </section>
+</main>

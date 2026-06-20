@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.Specifications;
 using e_commerce_web_admin.ViewModels.Specifications;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Specifications", Permissions.View)]
 public sealed class SpecificationsController : Controller
 {
     private readonly ISpecificationAdminService _specService;
@@ -21,11 +24,13 @@ public sealed class SpecificationsController : Controller
     }
 
     // GET /Specifications/Create
+    [RbacAuthorize("Specifications", Permissions.Create)]
     public async Task<IActionResult> Create(CancellationToken ct)
         => View(await _specService.GetCreateFormAsync(ct));
 
     // POST /Specifications/Create
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Specifications", Permissions.Create)]
     public async Task<IActionResult> Create(SpecificationFormViewModel vm, CancellationToken ct)
     {
         if (!ModelState.IsValid) return View(vm);
@@ -42,6 +47,7 @@ public sealed class SpecificationsController : Controller
     }
 
     // GET /Specifications/Edit/{id}
+    [RbacAuthorize("Specifications", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken ct)
     {
         var vm = await _specService.GetEditFormAsync(id, ct);
@@ -50,6 +56,7 @@ public sealed class SpecificationsController : Controller
 
     // POST /Specifications/Edit/{id}
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Specifications", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, SpecificationFormViewModel vm, CancellationToken ct)
     {
         if (id != vm.Id) return BadRequest();
@@ -68,6 +75,7 @@ public sealed class SpecificationsController : Controller
 
     // POST /Specifications/Delete/{id}
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Specifications", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
         var result = await _specService.DeleteAsync(id, ct);

@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.CategoryVariantAttributes;
 using e_commerce_web_admin.ViewModels.CategoryVariantAttributes;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Categories", Permissions.View)]
 public sealed class CategoryVariantAttributesController : Controller
 {
     private readonly ICvaAdminService _service;
@@ -22,6 +25,7 @@ public sealed class CategoryVariantAttributesController : Controller
 
     // POST /CategoryVariantAttributes/Assign
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Edit)]
     public async Task<IActionResult> Assign(CvaAssignViewModel form, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -37,6 +41,7 @@ public sealed class CategoryVariantAttributesController : Controller
 
     // POST /CategoryVariantAttributes/Remove
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Categories", Permissions.Delete)]
     public async Task<IActionResult> Remove(long categoryId, long attributeId, CancellationToken ct)
     {
         var result = await _service.RemoveAsync(categoryId, attributeId, ct);

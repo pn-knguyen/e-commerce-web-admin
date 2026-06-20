@@ -1,3 +1,5 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Enums;
 using e_commerce_web_admin.Services.Promotions;
 using e_commerce_web_admin.ViewModels.Promotions;
@@ -5,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("Promotions", Permissions.View)]
 public sealed class PromotionsController : Controller
 {
     private readonly IPromotionAdminService _promotionService;
@@ -30,6 +33,7 @@ public sealed class PromotionsController : Controller
         return View(ToIndexViewModel(result));
     }
 
+    [RbacAuthorize("Promotions", Permissions.Create)]
     public async Task<IActionResult> Create(CancellationToken ct)
     {
         var viewModel = ToFormViewModel(_promotionService.GetCreateForm());
@@ -37,6 +41,7 @@ public sealed class PromotionsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Promotions", Permissions.Create)]
     public async Task<IActionResult> Create(
         PromotionFormViewModel viewModel,
         CancellationToken ct)
@@ -57,6 +62,7 @@ public sealed class PromotionsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [RbacAuthorize("Promotions", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken ct)
     {
         var form = await _promotionService.GetEditFormAsync(id, ct);
@@ -66,6 +72,7 @@ public sealed class PromotionsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Promotions", Permissions.Edit)]
     public async Task<IActionResult> Edit(
         long id,
         PromotionFormViewModel viewModel,
@@ -93,6 +100,7 @@ public sealed class PromotionsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Promotions", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
         var result = await _promotionService.DeleteAsync(id, ct);
@@ -106,6 +114,7 @@ public sealed class PromotionsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("Promotions", Permissions.Edit)]
     public async Task<IActionResult> ToggleActive(long id, CancellationToken ct)
     {
         var result = await _promotionService.ToggleActiveAsync(id, ct);

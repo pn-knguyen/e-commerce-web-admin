@@ -29,8 +29,8 @@ public class GoodsReceipt
     public DateTime? UpdatedAt { get; set; }
 
     public Supplier? Supplier { get; set; }
-    public User? CreatedByUser { get; set; }
-    public User? ApprovedByUser { get; set; }
+    public Staff? CreatedByStaff { get; set; }
+    public Staff? ApprovedByStaff { get; set; }
     public ICollection<GoodReceiptItem> GoodReceiptItems { get; set; } = new List<GoodReceiptItem>();
 }
 

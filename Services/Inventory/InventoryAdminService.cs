@@ -1,5 +1,7 @@
 using System.Data;
+using System.Security.Claims;
 using e_commerce_web_admin.Data;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Entities;
 using e_commerce_web_admin.Models.Enums;
 using e_commerce_web_admin.ViewModels.Inventory;
@@ -14,8 +16,13 @@ public sealed class InventoryAdminService : IInventoryAdminService
     private const decimal MaxReceiptAmount = 9999999999999999m;
 
     private readonly ApplicationDbContext _db;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public InventoryAdminService(ApplicationDbContext db) => _db = db;
+    public InventoryAdminService(ApplicationDbContext db, IHttpContextAccessor httpContextAccessor)
+    {
+        _db = db;
+        _httpContextAccessor = httpContextAccessor;
+    }
 
     private sealed record ReceiptItemCandidate(int Index, GoodsReceiptItemInputViewModel Item);
 
@@ -86,7 +93,7 @@ public sealed class InventoryAdminService : IInventoryAdminService
                 ItemCount = receipt.GoodReceiptItems.Count,
                 TotalQuantity = receipt.GoodReceiptItems.Sum(item => item.Quantity),
                 TotalAmount = receipt.TotalAmount,
-                CreatedByName = receipt.CreatedByUser != null ? receipt.CreatedByUser.FullName : "Không rõ",
+                CreatedByName = receipt.CreatedByStaff != null ? receipt.CreatedByStaff.FullName : "Không rõ",
                 CreatedAt = receipt.CreatedAt,
                 UpdatedAt = receipt.UpdatedAt,
             })
@@ -134,8 +141,8 @@ public sealed class InventoryAdminService : IInventoryAdminService
                 SupplierEmail = receipt.Supplier != null ? receipt.Supplier.Email : null,
                 Status = receipt.Status,
                 TotalAmount = receipt.TotalAmount,
-                CreatedByName = receipt.CreatedByUser != null ? receipt.CreatedByUser.FullName : "Không rõ",
-                ApprovedByName = receipt.ApprovedByUser != null ? receipt.ApprovedByUser.FullName : null,
+                CreatedByName = receipt.CreatedByStaff != null ? receipt.CreatedByStaff.FullName : "Không rõ",
+                ApprovedByName = receipt.ApprovedByStaff != null ? receipt.ApprovedByStaff.FullName : null,
                 CreatedAt = receipt.CreatedAt,
                 UpdatedAt = receipt.UpdatedAt,
                 Items = receipt.GoodReceiptItems
@@ -258,8 +265,8 @@ public sealed class InventoryAdminService : IInventoryAdminService
             return GoodsReceiptSaveResult.Failed(form, errors);
         }
 
-        var operatorUserId = await ResolveOperatorUserIdAsync(ct);
-        if (!operatorUserId.HasValue)
+        var operatorStaffId = await ResolveOperatorStaffIdAsync(ct);
+        if (!operatorStaffId.HasValue)
         {
             return GoodsReceiptSaveResult.Failed(
                 form,
@@ -276,7 +283,7 @@ public sealed class InventoryAdminService : IInventoryAdminService
             SupplierId = form.SupplierId!.Value,
             ReceiptCode = form.ReceiptCode,
             Status = GoodsReceiptStatus.Draft,
-            CreatedBy = operatorUserId.Value,
+            CreatedBy = operatorStaffId.Value,
             CreatedAt = now,
             TotalAmount = CalculateTotal(selectedItems),
         };
@@ -381,74 +388,74 @@ public sealed class InventoryAdminService : IInventoryAdminService
         long id,
         CancellationToken ct = default)
     {
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var strategy = _db.Database.CreateExecutionStrategy();
 
-        var receipt = await _db.GoodsReceipts
-            .Include(item => item.GoodReceiptItems)
-                .ThenInclude(item => item.ProductVariant)
-            .FirstOrDefaultAsync(item => item.Id == id, ct);
-
-        if (receipt is null)
+        return await strategy.ExecuteAsync(async () =>
         {
-            return GoodsReceiptActionResult.NotFound();
-        }
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
-        if (receipt.Status == GoodsReceiptStatus.Approved)
-        {
-            return GoodsReceiptActionResult.Failed("Phiếu nhập này đã được duyệt trước đó.");
-        }
+            var receipt = await _db.GoodsReceipts
+                .Include(item => item.GoodReceiptItems)
+                    .ThenInclude(item => item.ProductVariant)
+                .FirstOrDefaultAsync(item => item.Id == id, ct);
 
-        if (receipt.Status == GoodsReceiptStatus.Cancelled)
-        {
-            return GoodsReceiptActionResult.Failed("Phiếu nhập đã hủy không thể duyệt.");
-        }
-
-        if (receipt.GoodReceiptItems.Count == 0)
-        {
-            return GoodsReceiptActionResult.Failed("Phiếu nhập cần có ít nhất một dòng hàng trước khi duyệt.");
-        }
-
-        var operatorUserId = await ResolveOperatorUserIdAsync(ct);
-        if (!operatorUserId.HasValue)
-        {
-            return GoodsReceiptActionResult.Failed("Không tìm thấy tài khoản nhân sự để duyệt phiếu nhập.");
-        }
-
-        foreach (var group in receipt.GoodReceiptItems.GroupBy(item => item.ProductVariantId))
-        {
-            var variant = group.First().ProductVariant;
-            if (variant is null)
+            if (receipt is null)
             {
-                return GoodsReceiptActionResult.Failed("Phiếu nhập có biến thể không còn tồn tại.");
+                return GoodsReceiptActionResult.NotFound();
             }
 
-            var incomingQuantity = group.Sum(item => item.Quantity);
-            if (variant.Quantity > int.MaxValue - incomingQuantity)
+            if (receipt.Status != GoodsReceiptStatus.Pending)
             {
-                return GoodsReceiptActionResult.Failed(
-                    $"Số tồn của SKU {variant.Code} vượt giới hạn hệ thống nếu duyệt phiếu này.");
+                return GoodsReceiptActionResult.Failed("Chỉ phiếu đang chờ duyệt mới có thể duyệt.");
             }
-        }
 
-        var now = DateTime.UtcNow;
+            if (receipt.GoodReceiptItems.Count == 0)
+            {
+                return GoodsReceiptActionResult.Failed("Phiếu nhập cần có ít nhất một dòng hàng trước khi duyệt.");
+            }
 
-        foreach (var group in receipt.GoodReceiptItems.GroupBy(item => item.ProductVariantId))
-        {
-            var variant = group.First().ProductVariant!;
-            variant.Quantity += group.Sum(item => item.Quantity);
-            variant.UpdatedAt = now;
-        }
+            var operatorStaffId = await ResolveOperatorStaffIdAsync(ct);
+            if (!operatorStaffId.HasValue)
+            {
+                return GoodsReceiptActionResult.Failed("Không tìm thấy tài khoản nhân sự để duyệt phiếu nhập.");
+            }
 
-        receipt.Status = GoodsReceiptStatus.Approved;
-        receipt.ApprovedBy = operatorUserId.Value;
-        receipt.TotalAmount = receipt.GoodReceiptItems.Sum(item => item.Quantity * item.ImportPrice);
-        receipt.UpdatedAt = now;
+            foreach (var group in receipt.GoodReceiptItems.GroupBy(item => item.ProductVariantId))
+            {
+                var variant = group.First().ProductVariant;
+                if (variant is null)
+                {
+                    return GoodsReceiptActionResult.Failed("Phiếu nhập có biến thể không còn tồn tại.");
+                }
 
-        await _db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
+                var incomingQuantity = group.Sum(item => item.Quantity);
+                if (variant.Quantity > int.MaxValue - incomingQuantity)
+                {
+                    return GoodsReceiptActionResult.Failed(
+                        $"Số tồn của SKU {variant.Code} vượt giới hạn hệ thống nếu duyệt phiếu này.");
+                }
+            }
 
-        return GoodsReceiptActionResult.Success(
-            $"Đã duyệt phiếu nhập \"{receipt.ReceiptCode}\" và cập nhật tồn kho.");
+            var now = DateTime.UtcNow;
+
+            foreach (var group in receipt.GoodReceiptItems.GroupBy(item => item.ProductVariantId))
+            {
+                var variant = group.First().ProductVariant!;
+                variant.Quantity += group.Sum(item => item.Quantity);
+                variant.UpdatedAt = now;
+            }
+
+            receipt.Status = GoodsReceiptStatus.Approved;
+            receipt.ApprovedBy = operatorStaffId.Value;
+            receipt.TotalAmount = receipt.GoodReceiptItems.Sum(item => item.Quantity * item.ImportPrice);
+            receipt.UpdatedAt = now;
+
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            return GoodsReceiptActionResult.Success(
+                $"Đã duyệt phiếu nhập \"{receipt.ReceiptCode}\" và cập nhật tồn kho.");
+        });
     }
 
     public async Task<GoodsReceiptActionResult> CancelAsync(
@@ -900,24 +907,18 @@ public sealed class InventoryAdminService : IInventoryAdminService
         return code;
     }
 
-    private async Task<long?> ResolveOperatorUserIdAsync(CancellationToken ct)
+    private async Task<long?> ResolveOperatorStaffIdAsync(CancellationToken ct)
     {
-        var staffId = await _db.Users
-            .AsNoTracking()
-            .Where(user =>
-                user.IsActive &&
-                (user.Role == UserRole.Admin ||
-                 user.Role == UserRole.Manager ||
-                 user.Role == UserRole.Staff))
-            .OrderBy(user => user.Id)
-            .Select(user => (long?)user.Id)
-            .FirstOrDefaultAsync(ct);
+        var claimValue = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? _httpContextAccessor.HttpContext?.User.FindFirstValue(AppClaimTypes.UserId);
 
-        return staffId ?? await _db.Users
-            .AsNoTracking()
-            .OrderBy(user => user.Id)
-            .Select(user => (long?)user.Id)
-            .FirstOrDefaultAsync(ct);
+        if (long.TryParse(claimValue, out var currentStaffId) &&
+            await _db.Staff.AnyAsync(staff => staff.Id == currentStaffId && staff.IsActive, ct))
+        {
+            return currentStaffId;
+        }
+
+        return null;
     }
 
     private static bool TryParseReceiptStatus(string? value, out GoodsReceiptStatus status) =>

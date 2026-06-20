@@ -1,9 +1,12 @@
+using e_commerce_web_admin.Filters;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Services.PaymentMethods;
 using e_commerce_web_admin.ViewModels.PaymentMethods;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_commerce_web_admin.Controllers;
 
+[RbacAuthorize("PaymentMethods", Permissions.View)]
 public sealed class PaymentMethodsController : Controller
 {
     private readonly IPaymentMethodAdminService _paymentMethodService;
@@ -29,10 +32,12 @@ public sealed class PaymentMethodsController : Controller
         return View(viewModel);
     }
 
+    [RbacAuthorize("PaymentMethods", Permissions.Create)]
     public async Task<IActionResult> Create(CancellationToken ct)
         => View(await _paymentMethodService.GetCreateFormAsync(ct));
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("PaymentMethods", Permissions.Create)]
     public async Task<IActionResult> Create(PaymentMethodFormViewModel viewModel, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -51,6 +56,7 @@ public sealed class PaymentMethodsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [RbacAuthorize("PaymentMethods", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, CancellationToken ct)
     {
         var viewModel = await _paymentMethodService.GetEditFormAsync(id, ct);
@@ -58,6 +64,7 @@ public sealed class PaymentMethodsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("PaymentMethods", Permissions.Edit)]
     public async Task<IActionResult> Edit(long id, PaymentMethodFormViewModel viewModel, CancellationToken ct)
     {
         if (id != viewModel.Id)
@@ -82,6 +89,7 @@ public sealed class PaymentMethodsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("PaymentMethods", Permissions.Delete)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
         var result = await _paymentMethodService.DeleteAsync(id, ct);
@@ -112,6 +120,7 @@ public sealed class PaymentMethodsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [RbacAuthorize("PaymentMethods", Permissions.Edit)]
     public async Task<IActionResult> ToggleActive(long id, CancellationToken ct)
     {
         var result = await _paymentMethodService.ToggleActiveAsync(id, ct);
