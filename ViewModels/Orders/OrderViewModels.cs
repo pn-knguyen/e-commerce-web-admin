@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using e_commerce_web_admin.Models.Enums;
+using e_commerce_web_admin.ViewModels.Shipments;
 
 namespace e_commerce_web_admin.ViewModels.Orders;
 
@@ -68,7 +69,9 @@ public sealed class OrderDetailsViewModel
     public string CustomerName { get; set; } = string.Empty;
     public string? CustomerEmail { get; set; }
     public string? CustomerPhone { get; set; }
+    public long PaymentMethodId { get; set; }
     public string PaymentMethodName { get; set; } = string.Empty;
+    public bool IsCashOnDelivery { get; set; }
     public string? VoucherCode { get; set; }
     public string ShippingContactName { get; set; } = string.Empty;
     public string ShippingPhone { get; set; } = string.Empty;
@@ -87,6 +90,7 @@ public sealed class OrderDetailsViewModel
     public List<OrderFilterOption> OrderStatusOptions { get; set; } = [];
     public List<OrderFilterOption> PaymentStatusOptions { get; set; } = [];
     public OrderStatusUpdateViewModel StatusForm { get; set; } = new();
+    public ShipmentPanelViewModel ShipmentPanel { get; set; } = new();
 
     public int TotalQuantity => Items.Sum(item => item.Quantity);
     public string ShippingAddress => string.Join(", ", new[]
@@ -133,9 +137,9 @@ public static class OrderDisplay
         OrderStatus.Confirmed => "Đã xác nhận",
         OrderStatus.Processing => "Đang xử lý",
         OrderStatus.Shipping => "Đang giao",
-        OrderStatus.Completed => "Hoàn tất",
+        OrderStatus.Completed => "Đã giao",
         OrderStatus.Cancelled => "Đã hủy",
-        OrderStatus.Returned => "Đã trả hàng",
+        OrderStatus.Returned => "Đã hoàn hàng",
         _ => "Không xác định",
     };
 

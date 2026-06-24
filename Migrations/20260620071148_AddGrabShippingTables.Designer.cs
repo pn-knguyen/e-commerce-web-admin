@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using e_commerce_web_admin.Data;
 
@@ -11,9 +12,11 @@ using e_commerce_web_admin.Data;
 namespace e_commerce_web_admin.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260620071148_AddGrabShippingTables")]
+    partial class AddGrabShippingTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -938,14 +941,6 @@ namespace e_commerce_web_admin.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("DistrictCode")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<string>("DistrictName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
                     b.Property<string>("FormattedAddress")
                         .HasMaxLength(700)
                         .HasColumnType("nvarchar(700)");
@@ -999,9 +994,7 @@ namespace e_commerce_web_admin.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.HasIndex("IsDefault")
-                        .IsUnique()
-                        .HasFilter("[IsDefault] = 1");
+                    b.HasIndex("IsDefault");
 
                     b.ToTable("fulfillment_locations", (string)null);
                 });
@@ -2285,10 +2278,6 @@ namespace e_commerce_web_admin.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("DropoffDetailAddress")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<decimal?>("DropoffLatitude")
                         .HasPrecision(10, 7)
                         .HasColumnType("decimal(10,7)");
@@ -2334,10 +2323,6 @@ namespace e_commerce_web_admin.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("PickupDetailAddress")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<decimal?>("PickupLatitude")
                         .HasPrecision(10, 7)
                         .HasColumnType("decimal(10,7)");
@@ -2359,54 +2344,6 @@ namespace e_commerce_web_admin.Migrations
                     b.Property<string>("ProviderDeliveryId")
                         .HasMaxLength(160)
                         .HasColumnType("nvarchar(160)");
-
-                    b.Property<string>("ProviderDropoffDistrictCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ProviderDropoffDistrictName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<string>("ProviderDropoffProvinceCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ProviderDropoffProvinceName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<string>("ProviderDropoffWardCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ProviderDropoffWardName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<string>("ProviderPickupDistrictCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ProviderPickupDistrictName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<string>("ProviderPickupProvinceCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ProviderPickupProvinceName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<string>("ProviderPickupWardCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ProviderPickupWardName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("ProviderQuoteId")
                         .HasMaxLength(160)
@@ -2444,11 +2381,6 @@ namespace e_commerce_web_admin.Migrations
                     b.HasIndex("RequestedByStaffId");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("OrderId", "Provider")
-                        .IsUnique()
-                        .HasDatabaseName("IX_shipments_OrderId_Provider_Open")
-                        .HasFilter("[ProviderDeliveryId] IS NULL");
 
                     b.HasIndex("Provider", "ProviderDeliveryId")
                         .IsUnique()
@@ -2577,6 +2509,76 @@ namespace e_commerce_web_admin.Migrations
                         .IsUnique();
 
                     b.ToTable("shipment_packages", (string)null);
+                });
+
+            modelBuilder.Entity("e_commerce_web_admin.Models.Entities.ShipmentQuote", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<int?>("EstimatedDistanceMeters")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EstimatedDurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Fee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long?>("FulfillmentLocationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("OrderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ProviderQuoteId")
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<string>("RawPayloadJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FulfillmentLocationId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Provider", "ProviderQuoteId")
+                        .IsUnique()
+                        .HasFilter("[ProviderQuoteId] IS NOT NULL");
+
+                    b.ToTable("shipment_quotes", (string)null);
                 });
 
             modelBuilder.Entity("e_commerce_web_admin.Models.Entities.Specification", b =>
@@ -2948,14 +2950,6 @@ namespace e_commerce_web_admin.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("DistrictCode")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<string>("DistrictName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("FormattedAddress")
                         .HasMaxLength(700)
@@ -4011,6 +4005,24 @@ namespace e_commerce_web_admin.Migrations
                     b.Navigation("Shipment");
                 });
 
+            modelBuilder.Entity("e_commerce_web_admin.Models.Entities.ShipmentQuote", b =>
+                {
+                    b.HasOne("e_commerce_web_admin.Models.Entities.FulfillmentLocation", "FulfillmentLocation")
+                        .WithMany("ShipmentQuotes")
+                        .HasForeignKey("FulfillmentLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("e_commerce_web_admin.Models.Entities.Order", "Order")
+                        .WithMany("ShipmentQuotes")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FulfillmentLocation");
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("e_commerce_web_admin.Models.Entities.UserAddress", b =>
                 {
                     b.HasOne("e_commerce_web_admin.Models.Entities.User", "User")
@@ -4154,6 +4166,8 @@ namespace e_commerce_web_admin.Migrations
 
             modelBuilder.Entity("e_commerce_web_admin.Models.Entities.FulfillmentLocation", b =>
                 {
+                    b.Navigation("ShipmentQuotes");
+
                     b.Navigation("Shipments");
                 });
 
@@ -4165,6 +4179,8 @@ namespace e_commerce_web_admin.Migrations
             modelBuilder.Entity("e_commerce_web_admin.Models.Entities.Order", b =>
                 {
                     b.Navigation("OrderItems");
+
+                    b.Navigation("ShipmentQuotes");
 
                     b.Navigation("Shipments");
 

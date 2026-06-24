@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using e_commerce_web_admin.Data;
 
@@ -11,9 +12,11 @@ using e_commerce_web_admin.Data;
 namespace e_commerce_web_admin.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260624042728_AddOpenShipmentConstraint")]
+    partial class AddOpenShipmentConstraint
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -999,9 +1002,7 @@ namespace e_commerce_web_admin.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.HasIndex("IsDefault")
-                        .IsUnique()
-                        .HasFilter("[IsDefault] = 1");
+                    b.HasIndex("IsDefault");
 
                     b.ToTable("fulfillment_locations", (string)null);
                 });

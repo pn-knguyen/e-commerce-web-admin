@@ -35,6 +35,10 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<Rating> Ratings => Set<Rating>();
+    public DbSet<FulfillmentLocation> FulfillmentLocations => Set<FulfillmentLocation>();
+    public DbSet<Shipment> Shipments => Set<Shipment>();
+    public DbSet<ShipmentPackage> ShipmentPackages => Set<ShipmentPackage>();
+    public DbSet<ShipmentEvent> ShipmentEvents => Set<ShipmentEvent>();
     public DbSet<Voucher> Vouchers => Set<Voucher>();
     public DbSet<VoucherUser> VoucherUsers => Set<VoucherUser>();
     public DbSet<VoucherUsage> VoucherUsages => Set<VoucherUsage>();
@@ -56,6 +60,7 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
         ConfigureUsers(modelBuilder);
         ConfigureCatalog(modelBuilder);
         ConfigureOrders(modelBuilder);
+        ConfigureShipping(modelBuilder);
         ConfigureMarketing(modelBuilder);
         ConfigureInventory(modelBuilder);
         modelBuilder.SeedEcommerceData();
@@ -120,9 +125,15 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
             entity.Property(address => address.Phone).HasMaxLength(30).IsRequired();
             entity.Property(address => address.ProvinceCode).HasMaxLength(30).IsRequired();
             entity.Property(address => address.ProvinceName).HasMaxLength(120).IsRequired();
+            entity.Property(address => address.DistrictCode).HasMaxLength(30);
+            entity.Property(address => address.DistrictName).HasMaxLength(120);
             entity.Property(address => address.WardCode).HasMaxLength(30).IsRequired();
             entity.Property(address => address.WardName).HasMaxLength(120).IsRequired();
             entity.Property(address => address.DetailAddress).HasMaxLength(500).IsRequired();
+            entity.Property(address => address.Latitude).HasPrecision(10, 7);
+            entity.Property(address => address.Longitude).HasPrecision(10, 7);
+            entity.Property(address => address.PlaceId).HasMaxLength(160);
+            entity.Property(address => address.FormattedAddress).HasMaxLength(700);
             entity.Property(address => address.Type).HasConversion<string>().HasMaxLength(30);
             entity.Property(address => address.IsDeleted).HasDefaultValue(false);
             entity.HasOne(address => address.User)
@@ -363,6 +374,122 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
             entity.HasOne(rating => rating.User)
                 .WithMany(user => user.Ratings)
                 .HasForeignKey(rating => rating.UserId);
+        });
+    }
+
+    private static void ConfigureShipping(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<FulfillmentLocation>(entity =>
+        {
+            entity.ToTable("fulfillment_locations");
+            entity.HasIndex(location => location.IsDefault)
+                .IsUnique()
+                .HasFilter("[IsDefault] = 1");
+            entity.HasIndex(location => location.IsActive);
+            entity.Property(location => location.Name).HasMaxLength(255).IsRequired();
+            entity.Property(location => location.ContactName).HasMaxLength(255).IsRequired();
+            entity.Property(location => location.Phone).HasMaxLength(30).IsRequired();
+            entity.Property(location => location.ProvinceCode).HasMaxLength(30);
+            entity.Property(location => location.ProvinceName).HasMaxLength(120).IsRequired();
+            entity.Property(location => location.DistrictCode).HasMaxLength(30);
+            entity.Property(location => location.DistrictName).HasMaxLength(120);
+            entity.Property(location => location.WardCode).HasMaxLength(30);
+            entity.Property(location => location.WardName).HasMaxLength(120).IsRequired();
+            entity.Property(location => location.DetailAddress).HasMaxLength(500).IsRequired();
+            entity.Property(location => location.FormattedAddress).HasMaxLength(700);
+            entity.Property(location => location.Latitude).HasPrecision(10, 7);
+            entity.Property(location => location.Longitude).HasPrecision(10, 7);
+        });
+
+        modelBuilder.Entity<Shipment>(entity =>
+        {
+            entity.ToTable("shipments");
+            entity.HasIndex(shipment => shipment.OrderId);
+            entity.HasIndex(shipment => shipment.Status);
+            entity.HasIndex(shipment => new { shipment.OrderId, shipment.Provider })
+                .IsUnique()
+                .HasDatabaseName("IX_shipments_OrderId_Provider_Open")
+                .HasFilter("[ProviderDeliveryId] IS NULL");
+            entity.HasIndex(shipment => new { shipment.Provider, shipment.ProviderDeliveryId })
+                .IsUnique()
+                .HasFilter("[ProviderDeliveryId] IS NOT NULL");
+            entity.Property(shipment => shipment.Provider).HasConversion<string>().HasMaxLength(30);
+            entity.Property(shipment => shipment.Status).HasConversion<string>().HasMaxLength(30);
+            entity.Property(shipment => shipment.ProviderDeliveryId).HasMaxLength(160);
+            entity.Property(shipment => shipment.ProviderQuoteId).HasMaxLength(160);
+            entity.Property(shipment => shipment.ProviderStatus).HasMaxLength(80);
+            entity.Property(shipment => shipment.TrackingUrl).HasMaxLength(1000);
+            entity.Property(shipment => shipment.PickupContactName).HasMaxLength(255).IsRequired();
+            entity.Property(shipment => shipment.PickupPhone).HasMaxLength(30).IsRequired();
+            entity.Property(shipment => shipment.PickupDetailAddress).HasMaxLength(500);
+            entity.Property(shipment => shipment.PickupAddress).HasMaxLength(700).IsRequired();
+            entity.Property(shipment => shipment.PickupLatitude).HasPrecision(10, 7);
+            entity.Property(shipment => shipment.PickupLongitude).HasPrecision(10, 7);
+            entity.Property(shipment => shipment.ProviderPickupProvinceCode).HasMaxLength(50);
+            entity.Property(shipment => shipment.ProviderPickupProvinceName).HasMaxLength(120);
+            entity.Property(shipment => shipment.ProviderPickupDistrictCode).HasMaxLength(50);
+            entity.Property(shipment => shipment.ProviderPickupDistrictName).HasMaxLength(120);
+            entity.Property(shipment => shipment.ProviderPickupWardCode).HasMaxLength(50);
+            entity.Property(shipment => shipment.ProviderPickupWardName).HasMaxLength(120);
+            entity.Property(shipment => shipment.DropoffContactName).HasMaxLength(255).IsRequired();
+            entity.Property(shipment => shipment.DropoffPhone).HasMaxLength(30).IsRequired();
+            entity.Property(shipment => shipment.DropoffDetailAddress).HasMaxLength(500);
+            entity.Property(shipment => shipment.DropoffAddress).HasMaxLength(700).IsRequired();
+            entity.Property(shipment => shipment.DropoffLatitude).HasPrecision(10, 7);
+            entity.Property(shipment => shipment.DropoffLongitude).HasPrecision(10, 7);
+            entity.Property(shipment => shipment.ProviderDropoffProvinceCode).HasMaxLength(50);
+            entity.Property(shipment => shipment.ProviderDropoffProvinceName).HasMaxLength(120);
+            entity.Property(shipment => shipment.ProviderDropoffDistrictCode).HasMaxLength(50);
+            entity.Property(shipment => shipment.ProviderDropoffDistrictName).HasMaxLength(120);
+            entity.Property(shipment => shipment.ProviderDropoffWardCode).HasMaxLength(50);
+            entity.Property(shipment => shipment.ProviderDropoffWardName).HasMaxLength(120);
+            entity.Property(shipment => shipment.QuotedFee).HasPrecision(18, 2);
+            entity.Property(shipment => shipment.ActualFee).HasPrecision(18, 2);
+            entity.Property(shipment => shipment.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(shipment => shipment.FailureReason).HasMaxLength(1000);
+            entity.HasOne(shipment => shipment.Order)
+                .WithMany(order => order.Shipments)
+                .HasForeignKey(shipment => shipment.OrderId);
+            entity.HasOne(shipment => shipment.FulfillmentLocation)
+                .WithMany(location => location.Shipments)
+                .HasForeignKey(shipment => shipment.FulfillmentLocationId);
+            entity.HasOne(shipment => shipment.RequestedByStaff)
+                .WithMany(staff => staff.RequestedShipments)
+                .HasForeignKey(shipment => shipment.RequestedByStaffId);
+        });
+
+        modelBuilder.Entity<ShipmentPackage>(entity =>
+        {
+            entity.ToTable("shipment_packages");
+            entity.HasIndex(package => new { package.ShipmentId, package.Sequence }).IsUnique();
+            entity.Property(package => package.Description).HasMaxLength(500).IsRequired();
+            entity.Property(package => package.LengthCm).HasPrecision(8, 2);
+            entity.Property(package => package.WidthCm).HasPrecision(8, 2);
+            entity.Property(package => package.HeightCm).HasPrecision(8, 2);
+            entity.Property(package => package.DeclaredValue).HasPrecision(18, 2);
+            entity.Property(package => package.Notes).HasMaxLength(1000);
+            entity.HasOne(package => package.Shipment)
+                .WithMany(shipment => shipment.Packages)
+                .HasForeignKey(package => package.ShipmentId);
+        });
+
+        modelBuilder.Entity<ShipmentEvent>(entity =>
+        {
+            entity.ToTable("shipment_events");
+            entity.HasIndex(shipmentEvent => shipmentEvent.ShipmentId);
+            entity.HasIndex(shipmentEvent => shipmentEvent.ProviderEventId)
+                .IsUnique()
+                .HasFilter("[ProviderEventId] IS NOT NULL");
+            entity.Property(shipmentEvent => shipmentEvent.ProviderEventId).HasMaxLength(160);
+            entity.Property(shipmentEvent => shipmentEvent.ProviderStatus).HasMaxLength(80);
+            entity.Property(shipmentEvent => shipmentEvent.Status).HasConversion<string>().HasMaxLength(30);
+            entity.Property(shipmentEvent => shipmentEvent.Message).HasMaxLength(1000);
+            entity.Property(shipmentEvent => shipmentEvent.DriverName).HasMaxLength(255);
+            entity.Property(shipmentEvent => shipmentEvent.DriverPhone).HasMaxLength(30);
+            entity.Property(shipmentEvent => shipmentEvent.VehiclePlate).HasMaxLength(50);
+            entity.HasOne(shipmentEvent => shipmentEvent.Shipment)
+                .WithMany(shipment => shipment.Events)
+                .HasForeignKey(shipmentEvent => shipmentEvent.ShipmentId);
         });
     }
 

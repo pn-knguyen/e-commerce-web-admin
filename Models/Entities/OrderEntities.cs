@@ -42,6 +42,7 @@ public class Order
     public UserAddress? ShippingAddress { get; set; }
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     public ICollection<VoucherUsage> VoucherUsages { get; set; } = new List<VoucherUsage>();
+    public ICollection<Shipment> Shipments { get; set; } = new List<Shipment>();
 }
 
 public class OrderItem

@@ -22,6 +22,11 @@ public static class StaffRoleNames
     public const string Staff = "Staff";
 }
 
+public static class PaymentMethodIds
+{
+    public const long CashOnDelivery = 1;
+}
+
 /// <summary>Tên permission hợp lệ trong hệ thống RBAC.</summary>
 public static class Permissions
 {
@@ -52,6 +57,7 @@ public static class PermissionModules
         "Attributes",
         "Suppliers",
         "GoodsReceipts",
+        "FulfillmentLocations",
         "Orders",
         "PaymentMethods",
         "Ratings",
@@ -73,6 +79,7 @@ public static class PermissionModules
         ["Attributes"] = "Thuộc tính biến thể",
         ["Suppliers"] = "Nhà cung cấp",
         ["GoodsReceipts"] = "Quản lý tồn kho",
+        ["FulfillmentLocations"] = "Điểm lấy hàng",
         ["Orders"] = "Đơn hàng",
         ["PaymentMethods"] = "Phương thức thanh toán",
         ["Ratings"] = "Đánh giá",

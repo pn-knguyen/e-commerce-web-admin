@@ -1,0 +1,18 @@
+@model e_commerce_web_admin.ViewModels.FulfillmentLocations.FulfillmentLocationFormViewModel
+@{
+    ViewData["Title"] = $"Sửa điểm lấy hàng - {Model.Name}";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/fulfillment-locations.css" asp-append-version="true" />
+}
+
+<main class="fulfillment-page">
+    <partial name="_Editor" model="Model" />
+</main>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/fulfillment-locations.js" asp-append-version="true"></script>
+}

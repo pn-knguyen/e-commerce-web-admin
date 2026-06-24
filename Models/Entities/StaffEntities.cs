@@ -12,4 +12,5 @@ public class Staff : IdentityUser<long>
 
     public ICollection<GoodsReceipt> CreatedGoodsReceipts { get; set; } = new List<GoodsReceipt>();
     public ICollection<GoodsReceipt> ApprovedGoodsReceipts { get; set; } = new List<GoodsReceipt>();
+    public ICollection<Shipment> RequestedShipments { get; set; } = new List<Shipment>();
 }

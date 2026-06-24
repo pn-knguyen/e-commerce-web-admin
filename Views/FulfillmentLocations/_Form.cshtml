@@ -1,0 +1,201 @@
+@model e_commerce_web_admin.ViewModels.FulfillmentLocations.FulfillmentLocationFormViewModel
+
+<input type="hidden" asp-for="Id" />
+
+<section class="fulfillment-card fulfillment-form-unified">
+    <header class="fulfillment-card-head">
+        <span class="fulfillment-card-icon">
+            <i data-lucide="map-pin" class="w-5 h-5"></i>
+        </span>
+        <div>
+            <h2>Thông tin điểm lấy hàng</h2>
+            <p>Nhập thông tin kho, địa chỉ GHN, tọa độ và trạng thái trong cùng một biểu mẫu.</p>
+        </div>
+    </header>
+
+    <div class="fulfillment-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <div>
+            <p>Vui lòng kiểm tra lại thông tin.</p>
+            <div asp-validation-summary="ModelOnly"></div>
+        </div>
+    </div>
+
+    <div class="fulfillment-form-sections">
+        <section class="fulfillment-form-section">
+            <div class="fulfillment-section-title">
+                <span>
+                    <i data-lucide="warehouse" class="w-4 h-4"></i>
+                </span>
+                <div>
+                    <h3>Thông tin kho</h3>
+                    <p>Tên điểm lấy hàng và người phụ trách để GHN liên hệ khi tới lấy hàng.</p>
+                </div>
+            </div>
+
+            <div class="fulfillment-fields">
+                <div class="fulfillment-field">
+                    <label asp-for="Name">Tên điểm lấy hàng <strong>*</strong></label>
+                    <input asp-for="Name" placeholder="Ví dụ: Kho Quận 1" />
+                    <span asp-validation-for="Name" class="fulfillment-field-error"></span>
+                </div>
+
+                <div class="fulfillment-field-row">
+                    <div class="fulfillment-field">
+                        <label asp-for="ContactName">Người phụ trách <strong>*</strong></label>
+                        <input asp-for="ContactName" placeholder="Nguyễn Văn A" />
+                        <span asp-validation-for="ContactName" class="fulfillment-field-error"></span>
+                    </div>
+
+                    <div class="fulfillment-field">
+                        <label asp-for="Phone">Số điện thoại <strong>*</strong></label>
+                        <input asp-for="Phone" inputmode="numeric" maxlength="10" placeholder="0901234567" />
+                        <span asp-validation-for="Phone" class="fulfillment-field-error"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="fulfillment-form-section">
+            <div class="fulfillment-section-title">
+                <span>
+                    <i data-lucide="map" class="w-4 h-4"></i>
+                </span>
+                <div>
+                    <h3>Địa chỉ lấy hàng</h3>
+                    <p>Chọn tỉnh/thành, quận/huyện và phường/xã từ danh sách hỗ trợ để mã địa chỉ khớp khi tạo vận đơn.</p>
+                </div>
+            </div>
+
+            <div class="fulfillment-fields">
+                <input type="hidden" asp-for="ProvinceCode" data-ghn-province-code />
+                <input type="hidden" asp-for="ProvinceName" data-ghn-province-name />
+                <input type="hidden" asp-for="DistrictCode" data-ghn-district-code />
+                <input type="hidden" asp-for="DistrictName" data-ghn-district-name />
+                <input type="hidden" asp-for="WardCode" data-ghn-ward-code />
+                <input type="hidden" asp-for="WardName" data-ghn-ward-name />
+
+                <div class="fulfillment-ghn-address"
+                     data-ghn-address-picker
+                     data-province-code="@Model.ProvinceCode"
+                     data-province-name="@Model.ProvinceName"
+                     data-district-code="@Model.DistrictCode"
+                     data-district-name="@Model.DistrictName"
+                     data-ward-code="@Model.WardCode"
+                     data-ward-name="@Model.WardName">
+                    <div class="fulfillment-field">
+                        <label for="GhnProvinceSelect">Tỉnh/thành <strong>*</strong></label>
+                        <select id="GhnProvinceSelect" data-ghn-province-select>
+                            <option value="">Đang tải tỉnh/thành...</option>
+                        </select>
+                        <span asp-validation-for="ProvinceName" class="fulfillment-field-error"></span>
+                        <span asp-validation-for="ProvinceCode" class="fulfillment-field-error"></span>
+                    </div>
+
+                    <div class="fulfillment-field-row">
+                        <div class="fulfillment-field">
+                            <label for="GhnDistrictSelect">Quận/huyện <strong>*</strong></label>
+                            <select id="GhnDistrictSelect" data-ghn-district-select disabled>
+                                <option value="">Chọn tỉnh/thành trước</option>
+                            </select>
+                            <span class="fulfillment-field-hint" data-ghn-district-code-label></span>
+                            <span asp-validation-for="DistrictName" class="fulfillment-field-error"></span>
+                            <span asp-validation-for="DistrictCode" class="fulfillment-field-error"></span>
+                        </div>
+
+                        <div class="fulfillment-field">
+                            <label for="GhnWardSelect">Phường/xã <strong>*</strong></label>
+                            <select id="GhnWardSelect" data-ghn-ward-select disabled>
+                                <option value="">Chọn quận/huyện trước</option>
+                            </select>
+                            <span class="fulfillment-field-hint" data-ghn-ward-code-label></span>
+                            <span asp-validation-for="WardName" class="fulfillment-field-error"></span>
+                            <span asp-validation-for="WardCode" class="fulfillment-field-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="fulfillment-address-status" data-ghn-address-status></div>
+                </div>
+
+                <div class="fulfillment-field">
+                    <label asp-for="DetailAddress">Địa chỉ chi tiết <strong>*</strong></label>
+                    <textarea asp-for="DetailAddress" rows="3" placeholder="72 Lê Thánh Tôn, Quận 1"></textarea>
+                    <span asp-validation-for="DetailAddress" class="fulfillment-field-error"></span>
+                </div>
+
+                <div class="fulfillment-field">
+                    <label asp-for="FormattedAddress">Địa chỉ chuẩn hóa</label>
+                    <textarea asp-for="FormattedAddress" rows="2" placeholder="72 Lê Thánh Tôn, Phường Bến Nghé, Quận 1, Hồ Chí Minh"></textarea>
+                    <span asp-validation-for="FormattedAddress" class="fulfillment-field-error"></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="fulfillment-form-section">
+            <div class="fulfillment-section-title">
+                <span>
+                    <i data-lucide="crosshair" class="w-4 h-4"></i>
+                </span>
+                <div>
+                    <h3>Tọa độ</h3>
+                    <p>Thông tin tham khảo khi đối soát vị trí kho.</p>
+                </div>
+            </div>
+
+            <div class="fulfillment-fields">
+                <div class="fulfillment-field-row">
+                    <div class="fulfillment-field">
+                        <label asp-for="Latitude">Vĩ độ</label>
+                        <input asp-for="Latitude" type="number" step="0.0000001" placeholder="10.7758439" />
+                        <span asp-validation-for="Latitude" class="fulfillment-field-error"></span>
+                    </div>
+
+                    <div class="fulfillment-field">
+                        <label asp-for="Longitude">Kinh độ</label>
+                        <input asp-for="Longitude" type="number" step="0.0000001" placeholder="106.7007554" />
+                        <span asp-validation-for="Longitude" class="fulfillment-field-error"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="fulfillment-form-section">
+            <div class="fulfillment-section-title">
+                <span>
+                    <i data-lucide="settings-2" class="w-4 h-4"></i>
+                </span>
+                <div>
+                    <h3>Vận hành</h3>
+                    <p>Điểm mặc định sẽ được chọn sẵn khi lấy báo giá và tạo vận đơn GHN.</p>
+                </div>
+            </div>
+
+            <div class="fulfillment-switch-list">
+                <label class="fulfillment-switch-row">
+                    <input asp-for="IsActive" type="checkbox" />
+                    <span class="switch-track"><span></span></span>
+                    <strong>Đang hoạt động</strong>
+                </label>
+
+                <label class="fulfillment-switch-row">
+                    <input asp-for="IsDefault" type="checkbox" />
+                    <span class="switch-track"><span></span></span>
+                    <strong>Làm mặc định</strong>
+                </label>
+                <span asp-validation-for="IsDefault" class="fulfillment-field-error"></span>
+            </div>
+        </section>
+    </div>
+
+    <footer class="fulfillment-form-footer">
+        <a asp-action="Index" class="fulfillment-cancel-btn">
+            <i data-lucide="x" class="w-4 h-4"></i>
+            <span>Hủy bỏ</span>
+        </a>
+
+        <button type="submit" class="fulfillment-submit-btn">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>@(Model.IsEdit ? "Lưu thay đổi" : "Tạo điểm lấy hàng")</span>
+        </button>
+    </footer>
+</section>

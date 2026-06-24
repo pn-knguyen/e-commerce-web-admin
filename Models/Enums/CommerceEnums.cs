@@ -48,6 +48,45 @@ public enum PaymentStatus
     Refunded = 3
 }
 
+public enum ShippingProvider
+{
+    GiaoHangNhanh = 0
+}
+
+public enum ShipmentStatus
+{
+    Draft = 0,
+    Quoted = 1,
+    Booked = 2,
+    PickingUp = 3,
+    InTransit = 4,
+    Delivered = 5,
+    Cancelled = 6,
+    Failed = 7,
+    ReadyToPick = 8,
+    Picking = 9,
+    MoneyCollectPicking = 10,
+    Picked = 11,
+    Storing = 12,
+    Transporting = 13,
+    Sorting = 14,
+    Delivering = 15,
+    MoneyCollectDelivering = 16,
+    DeliveryFail = 17,
+    WaitingToReturn = 18,
+    Return = 19,
+    ReturnTransporting = 20,
+    ReturnSorting = 21,
+    Returning = 22,
+    ReturnFail = 23,
+    Returned = 24,
+    Exception = 25,
+    Damage = 26,
+    Lost = 27,
+    ProviderUnknown = 28,
+    Booking = 29
+}
+
 public enum CampaignType
 {
     Banner = 0,

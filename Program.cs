@@ -1,4 +1,5 @@
 using e_commerce_web_admin.Data;
+using e_commerce_web_admin.Integrations.GiaoHangNhanh;
 using e_commerce_web_admin.Models.Entities;
 using e_commerce_web_admin.Services.Attributes;
 using e_commerce_web_admin.Services.Brands;
@@ -6,6 +7,7 @@ using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.Services.CategorySpecifications;
 using e_commerce_web_admin.Services.CategoryVariantAttributes;
 using e_commerce_web_admin.Services.Customers;
+using e_commerce_web_admin.Services.FulfillmentLocations;
 using e_commerce_web_admin.Services.Identity;
 using e_commerce_web_admin.Services.Inventory;
 using e_commerce_web_admin.Services.Orders;
@@ -14,6 +16,8 @@ using e_commerce_web_admin.Services.Products;
 using e_commerce_web_admin.Services.ProductVariants;
 using e_commerce_web_admin.Services.Promotions;
 using e_commerce_web_admin.Services.Ratings;
+using e_commerce_web_admin.Services.Shipping;
+using e_commerce_web_admin.Services.Shipping.Providers;
 using e_commerce_web_admin.Services.Specifications;
 using e_commerce_web_admin.Services.Suppliers;
 using e_commerce_web_admin.Services.Uploads;
@@ -65,6 +69,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<Staff>, StaffClaimsPrincipalFactory>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddGiaoHangNhanhIntegration(builder.Configuration);
 
 // Business services cho các module quản trị.
 builder.Services.AddScoped<ICategoryHierarchyService, CategoryHierarchyService>();
@@ -84,6 +89,10 @@ builder.Services.AddScoped<IPromotionAdminService, PromotionAdminService>();
 builder.Services.AddScoped<ISupplierAdminService, SupplierAdminService>();
 builder.Services.AddScoped<IVoucherAdminService, VoucherAdminService>();
 builder.Services.AddScoped<IInventoryAdminService, InventoryAdminService>();
+builder.Services.AddScoped<IShippingProviderGateway, GiaoHangNhanhShippingProviderGateway>();
+builder.Services.AddScoped<IShipmentAdminService, ShipmentAdminService>();
+builder.Services.AddHostedService<ShipmentStatusSyncWorker>();
+builder.Services.AddScoped<IFulfillmentLocationAdminService, FulfillmentLocationAdminService>();
 builder.Services.Configure<CloudinaryOptions>(
     builder.Configuration.GetSection(CloudinaryOptions.SectionName));
 builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();

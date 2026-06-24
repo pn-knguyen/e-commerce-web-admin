@@ -229,24 +229,24 @@
                                 <p>@order.ShippingPhone</p>
                             </div>
 
-                            <div class="order-status-cell">
+                            <div class="order-status-cell" data-label="Trạng thái">
                                 <span class="order-badge @OrderDisplay.GetOrderStatusClass(order.OrderStatus)">
                                     @OrderDisplay.GetOrderStatusLabel(order.OrderStatus)
                                 </span>
                             </div>
 
-                            <div class="order-status-cell">
+                            <div class="order-status-cell" data-label="Thanh toán">
                                 <span class="order-badge @OrderDisplay.GetPaymentStatusClass(order.PaymentStatus)">
                                     @OrderDisplay.GetPaymentStatusLabel(order.PaymentStatus)
                                 </span>
                                 <small>@order.PaymentMethodName</small>
                             </div>
 
-                            <div class="order-total-cell">
+                            <div class="order-total-cell" data-label="Tổng tiền">
                                 <strong>@Money(order.TotalAmount)</strong>
                             </div>
 
-                            <div class="order-actions">
+                            <div class="order-actions" data-label="Thao tác">
                                 <a asp-action="Details"
                                    asp-route-id="@order.Id"
                                    class="order-action-btn">

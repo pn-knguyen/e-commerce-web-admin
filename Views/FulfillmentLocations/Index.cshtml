@@ -1,0 +1,267 @@
+@model e_commerce_web_admin.ViewModels.FulfillmentLocations.FulfillmentLocationIndexViewModel
+@{
+    ViewData["Title"] = "Điểm lấy hàng";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/fulfillment-locations.css" asp-append-version="true" />
+}
+
+<main class="fulfillment-page">
+    <section class="fulfillment-hero fulfillment-anim" style="animation-delay:0.04s">
+        <div>
+            <p class="fulfillment-page-mark">Vận chuyển</p>
+            <div class="fulfillment-title-row">
+                <div>
+                    <h1>Điểm lấy hàng</h1>
+                    <p>Quản lý kho hoặc cửa hàng dùng làm điểm GHN tới lấy hàng.</p>
+                </div>
+                <a asp-action="Create" class="fulfillment-primary-action">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Thêm điểm lấy hàng</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div id="toastSuccess" class="fulfillment-flash fulfillment-flash-success fulfillment-anim" style="animation-delay:0.06s">
+            <span class="fulfillment-flash-icon">
+                <i data-lucide="check" class="w-4 h-4"></i>
+            </span>
+            <span>@TempData["Success"]</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div id="toastError" class="fulfillment-flash fulfillment-flash-error fulfillment-anim" style="animation-delay:0.06s">
+            <span class="fulfillment-flash-icon">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i>
+            </span>
+            <span>@TempData["Error"]</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
+
+    <section class="fulfillment-metrics fulfillment-anim" style="animation-delay:0.08s">
+        <article class="fulfillment-metric">
+            <span class="fulfillment-metric-icon">
+                <i data-lucide="map-pin" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.TotalCount</p>
+                <span>Điểm trong bộ lọc</span>
+            </div>
+        </article>
+        <article class="fulfillment-metric">
+            <span class="fulfillment-metric-icon is-active">
+                <i data-lucide="badge-check" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.ActiveCount</p>
+                <span>Đang hoạt động</span>
+            </div>
+        </article>
+        <article class="fulfillment-metric">
+            <span class="fulfillment-metric-icon is-default">
+                <i data-lucide="star" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.DefaultCount</p>
+                <span>Mặc định</span>
+            </div>
+        </article>
+        <article class="fulfillment-metric">
+            <span class="fulfillment-metric-icon is-shipment">
+                <i data-lucide="truck" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.ShipmentCount</p>
+                <span>Vận đơn đã tạo</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="fulfillment-console fulfillment-anim" style="animation-delay:0.12s">
+        <form method="get" asp-action="Index" class="fulfillment-filter-grid">
+            <label class="fulfillment-search-field">
+                <i data-lucide="search" class="w-4 h-4"></i>
+                <input type="text" name="search" value="@Model.Search" placeholder="Tìm tên, người phụ trách, SĐT hoặc địa chỉ..." />
+            </label>
+
+            <label class="fulfillment-select-field">
+                <span>Trạng thái</span>
+                <select name="status">
+                    <option value="" selected="@(string.IsNullOrEmpty(Model.Status) ? "selected" : null)">Tất cả</option>
+                    <option value="active" selected="@(Model.Status == "active" ? "selected" : null)">Đang hoạt động</option>
+                    <option value="inactive" selected="@(Model.Status == "inactive" ? "selected" : null)">Tạm tắt</option>
+                    <option value="default" selected="@(Model.Status == "default" ? "selected" : null)">Mặc định</option>
+                </select>
+            </label>
+
+            <button type="submit" class="fulfillment-filter-submit">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                <span>Lọc</span>
+            </button>
+
+            @if (Model.HasFilters)
+            {
+                <a asp-action="Index" class="fulfillment-filter-clear">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Xóa lọc</span>
+                </a>
+            }
+        </form>
+
+        @if (!Model.Locations.Any())
+        {
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="map-pin-off" class="w-9 h-9"></i>
+                </span>
+                <h2>Chưa có điểm lấy hàng</h2>
+                <p>Thêm kho hoặc cửa hàng đầu tiên để GHN có điểm tới lấy hàng.</p>
+                <a asp-action="Create" class="admin-empty-action">Thêm điểm lấy hàng</a>
+            </div>
+        }
+        else
+        {
+            <div class="fulfillment-table-scroll">
+                <div class="fulfillment-index-grid fulfillment-table-head">
+                    <span>Điểm lấy hàng</span>
+                    <span>Liên hệ</span>
+                    <span class="text-center">Tọa độ</span>
+                    <span class="text-center">Vận đơn</span>
+                    <span class="text-center">Trạng thái</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div class="fulfillment-table-body">
+                    @{
+                        var animIndex = 0;
+                    }
+                    @foreach (var location in Model.Locations)
+                    {
+                        <article class="fulfillment-row fulfillment-index-grid fulfillment-anim"
+                                 style="animation-delay:@(0.14 + animIndex++ * 0.025)s">
+                            <div class="fulfillment-identity">
+                                <span class="fulfillment-avatar">
+                                    <i data-lucide="warehouse" class="w-4 h-4"></i>
+                                </span>
+                                <div>
+                                    <div class="fulfillment-location-title">
+                                        <h2>@location.Name</h2>
+                                        @if (location.IsDefault)
+                                        {
+                                            <span class="fulfillment-mini-pill is-default">Mặc định</span>
+                                        }
+                                    </div>
+                                    <p>@location.Address</p>
+                                    @if (location.IsDefault)
+                                    {
+                                        <span class="fulfillment-mini-pill is-default">Mặc định</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="fulfillment-contact">
+                                <strong>@location.ContactName</strong>
+                                <span>@location.Phone</span>
+                            </div>
+
+                            <div class="fulfillment-center-cell">
+                                @if (location.HasCoordinates)
+                                {
+                                    <span class="fulfillment-mini-pill is-coord">Đã có</span>
+                                }
+                                else
+                                {
+                                    <span class="fulfillment-mini-pill">Chưa có</span>
+                                }
+                            </div>
+
+                            <div class="fulfillment-center-cell">
+                                <span class="fulfillment-count-pill">@location.ShipmentCount</span>
+                            </div>
+
+                            <div class="fulfillment-center-cell">
+                                <button type="button"
+                                        class="fulfillment-status-btn @(location.IsActive ? "is-active" : "is-inactive")"
+                                        data-location-toggle
+                                        data-location-id="@location.Id">
+                                    <span class="dot"></span>
+                                    <span>@(location.IsActive ? "Hoạt động" : "Tạm tắt")</span>
+                                </button>
+                            </div>
+
+                            <div class="fulfillment-actions">
+                                @if (location.IsActive && !location.IsDefault)
+                                {
+                                    <form asp-action="SetDefault" asp-route-id="@location.Id" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="fulfillment-action-btn" title="Đặt mặc định">
+                                            <i data-lucide="star" class="w-3.5 h-3.5"></i>
+                                            <span>Mặc định</span>
+                                        </button>
+                                    </form>
+                                }
+                                <a asp-action="Edit" asp-route-id="@location.Id" class="fulfillment-action-btn is-edit">
+                                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                    <span>Sửa</span>
+                                </a>
+                                <form asp-action="Delete"
+                                      asp-route-id="@location.Id"
+                                      method="post"
+                                      data-location-delete
+                                      data-location-name="@location.Name"
+                                      data-delete-blocked="@location.IsDeleteBlocked.ToString().ToLower()">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="fulfillment-action-btn is-delete">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Xóa</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <footer class="fulfillment-pagination">
+                    <p>Trang <strong>@Model.Page</strong> / @Model.TotalPages <span>@Model.TotalCount điểm</span></p>
+                    <nav aria-label="Phân trang điểm lấy hàng">
+                        @if (Model.HasPrev)
+                        {
+                            <a asp-action="Index" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-status="@Model.Status" class="fulfillment-page-btn">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                        {
+                            <a asp-action="Index" asp-route-page="@p" asp-route-search="@Model.Search" asp-route-status="@Model.Status" class="fulfillment-page-btn @(p == Model.Page ? "is-active" : "")">@p</a>
+                        }
+                        @if (Model.HasNext)
+                        {
+                            <a asp-action="Index" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-status="@Model.Status" class="fulfillment-page-btn">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </nav>
+                </footer>
+            }
+        }
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/fulfillment-locations.js" asp-append-version="true"></script>
+}

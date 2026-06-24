@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using e_commerce_web_admin.Data;
 
@@ -11,9 +12,11 @@ using e_commerce_web_admin.Data;
 namespace e_commerce_web_admin.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622163645_RemoveShipmentQuotesTable")]
+    partial class RemoveShipmentQuotesTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -999,9 +1002,7 @@ namespace e_commerce_web_admin.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.HasIndex("IsDefault")
-                        .IsUnique()
-                        .HasFilter("[IsDefault] = 1");
+                    b.HasIndex("IsDefault");
 
                     b.ToTable("fulfillment_locations", (string)null);
                 });
@@ -2285,10 +2286,6 @@ namespace e_commerce_web_admin.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("DropoffDetailAddress")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<decimal?>("DropoffLatitude")
                         .HasPrecision(10, 7)
                         .HasColumnType("decimal(10,7)");
@@ -2333,10 +2330,6 @@ namespace e_commerce_web_admin.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("PickupDetailAddress")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<decimal?>("PickupLatitude")
                         .HasPrecision(10, 7)
@@ -2444,11 +2437,6 @@ namespace e_commerce_web_admin.Migrations
                     b.HasIndex("RequestedByStaffId");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("OrderId", "Provider")
-                        .IsUnique()
-                        .HasDatabaseName("IX_shipments_OrderId_Provider_Open")
-                        .HasFilter("[ProviderDeliveryId] IS NULL");
 
                     b.HasIndex("Provider", "ProviderDeliveryId")
                         .IsUnique()

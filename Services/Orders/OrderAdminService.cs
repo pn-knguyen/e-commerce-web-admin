@@ -1,7 +1,10 @@
 using e_commerce_web_admin.Data;
+using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Entities;
 using e_commerce_web_admin.Models.Enums;
+using e_commerce_web_admin.Services.Shipping;
 using e_commerce_web_admin.ViewModels.Orders;
+using e_commerce_web_admin.ViewModels.Shipments;
 using Microsoft.EntityFrameworkCore;
 
 namespace e_commerce_web_admin.Services.Orders;
@@ -11,8 +14,13 @@ public sealed class OrderAdminService : IOrderAdminService
     private const int DefaultPageSize = 20;
 
     private readonly ApplicationDbContext _db;
+    private readonly IShipmentAdminService _shipmentService;
 
-    public OrderAdminService(ApplicationDbContext db) => _db = db;
+    public OrderAdminService(ApplicationDbContext db, IShipmentAdminService shipmentService)
+    {
+        _db = db;
+        _shipmentService = shipmentService;
+    }
 
     public async Task<OrderIndexViewModel> GetIndexAsync(
         OrderIndexQuery query,
@@ -85,7 +93,12 @@ public sealed class OrderAdminService : IOrderAdminService
                 CustomerName = order.User != null ? order.User.FullName : order.ShippingContactName,
                 CustomerEmail = order.User != null ? order.User.Email : null,
                 CustomerPhone = order.User != null ? order.User.Phone : null,
+                PaymentMethodId = order.PaymentMethodId,
                 PaymentMethodName = order.PaymentMethod != null ? order.PaymentMethod.Name : "Không rõ",
+                IsCashOnDelivery = order.PaymentMethodId == PaymentMethodIds.CashOnDelivery ||
+                    (order.PaymentMethod != null &&
+                        (order.PaymentMethod.Name.Contains("COD") ||
+                            order.PaymentMethod.Name.Contains("nhận hàng"))),
                 VoucherCode = order.Voucher != null ? order.Voucher.Code : null,
                 ShippingContactName = order.ShippingContactName,
                 ShippingPhone = order.ShippingPhone,
@@ -130,6 +143,7 @@ public sealed class OrderAdminService : IOrderAdminService
             OrderStatus = viewModel.OrderStatus,
             PaymentStatus = viewModel.PaymentStatus,
         };
+        viewModel.ShipmentPanel = await _shipmentService.GetPanelAsync(viewModel.Id, ct);
 
         return viewModel;
     }
@@ -139,16 +153,29 @@ public sealed class OrderAdminService : IOrderAdminService
         OrderStatusUpdateViewModel form,
         CancellationToken ct = default)
     {
-        var order = await _db.Orders.FirstOrDefaultAsync(item => item.Id == id, ct);
+        var order = await _db.Orders
+            .Include(item => item.Shipments)
+            .FirstOrDefaultAsync(item => item.Id == id, ct);
         if (order is null)
         {
             return OrderStatusUpdateResult.NotFound();
         }
 
-        var errors = ValidateStatusChange(order, form);
+        var latestShipment = order.Shipments
+            .OrderByDescending(item => item.CreatedAt)
+            .ThenByDescending(item => item.Id)
+            .FirstOrDefault();
+        var errors = ValidateStatusChange(order, form, latestShipment);
         if (errors.Count > 0)
         {
             return OrderStatusUpdateResult.Failed(errors);
+        }
+
+        if (form.OrderStatus == OrderStatus.Completed &&
+            IsCashOnDelivery(order) &&
+            form.PaymentStatus != PaymentStatus.Refunded)
+        {
+            form.PaymentStatus = PaymentStatus.Paid;
         }
 
         if (order.OrderStatus == form.OrderStatus && order.PaymentStatus == form.PaymentStatus)
@@ -206,7 +233,8 @@ public sealed class OrderAdminService : IOrderAdminService
 
     private static List<OrderValidationError> ValidateStatusChange(
         Order order,
-        OrderStatusUpdateViewModel form)
+        OrderStatusUpdateViewModel form,
+        Shipment? latestShipment)
     {
         var errors = new List<OrderValidationError>();
 
@@ -224,11 +252,13 @@ public sealed class OrderAdminService : IOrderAdminService
                 $"Không thể chuyển thanh toán từ \"{OrderDisplay.GetPaymentStatusLabel(order.PaymentStatus)}\" sang \"{OrderDisplay.GetPaymentStatusLabel(form.PaymentStatus)}\"."));
         }
 
-        if (form.OrderStatus == OrderStatus.Completed && form.PaymentStatus != PaymentStatus.Paid)
+        if (form.OrderStatus == OrderStatus.Completed &&
+            latestShipment is not null &&
+            latestShipment.Status != ShipmentStatus.Delivered)
         {
             errors.Add(new OrderValidationError(
-                nameof(form.PaymentStatus),
-                "Đơn hoàn tất phải có trạng thái thanh toán là đã thanh toán."));
+                nameof(form.OrderStatus),
+                $"Chưa thể chuyển đơn sang đã giao vì vận đơn đang ở trạng thái \"{ShipmentDisplay.GetStatusLabel(latestShipment.Status)}\"."));
         }
 
         if (form.PaymentStatus == PaymentStatus.Refunded &&
@@ -257,6 +287,19 @@ public sealed class OrderAdminService : IOrderAdminService
         }
 
         return errors;
+    }
+
+    private static bool IsCashOnDelivery(Order order)
+    {
+        if (order.PaymentMethodId == PaymentMethodIds.CashOnDelivery)
+        {
+            return true;
+        }
+
+        var paymentName = order.PaymentMethod?.Name;
+        return !string.IsNullOrWhiteSpace(paymentName) &&
+            (paymentName.Contains("COD", StringComparison.OrdinalIgnoreCase) ||
+                paymentName.Contains("nhận hàng", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool CanChangeOrderStatus(OrderStatus current, OrderStatus next) =>

@@ -1,6 +1,8 @@
 @model e_commerce_web_admin.ViewModels.Orders.OrderDetailsViewModel
 @using System.Globalization
+@using e_commerce_web_admin.Models.Enums
 @using e_commerce_web_admin.ViewModels.Orders
+@using e_commerce_web_admin.ViewModels.Shipments
 @{
     ViewData["Title"] = $"Đơn hàng {Model.OrderCode}";
     Layout = "_Layout";
@@ -11,6 +13,17 @@
     string DateTextNullable(DateTime? value) => value.HasValue ? DateText(value.Value) : "Chưa cập nhật";
     var selectedOrderStatus = Model.StatusForm.OrderStatus.ToString();
     var selectedPaymentStatus = Model.StatusForm.PaymentStatus.ToString();
+    var shipmentPanel = Model.ShipmentPanel;
+    var currentShipment = shipmentPanel.CurrentShipment;
+    var canShipOrderStatus = Model.StatusForm.OrderStatus is OrderStatus.Confirmed or OrderStatus.Processing;
+    var canStartShipping = canShipOrderStatus && (currentShipment is null || currentShipment.Status is ShipmentStatus.Cancelled or ShipmentStatus.Failed);
+    var canCreateQuote = shipmentPanel.IsProviderConfigured
+        && shipmentPanel.HasFulfillmentLocations
+        && canStartShipping;
+    var showShipmentHistory = shipmentPanel.ShipmentHistory.Count > 0 &&
+        (shipmentPanel.ShipmentHistory.Count > 1 ||
+            shipmentPanel.ShipmentHistory.Any(item => item.Status == ShipmentStatus.Cancelled || item.CancelledAt.HasValue));
+    var splitShippingHistory = currentShipment is not null && showShipmentHistory;
 }
 
 @section Styles {
@@ -50,10 +63,22 @@
             </button>
         </div>
     }
+    @if (TempData["Error"] != null)
+    {
+        <div id="toastError" class="order-flash order-flash-error order-anim" style="animation-delay:0.06s">
+            <span class="order-flash-icon">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i>
+            </span>
+            <span>@TempData["Error"]</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Dong thong bao">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    }
 
-    <section class="order-detail-grid">
+    <section class="order-detail-grid order-form-unified">
         <div class="order-detail-main">
-            <section class="order-panel order-anim" style="animation-delay:0.08s">
+            <section class="order-panel order-section-items order-anim" style="animation-delay:0.08s">
                 <header class="order-panel-header">
                     <span class="order-panel-icon">
                         <i data-lucide="shopping-cart" class="w-5 h-5"></i>
@@ -86,7 +111,7 @@
                 </div>
             </section>
 
-            <section class="order-panel order-anim" style="animation-delay:0.12s">
+            <section class="order-panel order-section-shipping-info order-anim" style="animation-delay:0.12s">
                 <header class="order-panel-header">
                     <span class="order-panel-icon">
                         <i data-lucide="map-pin" class="w-5 h-5"></i>
@@ -112,10 +137,437 @@
                     </div>
                 </dl>
             </section>
+
+            <section class="order-panel order-section-shipping order-anim" style="animation-delay:0.16s">
+                <header class="order-panel-header">
+                    <span class="order-panel-icon">
+                        <i data-lucide="truck" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h2>Tạo vận chuyển</h2>
+                        <p>Chọn đơn vị vận chuyển, lấy báo giá trước rồi tạo vận đơn khi đã đồng ý phí</p>
+                    </div>
+                </header>
+
+                <div class="order-shipping-body @(splitShippingHistory ? "has-history-split" : string.Empty)">
+                    @if (canStartShipping)
+                    {
+                        <div class="order-carrier-picker" data-shipping-provider-shell>
+                            <label class="order-field">
+                                <span>Đơn vị vận chuyển</span>
+                                <select data-shipping-provider-select>
+                                    <option value="">Chọn đơn vị vận chuyển</option>
+                                    <option value="GiaoHangNhanh">Giao Hàng Nhanh</option>
+                                </select>
+                            </label>
+                            <p data-shipping-provider-empty>Chọn Giao Hàng Nhanh để nhập thông tin kiện hàng, lấy báo giá và tạo vận đơn.</p>
+                        </div>
+                    }
+
+                    @if (canStartShipping)
+                    {
+                        <div class="order-carrier-panel is-hidden" data-shipping-provider-panel="GiaoHangNhanh">
+                            <div class="order-carrier-panel-head">
+                                <span class="order-panel-icon">
+                                    <i data-lucide="truck" class="w-5 h-5"></i>
+                                </span>
+                                <div>
+                                    <h3>Giao Hàng Nhanh</h3>
+                                    <p>Nhập thông tin GHN cần để báo giá. Sau khi có phí, bạn có thể tạo vận đơn ở bước xác nhận.</p>
+                                </div>
+                            </div>
+
+                            @if (!shipmentPanel.IsProviderConfigured)
+                            {
+                                <div class="order-inline-alert">
+                                    <i data-lucide="key-round" class="w-4 h-4"></i>
+                                    <span>Chưa cấu hình GHN API. Bật Enabled và thêm Token, ShopId trước khi lấy phí vận chuyển.</span>
+                                </div>
+                            }
+                            @if (!shipmentPanel.HasFulfillmentLocations)
+                            {
+                                <div class="order-inline-alert">
+                                    <i data-lucide="map-pin-off" class="w-4 h-4"></i>
+                                    <span>Chưa có điểm lấy hàng đang hoạt động trong bảng fulfillment_locations.</span>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (currentShipment is not null)
+                    {
+                        <div class="order-shipment-summary">
+                            <div class="order-shipment-head">
+                                <div>
+                                    <span class="order-badge @currentShipment.StatusClass">@currentShipment.StatusLabel</span>
+                                    @if (!string.IsNullOrWhiteSpace(currentShipment.ProviderDeliveryId))
+                                    {
+                                        <strong>@currentShipment.ProviderDeliveryId</strong>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(currentShipment.TrackingUrl))
+                                {
+                                    <a href="@currentShipment.TrackingUrl" target="_blank" rel="noopener" class="order-action-btn">
+                                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                                        <span>Theo dõi</span>
+                                    </a>
+                                }
+                            </div>
+
+                            <dl class="order-info-list compact no-padding">
+                                <div>
+                                    <dt>Lấy hàng</dt>
+                                    <dd>@currentShipment.PickupAddress</dd>
+                                </div>
+                                <div>
+                                    <dt>Giao đến</dt>
+                                    <dd>@currentShipment.DropoffAddress</dd>
+                                </div>
+                                <div>
+                                    <dt>Phí GHN</dt>
+                                    <dd>@(currentShipment.ActualFee.HasValue ? Money(currentShipment.ActualFee.Value) : currentShipment.QuotedFee.HasValue ? Money(currentShipment.QuotedFee.Value) : "Chưa có")</dd>
+                                </div>
+                            </dl>
+
+                            @if (currentShipment.Packages.Any())
+                            {
+                                <div class="order-package-list">
+                                    @foreach (var package in currentShipment.Packages)
+                                    {
+                                        <div class="order-package-item">
+                                            <strong>@package.Description</strong>
+                                            <span>@package.Quantity kiện</span>
+                                            @if (package.WeightGrams.HasValue)
+                                            {
+                                                <span>@package.WeightGrams.Value g</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(currentShipment.FailureReason))
+                            {
+                                <div class="order-inline-alert is-error">
+                                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                                    <span>@currentShipment.FailureReason</span>
+                                </div>
+                            }
+
+                            @if (currentShipment.RecentEvents.Any())
+                            {
+                                <div class="order-event-list">
+                                    @foreach (var item in currentShipment.RecentEvents)
+                                    {
+                                        <div>
+                                            <strong>@item.StatusLabel</strong>
+                                            <span>@DateText(item.OccurredAt)</span>
+                                            @if (!string.IsNullOrWhiteSpace(item.Message))
+                                            {
+                                                <p>@item.Message</p>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            <div class="order-shipment-actions">
+                                @if (currentShipment.CanBook)
+                                {
+                                    <form asp-controller="Shipments"
+                                          asp-action="BookShipment"
+                                          asp-route-orderId="@Model.Id"
+                                          asp-route-shipmentId="@currentShipment.Id"
+                                          method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="order-submit-btn">
+                                            <i data-lucide="send" class="w-4 h-4"></i>
+                                            <span>Đồng ý tạo vận đơn GHN</span>
+                                        </button>
+                                    </form>
+                                }
+                                @if (currentShipment.CanCancel)
+                                {
+                                    <form asp-controller="Shipments"
+                                          asp-action="CancelShipment"
+                                          asp-route-orderId="@Model.Id"
+                                          asp-route-shipmentId="@currentShipment.Id"
+                                          method="post"
+                                          data-confirm="Hủy vận đơn GHN này?">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="order-secondary-danger">
+                                            <i data-lucide="ban" class="w-4 h-4"></i>
+                                            <span>Hủy vận đơn</span>
+                                        </button>
+                                    </form>
+                                }
+                                @if (currentShipment.CanSync)
+                                {
+                                    <form asp-controller="Shipments"
+                                          asp-action="SyncShipmentStatus"
+                                          asp-route-orderId="@Model.Id"
+                                          asp-route-shipmentId="@currentShipment.Id"
+                                          method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="order-action-btn">
+                                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                            <span>Đồng bộ GHN</span>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (showShipmentHistory)
+                    {
+                        <div class="order-shipment-history">
+                            <div class="order-shipment-history-title">
+                                <span class="order-panel-icon">
+                                    <i data-lucide="history" class="w-5 h-5"></i>
+                                </span>
+                                <div>
+                                    <h3>Lịch sử vận chuyển</h3>
+                                    <p>Lưu lại các lần báo giá, tạo vận đơn và hủy vận đơn của đơn hàng này.</p>
+                                </div>
+                            </div>
+
+                            @foreach (var row in shipmentPanel.ShipmentHistory.Select((history, index) => new { history, index }))
+                            {
+                                var history = row.history;
+                                var isExtraHistory = row.index >= 3;
+                                var historyCode = string.IsNullOrWhiteSpace(history.ProviderDeliveryId)
+                                    ? $"Vận chuyển #{history.Id}"
+                                    : history.ProviderDeliveryId;
+
+                                <article class="order-shipment-history-item"
+                                         hidden="@isExtraHistory"
+                                         data-shipment-history-extra="@isExtraHistory.ToString().ToLowerInvariant()">
+                                    <div class="order-shipment-history-head">
+                                        <div>
+                                            <span class="order-badge @history.StatusClass">@history.StatusLabel</span>
+                                            <strong>@historyCode</strong>
+                                            @if (currentShipment?.Id == history.Id)
+                                            {
+                                                <span class="order-mini-tag">Hiện tại</span>
+                                            }
+                                        </div>
+                                        @if (history.TrackingUrl is not null && !string.IsNullOrWhiteSpace(history.ProviderDeliveryId))
+                                        {
+                                            <a href="@history.TrackingUrl" target="_blank" rel="noopener" class="order-action-btn">
+                                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                                                <span>Theo dõi</span>
+                                            </a>
+                                        }
+                                    </div>
+
+                                    <dl class="order-shipment-history-meta">
+                                        <div>
+                                            <dt>Báo giá</dt>
+                                            <dd>@DateText(history.CreatedAt)</dd>
+                                        </div>
+                                        @if (history.QuotedFee.HasValue)
+                                        {
+                                            <div>
+                                                <dt>Phí</dt>
+                                                <dd>@Money(history.ActualFee ?? history.QuotedFee.Value)</dd>
+                                            </div>
+                                        }
+                                        @if (history.BookedAt.HasValue)
+                                        {
+                                            <div>
+                                                <dt>Tạo vận đơn</dt>
+                                                <dd>@DateTextNullable(history.BookedAt)</dd>
+                                            </div>
+                                        }
+                                        @if (history.CancelledAt.HasValue)
+                                        {
+                                            <div>
+                                                <dt>Hủy vận đơn</dt>
+                                                <dd>@DateTextNullable(history.CancelledAt)</dd>
+                                            </div>
+                                        }
+                                    </dl>
+
+                                    @if (history.RecentEvents.Any())
+                                    {
+                                        <details class="order-shipment-process">
+                                            <summary>
+                                                <i data-lucide="list-tree" class="w-3.5 h-3.5"></i>
+                                                <span>Chi tiết quá trình</span>
+                                                <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                                            </summary>
+
+                                            <div class="order-event-list order-event-list-compact">
+                                                @foreach (var item in history.RecentEvents)
+                                                {
+                                                    <div>
+                                                        <strong>@item.StatusLabel</strong>
+                                                        <span>@DateText(item.OccurredAt)</span>
+                                                        @if (!string.IsNullOrWhiteSpace(item.Message))
+                                                        {
+                                                            <p>@item.Message</p>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        </details>
+                                    }
+                                </article>
+                            }
+
+                            @if (shipmentPanel.ShipmentHistory.Count > 3)
+                            {
+                                <button type="button"
+                                        class="order-history-more"
+                                        data-shipment-history-more>
+                                    <i data-lucide="chevrons-down" class="w-3.5 h-3.5"></i>
+                                    <span>Hiển thị thêm @(shipmentPanel.ShipmentHistory.Count - 3) vận đơn</span>
+                                </button>
+                            }
+                        </div>
+                    }
+
+                    @if (canCreateQuote)
+                    {
+                        <form asp-controller="Shipments"
+                              asp-action="CreateQuote"
+                              asp-route-orderId="@Model.Id"
+                              method="post"
+                              class="order-shipping-form order-shipping-floating-form order-carrier-panel is-hidden"
+                              data-shipping-provider-panel="GiaoHangNhanh"
+                              data-shipping-modal-form
+                              data-shipment-quote-form>
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="OrderId" value="@Model.Id" />
+
+                            <div class="order-modal-form-head span-2">
+                                <div>
+                                    <h3>Giao Hàng Nhanh</h3>
+                                    <p>Nhập thông tin giao hàng, lấy phí GHN rồi tạo vận đơn sau khi đồng ý phí.</p>
+                                </div>
+                                <button type="button" class="order-modal-close" data-close-shipping-modal aria-label="Đóng form giao hàng">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+
+                            <label class="order-field">
+                                <span>Điểm lấy hàng</span>
+                                <select name="FulfillmentLocationId">
+                                    @foreach (var location in shipmentPanel.FulfillmentLocations)
+                                    {
+                                        <option value="@location.Id" selected="@(location.Id == shipmentPanel.QuoteForm.FulfillmentLocationId ? "selected" : null)">
+                                            @location.Name - @location.Address
+                                        </option>
+                                    }
+                                </select>
+                            </label>
+
+                            <input type="hidden" name="ProviderDropoffProvinceCode" value="@shipmentPanel.QuoteForm.ProviderDropoffProvinceCode" data-order-provider-province-code />
+                            <input type="hidden" name="ProviderDropoffProvinceName" value="@shipmentPanel.QuoteForm.ProviderDropoffProvinceName" data-order-provider-province-name />
+                            <input type="hidden" name="ProviderDropoffDistrictCode" value="@shipmentPanel.QuoteForm.ProviderDropoffDistrictCode" data-order-provider-district-code />
+                            <input type="hidden" name="ProviderDropoffDistrictName" value="@shipmentPanel.QuoteForm.ProviderDropoffDistrictName" data-order-provider-district-name />
+                            <input type="hidden" name="ProviderDropoffWardCode" value="@shipmentPanel.QuoteForm.ProviderDropoffWardCode" data-order-provider-ward-code />
+                            <input type="hidden" name="ProviderDropoffWardName" value="@shipmentPanel.QuoteForm.ProviderDropoffWardName" data-order-provider-ward-name />
+
+                            <div class="order-provider-address span-2"
+                                 data-order-provider-address
+                                 data-province-code="@shipmentPanel.QuoteForm.ProviderDropoffProvinceCode"
+                                 data-province-name="@shipmentPanel.QuoteForm.ProviderDropoffProvinceName"
+                                 data-district-code="@shipmentPanel.QuoteForm.ProviderDropoffDistrictCode"
+                                 data-district-name="@shipmentPanel.QuoteForm.ProviderDropoffDistrictName"
+                                 data-ward-code="@shipmentPanel.QuoteForm.ProviderDropoffWardCode"
+                                 data-ward-name="@shipmentPanel.QuoteForm.ProviderDropoffWardName">
+                                <label class="order-field">
+                                    <span>Tỉnh/thành giao đến</span>
+                                    <select data-order-provider-province-select>
+                                        <option value="">Đang tải tỉnh/thành...</option>
+                                    </select>
+                                    @Html.ValidationMessage("ProviderDropoffProvinceCode", null, new { @class = "order-field-error" })
+                                </label>
+
+                                <label class="order-field">
+                                    <span>Quận/huyện giao đến</span>
+                                    <select data-order-provider-district-select disabled>
+                                        <option value="">Chọn tỉnh/thành trước</option>
+                                    </select>
+                                    @Html.ValidationMessage("ProviderDropoffDistrictCode", null, new { @class = "order-field-error" })
+                                </label>
+
+                                <label class="order-field">
+                                    <span>Phường/xã giao đến</span>
+                                    <select data-order-provider-ward-select disabled>
+                                        <option value="">Chọn quận/huyện trước</option>
+                                    </select>
+                                    @Html.ValidationMessage("ProviderDropoffWardCode", null, new { @class = "order-field-error" })
+                                </label>
+                            </div>
+
+                            <label class="order-field span-2">
+                                <span>Mô tả kiện hàng</span>
+                                <input type="text" name="PackageDescription" value="@shipmentPanel.QuoteForm.PackageDescription" maxlength="500" required />
+                                @Html.ValidationMessage("PackageDescription", null, new { @class = "order-field-error" })
+                            </label>
+
+                            <label class="order-field">
+                                <span>Số kiện</span>
+                                <input type="number" name="Quantity" min="1" max="@ShipmentQuoteCreateViewModel.MaxQuantity" step="1" value="@shipmentPanel.QuoteForm.Quantity" required />
+                                @Html.ValidationMessage("Quantity", null, new { @class = "order-field-error" })
+                            </label>
+
+                            <label class="order-field">
+                                <span>Cân nặng gram</span>
+                                <input type="number" name="WeightGrams" min="1" max="@ShipmentQuoteCreateViewModel.MaxWeightGrams" step="1" value="@shipmentPanel.QuoteForm.WeightGrams" required />
+                                @Html.ValidationMessage("WeightGrams", null, new { @class = "order-field-error" })
+                            </label>
+
+                            <label class="order-field">
+                                <span>Dài cm</span>
+                                <input type="number" step="1" min="@ShipmentQuoteCreateViewModel.MinDimensionCm" max="@ShipmentQuoteCreateViewModel.MaxDimensionCm" name="LengthCm" value="@shipmentPanel.QuoteForm.LengthCm" required />
+                                @Html.ValidationMessage("LengthCm", null, new { @class = "order-field-error" })
+                            </label>
+
+                            <label class="order-field">
+                                <span>Rộng cm</span>
+                                <input type="number" step="1" min="@ShipmentQuoteCreateViewModel.MinDimensionCm" max="@ShipmentQuoteCreateViewModel.MaxDimensionCm" name="WidthCm" value="@shipmentPanel.QuoteForm.WidthCm" required />
+                                @Html.ValidationMessage("WidthCm", null, new { @class = "order-field-error" })
+                            </label>
+
+                            <label class="order-field">
+                                <span>Cao cm</span>
+                                <input type="number" step="1" min="@ShipmentQuoteCreateViewModel.MinDimensionCm" max="@ShipmentQuoteCreateViewModel.MaxDimensionCm" name="HeightCm" value="@shipmentPanel.QuoteForm.HeightCm" required />
+                                @Html.ValidationMessage("HeightCm", null, new { @class = "order-field-error" })
+                            </label>
+
+                            <label class="order-field">
+                                <span>Giá trị khai báo</span>
+                                <input type="number" step="1000" min="0" name="DeclaredValue" value="@shipmentPanel.QuoteForm.DeclaredValue" />
+                                @Html.ValidationMessage("DeclaredValue", null, new { @class = "order-field-error" })
+                            </label>
+
+                            <label class="order-check-field">
+                                <input type="checkbox" name="IsFragile" value="true" checked="@shipmentPanel.QuoteForm.IsFragile" />
+                                <input type="hidden" name="IsFragile" value="false" />
+                                <span>Hàng dễ vỡ</span>
+                            </label>
+
+                            <label class="order-field span-2">
+                                <span>Ghi chú</span>
+                                <textarea name="Notes" maxlength="1000">@shipmentPanel.QuoteForm.Notes</textarea>
+                            </label>
+
+                            <button type="submit" class="order-submit-btn span-2">
+                                <i data-lucide="calculator" class="w-4 h-4"></i>
+                                <span>Lấy phí GHN</span>
+                            </button>
+                        </form>
+                    }
+                </div>
+            </section>
         </div>
 
         <aside class="order-detail-side">
-            <section class="order-panel order-anim" style="animation-delay:0.1s">
+            <section class="order-panel order-section-customer order-anim" style="animation-delay:0.1s">
                 <header class="order-panel-header">
                     <span class="order-panel-icon">
                         <i data-lucide="user-round" class="w-5 h-5"></i>
@@ -138,7 +590,7 @@
                 </dl>
             </section>
 
-            <section class="order-panel order-anim" style="animation-delay:0.14s">
+            <section class="order-panel order-section-payment order-anim" style="animation-delay:0.14s">
                 <header class="order-panel-header">
                     <span class="order-panel-icon">
                         <i data-lucide="receipt-text" class="w-5 h-5"></i>
@@ -177,7 +629,7 @@
                 }
             </section>
 
-            <section class="order-panel order-anim" style="animation-delay:0.18s">
+            <section class="order-panel order-section-status order-anim" style="animation-delay:0.18s">
                 <header class="order-panel-header">
                     <span class="order-panel-icon">
                         <i data-lucide="workflow" class="w-5 h-5"></i>
@@ -198,7 +650,9 @@
                       class="order-status-form"
                       data-order-status-form
                       data-current-order-status="@Model.OrderStatus"
-                      data-current-payment-status="@Model.PaymentStatus">
+                      data-current-payment-status="@Model.PaymentStatus"
+                      data-is-cod-payment="@Model.IsCashOnDelivery.ToString().ToLowerInvariant()"
+                      data-current-shipment-status="@currentShipment?.Status">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="Id" value="@Model.Id" />
 

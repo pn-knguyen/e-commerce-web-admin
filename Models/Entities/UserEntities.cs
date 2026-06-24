@@ -34,9 +34,15 @@ public class UserAddress
     public string Phone { get; set; } = string.Empty;
     public string ProvinceCode { get; set; } = string.Empty;
     public string ProvinceName { get; set; } = string.Empty;
+    public string? DistrictCode { get; set; }
+    public string? DistrictName { get; set; }
     public string WardCode { get; set; } = string.Empty;
     public string WardName { get; set; } = string.Empty;
     public string DetailAddress { get; set; } = string.Empty;
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+    public string? PlaceId { get; set; }
+    public string? FormattedAddress { get; set; }
     public AddressType Type { get; set; } = AddressType.Shipping;
     public bool IsDefault { get; set; }
     public bool IsDeleted { get; set; }
