@@ -10,6 +10,7 @@ using e_commerce_web_admin.ViewModels.Shipments;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using e_commerce_web_admin.Services.Orders;
 
 namespace e_commerce_web_admin.Services.Shipping;
 
@@ -595,6 +596,13 @@ public sealed class ShipmentAdminService : IShipmentAdminService
                 (beforePaymentStatus.HasValue && shipment.Order?.PaymentStatus != beforePaymentStatus.Value))
             {
                 changedCount++;
+                if (beforeOrderStatus.HasValue && beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
+                    shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
+                {
+                    await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
+                        .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
+                    OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus.Value, shipment.Order.OrderStatus);
+                }
             }
         }
 
@@ -658,11 +666,21 @@ public sealed class ShipmentAdminService : IShipmentAdminService
         var nextStatus = ShipmentStatusMapper.FromGiaoHangNhanhStatus(providerStatus);
         var occurredAt = ReadDateTime(root, "Time", "time", "timestamp", "occurredAt", "updatedAt") ?? DateTime.UtcNow;
 
+        var beforeOrderStatus = shipment.Order.OrderStatus;
+
         shipment.ProviderStatus = providerStatus;
         shipment.Status = nextStatus;
         shipment.LastSyncedAt = DateTime.UtcNow;
         shipment.UpdatedAt = DateTime.UtcNow;
         ShipmentStatusMapper.SyncOrderStatusFromShipment(shipment.Order, nextStatus, DateTime.UtcNow);
+
+        if (beforeOrderStatus != shipment.Order.OrderStatus &&
+            shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
+        {
+            await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
+                .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
+            OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus, shipment.Order.OrderStatus);
+        }
 
         if (ShipmentStatusMapper.IsPickupProgressStatus(nextStatus) && shipment.PickedUpAt is null)
         {
@@ -752,11 +770,21 @@ public sealed class ShipmentAdminService : IShipmentAdminService
         var occurredAt = providerOccurredAt ?? DateTime.UtcNow;
         var now = DateTime.UtcNow;
 
+        var beforeOrderStatus = shipment.Order?.OrderStatus;
+
         shipment.ProviderStatus = providerStatus;
         shipment.Status = nextStatus;
         shipment.LastSyncedAt = now;
         shipment.UpdatedAt = now;
         ShipmentStatusMapper.SyncOrderStatusFromShipment(shipment.Order, nextStatus, now);
+
+        if (beforeOrderStatus.HasValue && beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
+            shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
+        {
+            await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
+                .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
+            OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus.Value, shipment.Order.OrderStatus);
+        }
 
         if (actualFee.HasValue)
         {

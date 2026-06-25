@@ -1,3 +1,4 @@
+using System.Data;
 using e_commerce_web_admin.Data;
 using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Entities;
@@ -153,44 +154,60 @@ public sealed class OrderAdminService : IOrderAdminService
         OrderStatusUpdateViewModel form,
         CancellationToken ct = default)
     {
-        var order = await _db.Orders
-            .Include(item => item.Shipments)
-            .FirstOrDefaultAsync(item => item.Id == id, ct);
-        if (order is null)
+        var strategy = _db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
-            return OrderStatusUpdateResult.NotFound();
-        }
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.RepeatableRead, ct);
 
-        var latestShipment = order.Shipments
-            .OrderByDescending(item => item.CreatedAt)
-            .ThenByDescending(item => item.Id)
-            .FirstOrDefault();
-        var errors = ValidateStatusChange(order, form, latestShipment);
-        if (errors.Count > 0)
-        {
-            return OrderStatusUpdateResult.Failed(errors);
-        }
+            var order = await _db.Orders
+                .Include(o => o.Shipments)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(item => item.ProductVariant)
+                    .ThenInclude(variant => variant!.Product)
+                .FirstOrDefaultAsync(o => o.Id == id, ct);
 
-        if (form.OrderStatus == OrderStatus.Completed &&
-            IsCashOnDelivery(order) &&
-            form.PaymentStatus != PaymentStatus.Refunded)
-        {
-            form.PaymentStatus = PaymentStatus.Paid;
-        }
+            if (order is null)
+            {
+                return OrderStatusUpdateResult.NotFound();
+            }
 
-        if (order.OrderStatus == form.OrderStatus && order.PaymentStatus == form.PaymentStatus)
-        {
-            return OrderStatusUpdateResult.Success("Đơn hàng chưa có thay đổi trạng thái.");
-        }
+            var latestShipment = order.Shipments
+                .OrderByDescending(s => s.CreatedAt)
+                .ThenByDescending(s => s.Id)
+                .FirstOrDefault();
 
-        order.OrderStatus = form.OrderStatus;
-        order.PaymentStatus = form.PaymentStatus;
-        order.UpdatedAt = DateTime.UtcNow;
+            var errors = ValidateStatusChange(order, form, latestShipment);
+            if (errors.Count > 0)
+            {
+                return OrderStatusUpdateResult.Failed(errors);
+            }
 
-        await _db.SaveChangesAsync(ct);
+            if (form.OrderStatus == OrderStatus.Completed &&
+                IsCashOnDelivery(order) &&
+                form.PaymentStatus != PaymentStatus.Refunded)
+            {
+                form.PaymentStatus = PaymentStatus.Paid;
+            }
 
-        return OrderStatusUpdateResult.Success(
-            $"Đã cập nhật đơn hàng {order.OrderCode} sang {OrderDisplay.GetOrderStatusLabel(order.OrderStatus).ToLowerInvariant()}.");
+            if (order.OrderStatus == form.OrderStatus && order.PaymentStatus == form.PaymentStatus)
+            {
+                return OrderStatusUpdateResult.Success("Đơn hàng chưa có thay đổi trạng thái.");
+            }
+
+            var previousOrderStatus = order.OrderStatus;
+            order.OrderStatus = form.OrderStatus;
+            order.PaymentStatus = form.PaymentStatus;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            OrderInventoryHelper.ApplyInventoryChange(order, previousOrderStatus, form.OrderStatus);
+
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            return OrderStatusUpdateResult.Success(
+                $"Đã cập nhật đơn hàng {order.OrderCode} sang {OrderDisplay.GetOrderStatusLabel(order.OrderStatus).ToLowerInvariant()}.");
+        });
     }
 
     private static IQueryable<Order> ApplyFilters(IQueryable<Order> query, OrderIndexQuery filters)
@@ -269,14 +286,18 @@ public sealed class OrderAdminService : IOrderAdminService
                 "Chỉ hoàn tiền cho đơn đã hủy hoặc đã trả hàng."));
         }
 
+        // Ngăn admin gán Paid cho đơn bị hủy / trả trong trường hợp đơn chưa được thanh toán.
+        // (Khi đơn đã Paid rồi, Rule phía dưới sẽ xử lý riêng — tránh hiển thị lỗi trùng.)
         if (form.OrderStatus is OrderStatus.Cancelled or OrderStatus.Returned &&
-            form.PaymentStatus == PaymentStatus.Paid)
+            form.PaymentStatus == PaymentStatus.Paid &&
+            order.PaymentStatus != PaymentStatus.Paid)
         {
             errors.Add(new OrderValidationError(
                 nameof(form.PaymentStatus),
-                "Đơn đã hủy hoặc trả hàng không thể giữ trạng thái đã thanh toán."));
+                "Đơn đã hủy hoặc trả hàng không thể chuyển sang trạng thái đã thanh toán."));
         }
 
+        // Đơn đã thanh toán khi bị hủy / trả bắt buộc phải hoàn tiền.
         if (form.OrderStatus is OrderStatus.Cancelled or OrderStatus.Returned &&
             order.PaymentStatus == PaymentStatus.Paid &&
             form.PaymentStatus != PaymentStatus.Refunded)
@@ -289,18 +310,8 @@ public sealed class OrderAdminService : IOrderAdminService
         return errors;
     }
 
-    private static bool IsCashOnDelivery(Order order)
-    {
-        if (order.PaymentMethodId == PaymentMethodIds.CashOnDelivery)
-        {
-            return true;
-        }
-
-        var paymentName = order.PaymentMethod?.Name;
-        return !string.IsNullOrWhiteSpace(paymentName) &&
-            (paymentName.Contains("COD", StringComparison.OrdinalIgnoreCase) ||
-                paymentName.Contains("nhận hàng", StringComparison.OrdinalIgnoreCase));
-    }
+    private static bool IsCashOnDelivery(Order order) =>
+        order.PaymentMethodId == PaymentMethodIds.CashOnDelivery;
 
     private static bool CanChangeOrderStatus(OrderStatus current, OrderStatus next) =>
         current switch
@@ -379,7 +390,7 @@ public sealed class OrderAdminService : IOrderAdminService
             return null;
         }
 
-        var timeZone = GetVietnamTimeZone();
+        var timeZone = TimeZoneHelper.GetVietnamTimeZone();
         var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone).Date;
         var localStart = normalizedValue == "last7days"
             ? today.AddDays(-6)
@@ -404,25 +415,6 @@ public sealed class OrderAdminService : IOrderAdminService
             "last7days" => "last7days",
             _ => null,
         };
-    }
-
-    private static TimeZoneInfo GetVietnamTimeZone()
-    {
-        foreach (var timeZoneId in new[] { "SE Asia Standard Time", "Asia/Ho_Chi_Minh" })
-        {
-            try
-            {
-                return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-            }
-            catch (InvalidTimeZoneException)
-            {
-            }
-        }
-
-        return TimeZoneInfo.Utc;
     }
 
     private async Task<List<OrderFilterOption>> BuildPaymentMethodOptionsAsync(

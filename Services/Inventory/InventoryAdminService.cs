@@ -890,7 +890,7 @@ public sealed class InventoryAdminService : IInventoryAdminService
 
     private async Task<string> GenerateReceiptCodeAsync(CancellationToken ct)
     {
-        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, GetVietnamTimeZone()).Date;
+        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneHelper.GetVietnamTimeZone()).Date;
         var prefix = $"GR-{today:yyyyMMdd}-";
         var nextNumber = await _db.GoodsReceipts
             .AsNoTracking()
@@ -958,22 +958,4 @@ public sealed class InventoryAdminService : IInventoryAdminService
             : form.ReceiptCode.Trim().ToUpperInvariant();
     }
 
-    private static TimeZoneInfo GetVietnamTimeZone()
-    {
-        foreach (var timeZoneId in new[] { "SE Asia Standard Time", "Asia/Ho_Chi_Minh" })
-        {
-            try
-            {
-                return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-            }
-            catch (InvalidTimeZoneException)
-            {
-            }
-        }
-
-        return TimeZoneInfo.Utc;
-    }
 }
