@@ -47,6 +47,7 @@ public static class PermissionModules
     [
         "Dashboard",
         "Customers",
+        "CustomerMessages",
         "Staff",
         "Roles",
         "Brands",
@@ -69,6 +70,7 @@ public static class PermissionModules
     {
         ["Dashboard"] = "Bảng điều khiển",
         ["Customers"] = "Khách hàng",
+        ["CustomerMessages"] = "Tin nhắn khách hàng",
         ["Staff"] = "Nhân sự quản trị",
         ["Roles"] = "Vai trò và quyền",
         ["Brands"] = "Thương hiệu",

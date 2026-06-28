@@ -1,5 +1,6 @@
 using e_commerce_web_admin.Data.Seed;
 using e_commerce_web_admin.Models.Entities;
+using e_commerce_web_admin.Models.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,8 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
     public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Wishlist> Wishlists => Set<Wishlist>();
+    public DbSet<CustomerConversation> CustomerConversations => Set<CustomerConversation>();
+    public DbSet<CustomerMessage> CustomerMessages => Set<CustomerMessage>();
     public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
@@ -58,6 +61,7 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
 
         ConfigureIdentity(modelBuilder);
         ConfigureUsers(modelBuilder);
+        ConfigureCustomerMessages(modelBuilder);
         ConfigureCatalog(modelBuilder);
         ConfigureOrders(modelBuilder);
         ConfigureShipping(modelBuilder);
@@ -165,6 +169,64 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
             entity.HasOne(item => item.ProductVariant)
                 .WithMany(variant => variant.Wishlists)
                 .HasForeignKey(item => item.ProductVariantId);
+        });
+    }
+
+    private static void ConfigureCustomerMessages(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CustomerConversation>(entity =>
+        {
+            entity.ToTable("customer_conversations");
+            entity.HasIndex(conversation => new { conversation.UserId, conversation.Status });
+            entity.HasIndex(conversation => new { conversation.UserId, conversation.Channel, conversation.LastMessageAt });
+            entity.HasIndex(conversation => conversation.AssignedStaffId);
+            entity.HasIndex(conversation => conversation.LastMessageAt);
+            entity.Property(conversation => conversation.Subject).HasMaxLength(255);
+            entity.Property(conversation => conversation.Channel)
+                .HasConversion<string>()
+                .HasMaxLength(30)
+                .HasDefaultValue(CustomerConversationChannel.Support);
+            entity.Property(conversation => conversation.Status).HasConversion<string>().HasMaxLength(30);
+            entity.HasOne(conversation => conversation.User)
+                .WithMany(user => user.CustomerConversations)
+                .HasForeignKey(conversation => conversation.UserId);
+            entity.HasOne(conversation => conversation.AssignedStaff)
+                .WithMany(staff => staff.AssignedCustomerConversations)
+                .HasForeignKey(conversation => conversation.AssignedStaffId);
+        });
+
+        modelBuilder.Entity<CustomerMessage>(entity =>
+        {
+            entity.ToTable("customer_messages");
+            entity.HasIndex(message => new { message.ConversationId, message.CreatedAt });
+            entity.HasIndex(message => new { message.ConversationId, message.Sender, message.IsReadByAdmin });
+            entity.HasIndex(message => new { message.UserId, message.Sender, message.ClientMessageId })
+                .IsUnique()
+                .HasFilter("[ClientMessageId] IS NOT NULL AND [UserId] IS NOT NULL");
+            entity.HasIndex(message => new { message.StaffId, message.Sender, message.ClientMessageId })
+                .IsUnique()
+                .HasFilter("[ClientMessageId] IS NOT NULL AND [StaffId] IS NOT NULL");
+            entity.HasIndex(message => message.Sender);
+            entity.HasIndex(message => message.AiResponseId)
+                .IsUnique()
+                .HasFilter("[AiResponseId] IS NOT NULL");
+            entity.HasIndex(message => message.UserId);
+            entity.HasIndex(message => message.StaffId);
+            entity.Property(message => message.Sender).HasConversion<string>().HasMaxLength(30);
+            entity.Property(message => message.ClientMessageId).HasMaxLength(64).IsUnicode(false);
+            entity.Property(message => message.Body).IsRequired();
+            entity.Property(message => message.AiProvider).HasMaxLength(80);
+            entity.Property(message => message.AiModel).HasMaxLength(120);
+            entity.Property(message => message.AiResponseId).HasMaxLength(160);
+            entity.HasOne(message => message.Conversation)
+                .WithMany(conversation => conversation.Messages)
+                .HasForeignKey(message => message.ConversationId);
+            entity.HasOne(message => message.User)
+                .WithMany(user => user.CustomerMessages)
+                .HasForeignKey(message => message.UserId);
+            entity.HasOne(message => message.Staff)
+                .WithMany(staff => staff.CustomerMessages)
+                .HasForeignKey(message => message.StaffId);
         });
     }
 

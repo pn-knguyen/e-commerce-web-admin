@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using e_commerce_web_admin.Data;
 
@@ -11,9 +12,11 @@ using e_commerce_web_admin.Data;
 namespace e_commerce_web_admin.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260626150822_AddCustomerMessageModule")]
+    partial class AddCustomerMessageModule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -928,13 +931,6 @@ namespace e_commerce_web_admin.Migrations
                     b.Property<long?>("AssignedStaffId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("Channel")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
-                        .HasDefaultValue("Support");
-
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("datetime2");
 
@@ -953,6 +949,9 @@ namespace e_commerce_web_admin.Migrations
                     b.Property<DateTime?>("LastStaffMessageAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("MessageCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -961,6 +960,9 @@ namespace e_commerce_web_admin.Migrations
                     b.Property<string>("Subject")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("UnreadCustomerMessageCount")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -975,8 +977,6 @@ namespace e_commerce_web_admin.Migrations
                     b.HasIndex("LastMessageAt");
 
                     b.HasIndex("UserId", "Status");
-
-                    b.HasIndex("UserId", "Channel", "LastMessageAt");
 
                     b.ToTable("customer_conversations", (string)null);
                 });
@@ -1011,11 +1011,6 @@ namespace e_commerce_web_admin.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ClientMessageId")
-                        .HasMaxLength(64)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(64)");
-
                     b.Property<long>("ConversationId")
                         .HasColumnType("bigint");
 
@@ -1038,10 +1033,6 @@ namespace e_commerce_web_admin.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AiResponseId")
-                        .IsUnique()
-                        .HasFilter("[AiResponseId] IS NOT NULL");
-
                     b.HasIndex("Sender");
 
                     b.HasIndex("StaffId");
@@ -1049,16 +1040,6 @@ namespace e_commerce_web_admin.Migrations
                     b.HasIndex("UserId");
 
                     b.HasIndex("ConversationId", "CreatedAt");
-
-                    b.HasIndex("ConversationId", "Sender", "IsReadByAdmin");
-
-                    b.HasIndex("StaffId", "Sender", "ClientMessageId")
-                        .IsUnique()
-                        .HasFilter("[ClientMessageId] IS NOT NULL AND [StaffId] IS NOT NULL");
-
-                    b.HasIndex("UserId", "Sender", "ClientMessageId")
-                        .IsUnique()
-                        .HasFilter("[ClientMessageId] IS NOT NULL AND [UserId] IS NOT NULL");
 
                     b.ToTable("customer_messages", (string)null);
                 });

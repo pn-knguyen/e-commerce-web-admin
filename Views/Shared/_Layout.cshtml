@@ -10,6 +10,10 @@
     var userEmail = User.FindFirst(AppClaimTypes.Email)?.Value ?? "";
     var initials  = string.Join("", fullName.Split(' ').Take(2).Select(w => w.Length > 0 ? w[0].ToString() : "")).ToUpper();
     var roleLabel = staffRoles.Length == 0 ? "Nhân sự" : string.Join(", ", staffRoles);
+    var isCustomerMessagesPage = string.Equals(
+        ViewContext.RouteData.Values["controller"]?.ToString(),
+        "CustomerMessages",
+        StringComparison.OrdinalIgnoreCase);
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -251,15 +255,18 @@
         animation: fadeSlideDown 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
         }
 
-        /* ── Sidebar scroll on hover ── */
+        /* ── Sidebar independent scroll ── */
         #sidebarNav {
-        overflow-y: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
         scrollbar-width: thin;
-        scrollbar-color: #334155 transparent;
+        scrollbar-color: transparent transparent;
         }
 
-        #sidebarNav:hover {
-        overflow-y: auto;
+        #sidebarNav:hover,
+        #sidebarNav:focus-within {
+        scrollbar-color: #334155 transparent;
         }
 
         #sidebarNav::-webkit-scrollbar {
@@ -271,8 +278,13 @@
         }
 
         #sidebarNav::-webkit-scrollbar-thumb {
-        background: #334155;
+        background: transparent;
         border-radius: 4px;
+        }
+
+        #sidebarNav:hover::-webkit-scrollbar-thumb,
+        #sidebarNav:focus-within::-webkit-scrollbar-thumb {
+        background: #334155;
         }
 
         #sidebarNav::-webkit-scrollbar-thumb:hover {
@@ -396,6 +408,11 @@
                        class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
                         <i data-lucide="user-round" class="w-4 h-4 shrink-0"></i>
                         Quản lý khách hàng
+                    </a>
+                    <a href="/CustomerMessages"
+                       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
+                        <i data-lucide="messages-square" class="w-4 h-4 shrink-0"></i>
+                        Tin nhắn khách hàng
                     </a>
                 </div>
 
@@ -586,7 +603,7 @@
                         </header>
 
                         @* Page content *@
-                        <main class="flex-1 p-4 lg:p-6 xl:p-8" role="main">
+                        <main class="flex-1 @(isCustomerMessagesPage ? "p-0 overflow-hidden" : "p-4 lg:p-6 xl:p-8")" role="main">
                             @RenderBody()
                         </main>
                     </div>
@@ -680,12 +697,68 @@
                     // Khớp trực tiếp với path hiện tại
                     if (path.startsWith(href)) {
                     link.classList.add('is-active');
+                    link.setAttribute('aria-current', 'page');
                     }
                     // Hoặc khớp via sub-page map
                     else if (parentHref && href === parentHref) {
                     link.classList.add('is-active');
+                    link.setAttribute('aria-current', 'page');
                     }
                     });
+                    })();
+
+                    // Preserve the independent sidebar position across full-page navigation.
+                    (function preserveSidebarPosition() {
+                    const nav = document.getElementById('sidebarNav');
+                    if (!nav) return;
+
+                    const storageKey = 'admin-sidebar-scroll-top:v1';
+                    let saveFrame = null;
+
+                    function savePosition() {
+                    try {
+                    sessionStorage.setItem(storageKey, String(Math.round(nav.scrollTop)));
+                    } catch {
+                    // Sidebar navigation remains usable when browser storage is unavailable.
+                    }
+                    }
+
+                    function queueSave() {
+                    if (saveFrame !== null) return;
+                    saveFrame = requestAnimationFrame(() => {
+                    saveFrame = null;
+                    savePosition();
+                    });
+                    }
+
+                    function keepActiveLinkVisible() {
+                    const activeLink = nav.querySelector('.nav-link.is-active');
+                    if (!activeLink) return;
+
+                    const navRect = nav.getBoundingClientRect();
+                    const linkRect = activeLink.getBoundingClientRect();
+                    const isVisible = linkRect.top >= navRect.top && linkRect.bottom <= navRect.bottom;
+                    if (isVisible) return;
+
+                    nav.scrollTop += linkRect.top - navRect.top -
+                    Math.max(0, (nav.clientHeight - activeLink.offsetHeight) / 2);
+                    }
+
+                    try {
+                    const savedPosition = Number(sessionStorage.getItem(storageKey));
+                    if (Number.isFinite(savedPosition) && savedPosition >= 0) {
+                    nav.scrollTop = Math.min(savedPosition, Math.max(0, nav.scrollHeight - nav.clientHeight));
+                    }
+                    } catch {
+                    // Fall through to active-link positioning.
+                    }
+
+                    keepActiveLinkVisible();
+                    nav.addEventListener('scroll', queueSave, { passive: true });
+                    nav.querySelectorAll('.nav-link[href]').forEach(link => {
+                    link.addEventListener('click', savePosition);
+                    });
+                    window.addEventListener('pagehide', savePosition);
                     })();
 
                     // Live clock

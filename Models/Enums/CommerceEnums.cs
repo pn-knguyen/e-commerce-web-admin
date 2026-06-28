@@ -119,3 +119,23 @@ public enum GoodsReceiptStatus
     Approved = 2,
     Cancelled = 3
 }
+
+public enum CustomerConversationStatus
+{
+    Open = 0,
+    AwaitingCustomer = 1,
+    Closed = 2
+}
+
+public enum CustomerMessageSender
+{
+    Customer = 0,
+    Staff = 1,
+    Ai = 2
+}
+
+public enum CustomerConversationChannel
+{
+    Support = 0,
+    Ai = 1
+}

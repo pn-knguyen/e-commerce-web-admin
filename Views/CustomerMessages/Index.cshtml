@@ -1,0 +1,536 @@
+@model e_commerce_web_admin.ViewModels.CustomerMessages.CustomerMessageWorkspaceViewModel
+@using System.Globalization
+@using e_commerce_web_admin.Models.Enums
+@using e_commerce_web_admin.ViewModels.CustomerMessages
+@{
+    ViewData["Title"] = "Tin nhắn khách hàng";
+    Layout = "_Layout";
+
+    var index = Model.Index;
+    var conversation = Model.Conversation;
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    var bodyHasError = ViewData.ModelState["Body"]?.Errors.Count > 0;
+    var statusHasError = ViewData.ModelState["Status"]?.Errors.Count > 0;
+
+    string Initials(string? name)
+    {
+        var words = (name ?? "K").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(words.Take(2).Select(word => char.ToUpperInvariant(word[0])));
+    }
+
+    string DateText(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", vi);
+    string DateTextNullable(DateTime? value) => value.HasValue ? DateText(value.Value) : "Chưa có";
+
+    string RelativeTime(DateTime value)
+    {
+        var local = value.ToLocalTime();
+        var elapsed = DateTime.Now - local;
+        if (elapsed.TotalMinutes < 1) return "Vừa xong";
+        if (elapsed.TotalHours < 1) return $"{Math.Max(1, (int)elapsed.TotalMinutes)} phút";
+        if (local.Date == DateTime.Today) return local.ToString("HH:mm", vi);
+        if (local.Date == DateTime.Today.AddDays(-1)) return "Hôm qua";
+        return local.ToString("dd/MM", vi);
+    }
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-messages.css" asp-append-version="true" />
+}
+
+<div class="messenger-page @(conversation is not null ? "has-selection" : string.Empty) @(Model.IsListOnly ? "is-list-only" : string.Empty)"
+     data-customer-message-realtime="workspace"
+     data-conversation-id="@(conversation?.Id ?? 0)"
+     data-filter-unread="@index.Unread.ToString().ToLowerInvariant()"
+     data-filter-search="@index.Search"
+     data-filter-status="@index.Status"
+     data-filter-ai="@index.Ai"
+     data-page="@index.Page"
+     data-page-size="@index.PageSize">
+    @if (TempData["Success"] is string success)
+    {
+        <div id="toastSuccess" class="messenger-toast is-success" role="status">
+            <i data-lucide="circle-check" aria-hidden="true"></i>
+            <span>@success</span>
+            <button type="button" data-dismiss-target="toastSuccess" aria-label="Đóng thông báo">
+                <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div id="toastError" class="messenger-toast is-error" role="alert">
+            <i data-lucide="circle-alert" aria-hidden="true"></i>
+            <span>@error</span>
+            <button type="button" data-dismiss-target="toastError" aria-label="Đóng thông báo">
+                <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+        </div>
+    }
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="messenger-toast is-error" role="alert">
+            <i data-lucide="circle-alert" aria-hidden="true"></i>
+            <span>Vui lòng kiểm tra lại nội dung vừa nhập.</span>
+        </div>
+    }
+
+    <div class="messenger-live-notice" data-realtime-notice hidden>
+        <i data-lucide="radio" aria-hidden="true"></i>
+        <span data-realtime-notice-text>Có cập nhật hội thoại mới.</span>
+        <button type="button" data-realtime-reload>Tải lại</button>
+    </div>
+
+    <aside class="messenger-conversations" aria-label="Danh sách hội thoại">
+        <header class="messenger-list-header">
+            <div class="messenger-list-title">
+                <div>
+                    <p>Chăm sóc khách hàng</p>
+                    <h1>Đoạn chat</h1>
+                </div>
+                <span class="messenger-total" title="Tổng số hội thoại">@index.TotalCount</span>
+            </div>
+
+            <form method="get" asp-action="Index" class="messenger-search" role="search">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <input type="search"
+                       name="search"
+                       value="@index.Search"
+                       placeholder="Tìm kiếm hội thoại"
+                       aria-label="Tìm theo khách hàng hoặc nội dung" />
+                @if (!string.IsNullOrWhiteSpace(index.Status))
+                {
+                    <input type="hidden" name="status" value="@index.Status" />
+                }
+                @if (!string.IsNullOrWhiteSpace(index.Ai))
+                {
+                    <input type="hidden" name="ai" value="@index.Ai" />
+                }
+                @if (index.Unread)
+                {
+                    <input type="hidden" name="unread" value="true" />
+                }
+            </form>
+
+            <nav class="messenger-tabs" aria-label="Lọc hội thoại">
+                <a asp-action="Index"
+                   asp-route-search="@index.Search"
+                   asp-route-status="@index.Status"
+                   class="@(!index.Unread && string.IsNullOrWhiteSpace(index.Ai) ? "is-active" : string.Empty)">
+                    Tất cả
+                    <span data-unread-filter-count hidden="@(index.UnreadCustomerMessageCount <= 0 ? "hidden" : null)">
+                        @index.UnreadCustomerMessageCount
+                    </span>
+                </a>
+                <a asp-action="Index"
+                   asp-route-search="@index.Search"
+                   asp-route-status="@index.Status"
+                   asp-route-unread="true"
+                   class="@(index.Unread ? "is-active" : string.Empty)">
+                    Chưa đọc
+                    <span data-unread-filter-count hidden="@(index.UnreadCustomerMessageCount <= 0 ? "hidden" : null)">
+                        @index.UnreadCustomerMessageCount
+                    </span>
+                </a>
+                <a asp-action="Index"
+                   asp-route-search="@index.Search"
+                   asp-route-status="@index.Status"
+                   asp-route-ai="with-ai"
+                   class="@(index.Ai == "with-ai" ? "is-active" : string.Empty)">
+                    <i data-lucide="bot" aria-hidden="true"></i>
+                    Có AI
+                </a>
+            </nav>
+        </header>
+
+        <div class="messenger-conversation-scroll">
+            @if (!index.Conversations.Any())
+            {
+                <div class="messenger-list-empty">
+                    <i data-lucide="message-circle-off" aria-hidden="true"></i>
+                    <strong>Không tìm thấy hội thoại</strong>
+                    <p>Thử từ khóa khác hoặc xem lại tất cả tin nhắn.</p>
+                    @if (index.HasFilters)
+                    {
+                        <a asp-action="Index">Xóa bộ lọc</a>
+                    }
+                </div>
+            }
+            else
+            {
+                @foreach (var item in index.Conversations)
+                {
+                    var isSelected = conversation?.Id == item.Id;
+                    <a asp-action="Index"
+                       asp-route-id="@item.Id"
+                       asp-route-search="@index.Search"
+                       asp-route-status="@index.Status"
+                       asp-route-ai="@index.Ai"
+                       asp-route-unread="@index.Unread"
+                       asp-route-page="@index.Page"
+                       class="messenger-conversation-item @(isSelected ? "is-selected" : string.Empty) @(item.UnreadCustomerMessageCount > 0 ? "is-unread" : string.Empty)"
+                       data-conversation-row="@item.Id"
+                       aria-current="@(isSelected ? "true" : null)">
+                        <span class="messenger-avatar" aria-hidden="true">
+                            @Initials(item.CustomerName)
+                            @if (item.Status == CustomerConversationStatus.Open)
+                            {
+                                <span class="messenger-presence" title="Hội thoại đang mở"></span>
+                            }
+                        </span>
+                        <span class="messenger-conversation-copy">
+                            <span class="messenger-conversation-line">
+                                <strong>@item.CustomerName</strong>
+                                <time data-row-time datetime="@item.LastMessageAt.ToString("O")">@RelativeTime(item.LastMessageAt)</time>
+                            </span>
+                            <span class="messenger-conversation-preview">
+                                <span data-row-sender>@CustomerMessageDisplay.GetSenderLabel(item.LastMessageSender):</span>
+                                <span data-row-preview>@item.LastMessagePreview</span>
+                            </span>
+                            <span class="messenger-conversation-meta">
+                                <span class="customer-message-status @CustomerMessageDisplay.GetStatusClass(item.Status)" data-row-status>
+                                    <span class="dot"></span>
+                                    <span>@CustomerMessageDisplay.GetStatusLabel(item.Status)</span>
+                                </span>
+                                @if (item.AiMessageCount > 0)
+                                {
+                                    <span class="messenger-ai-count" data-row-ai title="Tin nhắn AI">
+                                        <i data-lucide="bot" aria-hidden="true"></i>
+                                        @item.AiMessageCount
+                                    </span>
+                                }
+                            </span>
+                        </span>
+                        @if (item.UnreadCustomerMessageCount > 0)
+                        {
+                            <span class="customer-message-unread" data-row-unread aria-label="@item.UnreadCustomerMessageCount tin chưa đọc">
+                                @item.UnreadCustomerMessageCount
+                            </span>
+                        }
+                    </a>
+                }
+            }
+        </div>
+
+        @if (index.TotalPages > 1)
+        {
+            <footer class="messenger-list-pagination">
+                <span>Trang @index.Page/@index.TotalPages</span>
+                <div>
+                    <a asp-action="Index"
+                       asp-route-page="@(index.Page - 1)"
+                       asp-route-search="@index.Search"
+                       asp-route-status="@index.Status"
+                       asp-route-ai="@index.Ai"
+                       asp-route-unread="@index.Unread"
+                       aria-disabled="@(!index.HasPrev)"
+                       class="@(!index.HasPrev ? "is-disabled" : string.Empty)"
+                       aria-label="Trang trước">
+                        <i data-lucide="chevron-left" aria-hidden="true"></i>
+                    </a>
+                    <a asp-action="Index"
+                       asp-route-page="@(index.Page + 1)"
+                       asp-route-search="@index.Search"
+                       asp-route-status="@index.Status"
+                       asp-route-ai="@index.Ai"
+                       asp-route-unread="@index.Unread"
+                       aria-disabled="@(!index.HasNext)"
+                       class="@(!index.HasNext ? "is-disabled" : string.Empty)"
+                       aria-label="Trang sau">
+                        <i data-lucide="chevron-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </footer>
+        }
+    </aside>
+
+    <section class="messenger-chat" aria-label="Nội dung hội thoại">
+        @if (conversation is null)
+        {
+            <div class="messenger-chat-empty">
+                <span><i data-lucide="messages-square" aria-hidden="true"></i></span>
+                <h2>Chọn một cuộc trò chuyện</h2>
+                <p>Tin nhắn của khách hàng, admin và AI sẽ xuất hiện tại đây.</p>
+            </div>
+        }
+        else
+        {
+            <header class="messenger-chat-header">
+                <a asp-action="Index"
+                   asp-route-listOnly="true"
+                   asp-route-search="@index.Search"
+                   asp-route-status="@index.Status"
+                   asp-route-ai="@index.Ai"
+                   asp-route-unread="@index.Unread"
+                   class="messenger-icon-button messenger-mobile-back"
+                   aria-label="Quay lại danh sách hội thoại">
+                    <i data-lucide="arrow-left" aria-hidden="true"></i>
+                </a>
+                <span class="messenger-avatar is-small" aria-hidden="true">@Initials(conversation.CustomerName)</span>
+                <div class="messenger-chat-identity">
+                    <strong>@conversation.CustomerName</strong>
+                    <span>
+                        <i data-lucide="circle" aria-hidden="true"></i>
+                        @CustomerMessageDisplay.GetStatusLabel(conversation.Status)
+                    </span>
+                </div>
+                <div class="messenger-chat-actions">
+                    <form asp-action="UpdateStatus" asp-route-id="@conversation.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Id" value="@conversation.Id" />
+                        <input type="hidden"
+                               name="Status"
+                               value="@(conversation.Status == CustomerConversationStatus.Closed ? CustomerConversationStatus.Open : CustomerConversationStatus.Closed)" />
+                        <button type="submit"
+                                class="messenger-icon-button"
+                                title="@(conversation.Status == CustomerConversationStatus.Closed ? "Mở lại hội thoại" : "Đánh dấu đã xử lý")"
+                                aria-label="@(conversation.Status == CustomerConversationStatus.Closed ? "Mở lại hội thoại" : "Đánh dấu đã xử lý")">
+                            <i data-lucide="@(conversation.Status == CustomerConversationStatus.Closed ? "message-circle" : "circle-check-big")" aria-hidden="true"></i>
+                        </button>
+                    </form>
+                    <button type="button"
+                            class="messenger-icon-button"
+                            data-customer-details-toggle
+                            aria-controls="customerMessageDetails"
+                            aria-expanded="false"
+                            title="Thông tin hội thoại"
+                            aria-label="Mở thông tin hội thoại">
+                        <i data-lucide="info" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="messenger-thread" data-message-list aria-live="polite">
+                <div class="messenger-thread-intro">
+                    <span class="messenger-avatar is-large" aria-hidden="true">@Initials(conversation.CustomerName)</span>
+                    <strong>@conversation.CustomerName</strong>
+                    <p>@CustomerMessageDisplay.GetSubjectDisplay(conversation.Subject)</p>
+                </div>
+
+                @if (conversation.HasOlderMessages && conversation.OldestMessageId.HasValue)
+                {
+                    <button type="button"
+                            class="messenger-load-older"
+                            data-load-older-messages
+                            data-before-id="@conversation.OldestMessageId"
+                            data-url="@Url.Action("Messages", "CustomerMessages", new { id = conversation.Id })">
+                        <i data-lucide="history" aria-hidden="true"></i>
+                        <span>Tải tin nhắn cũ hơn</span>
+                    </button>
+                }
+
+                @if (!conversation.Messages.Any())
+                {
+                    <div class="messenger-thread-empty" data-message-empty>Hội thoại chưa có tin nhắn.</div>
+                }
+                else
+                {
+                    @foreach (var message in conversation.Messages)
+                    {
+                        <article id="message-@message.Id"
+                                 class="customer-message-bubble @CustomerMessageDisplay.GetSenderClass(message.Sender)"
+                                 data-message-id="@message.Id">
+                            @if (message.Sender != CustomerMessageSender.Staff)
+                            {
+                                <span class="messenger-message-avatar" aria-hidden="true">
+                                    @if (message.Sender == CustomerMessageSender.Ai)
+                                    {
+                                        <i data-lucide="bot"></i>
+                                    }
+                                    else
+                                    {
+                                        @Initials(conversation.CustomerName)
+                                    }
+                                </span>
+                            }
+                            <div class="messenger-message-stack">
+                                <div class="customer-message-bubble-head">
+                                    <strong>@message.SenderName</strong>
+                                    @if (message.Sender == CustomerMessageSender.Ai)
+                                    {
+                                        <span class="customer-message-sender is-ai">AI</span>
+                                    }
+                                    <time datetime="@message.CreatedAt.ToString("O")">@DateText(message.CreatedAt)</time>
+                                </div>
+                                <div class="messenger-message-body">
+                                    <p>@message.Body</p>
+
+                                    @if (message.Sender == CustomerMessageSender.Ai &&
+                                         (!string.IsNullOrWhiteSpace(message.AiProvider) ||
+                                          !string.IsNullOrWhiteSpace(message.AiModel) ||
+                                          !string.IsNullOrWhiteSpace(message.AiResponseId) ||
+                                          !string.IsNullOrWhiteSpace(message.AiPrompt) ||
+                                          !string.IsNullOrWhiteSpace(message.AiMetadataJson)))
+                                    {
+                                        <div class="customer-message-ai-meta">
+                                            @if (!string.IsNullOrWhiteSpace(message.AiProvider))
+                                            {
+                                                <span>Provider: @message.AiProvider</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(message.AiModel))
+                                            {
+                                                <span>Model: @message.AiModel</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(message.AiResponseId))
+                                            {
+                                                <span>Response: @message.AiResponseId</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(message.AiPrompt))
+                                            {
+                                                <details>
+                                                    <summary>Prompt</summary>
+                                                    <pre>@message.AiPrompt</pre>
+                                                </details>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(message.AiMetadataJson))
+                                            {
+                                                <details>
+                                                    <summary>Metadata</summary>
+                                                    <pre>@message.AiMetadataJson</pre>
+                                                </details>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+
+            @if (conversation.Channel == CustomerConversationChannel.Ai)
+            {
+                <footer class="messenger-composer-wrap is-read-only">
+                    <div class="messenger-read-only-notice" role="status">
+                        <i data-lucide="bot" aria-hidden="true"></i>
+                        <span>Hội thoại AI chỉ dùng để theo dõi. Admin không thể phản hồi.</span>
+                    </div>
+                </footer>
+            }
+            else
+            {
+                <footer class="messenger-composer-wrap">
+                    <form asp-action="Reply"
+                          asp-route-id="@conversation.Id"
+                          method="post"
+                          class="messenger-composer"
+                          data-message-reply-form>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ConversationId" value="@conversation.Id" />
+                        <input type="hidden"
+                               name="ClientMessageId"
+                               value="@conversation.ReplyForm.ClientMessageId"
+                               data-client-message-id />
+                        <label class="sr-only" for="messageBody">Nội dung phản hồi</label>
+                        <textarea id="messageBody"
+                                  name="Body"
+                                  rows="1"
+                                  maxlength="4000"
+                                  class="@(bodyHasError ? "input-validation-error" : string.Empty)"
+                                  placeholder="Nhắn tin cho @conversation.CustomerName...">@conversation.ReplyForm.Body</textarea>
+                        <button type="submit" aria-label="Gửi phản hồi" title="Gửi phản hồi">
+                            <i data-lucide="send-horizontal" aria-hidden="true"></i>
+                        </button>
+                    </form>
+                    @Html.ValidationMessage("Body", null, new { @class = "field-validation-error" })
+                </footer>
+            }
+        }
+    </section>
+
+    @if (conversation is not null)
+    {
+        <button type="button" class="messenger-details-backdrop" data-customer-details-close aria-label="Đóng thông tin hội thoại"></button>
+        <aside id="customerMessageDetails" class="messenger-details" data-customer-details-panel aria-label="Thông tin hội thoại">
+            <header class="messenger-details-header">
+                <strong>Thông tin hội thoại</strong>
+                <button type="button" class="messenger-icon-button" data-customer-details-close aria-label="Đóng thông tin hội thoại">
+                    <i data-lucide="x" aria-hidden="true"></i>
+                </button>
+            </header>
+
+            <div class="messenger-details-scroll">
+                <section class="messenger-profile">
+                    <span class="messenger-avatar is-profile" aria-hidden="true">@Initials(conversation.CustomerName)</span>
+                    <h2>@conversation.CustomerName</h2>
+                    <p>@CustomerMessageDisplay.GetSubjectDisplay(conversation.Subject)</p>
+                    <span class="customer-message-status @CustomerMessageDisplay.GetStatusClass(conversation.Status)" data-conversation-status>
+                        <span class="dot"></span>
+                        <span>@CustomerMessageDisplay.GetStatusLabel(conversation.Status)</span>
+                    </span>
+                </section>
+
+                <section class="messenger-details-section">
+                    <h3>Khách hàng</h3>
+                    <dl class="messenger-info-list">
+                        <div>
+                            <dt><i data-lucide="mail" aria-hidden="true"></i>Email</dt>
+                            <dd>@(string.IsNullOrWhiteSpace(conversation.CustomerEmail) ? "Chưa cập nhật" : conversation.CustomerEmail)</dd>
+                        </div>
+                        <div>
+                            <dt><i data-lucide="phone" aria-hidden="true"></i>Số điện thoại</dt>
+                            <dd>@(string.IsNullOrWhiteSpace(conversation.CustomerPhone) ? "Chưa cập nhật" : conversation.CustomerPhone)</dd>
+                        </div>
+                        <div>
+                            <dt><i data-lucide="user-check" aria-hidden="true"></i>Phụ trách</dt>
+                            <dd>@(string.IsNullOrWhiteSpace(conversation.AssignedStaffName) ? "Chưa gán admin" : conversation.AssignedStaffName)</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="messenger-details-section">
+                    <h3>Xử lý hội thoại</h3>
+                    <form asp-action="UpdateStatus" asp-route-id="@conversation.Id" method="post" class="messenger-status-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Id" value="@conversation.Id" />
+                        <label for="conversationStatus">Trạng thái</label>
+                        <div>
+                            <select id="conversationStatus" name="Status" class="@(statusHasError ? "input-validation-error" : string.Empty)">
+                                @foreach (var option in conversation.StatusOptions)
+                                {
+                                    <option value="@option.Value" selected="@(option.Selected ? "selected" : null)">@option.Text</option>
+                                }
+                            </select>
+                            <button type="submit">Cập nhật</button>
+                        </div>
+                        @Html.ValidationMessage("Status", null, new { @class = "field-validation-error" })
+                    </form>
+                </section>
+
+                <section class="messenger-details-section">
+                    <h3>Hoạt động</h3>
+                    <dl class="messenger-activity-list">
+                        <div>
+                            <dt>Tổng tin nhắn</dt>
+                            <dd data-message-metric="messageCount">@conversation.MessageCount</dd>
+                        </div>
+                        <div>
+                            <dt>Phản hồi AI</dt>
+                            <dd data-message-metric="aiCount">@conversation.AiMessageCount</dd>
+                        </div>
+                        <div>
+                            <dt>Tạo hội thoại</dt>
+                            <dd>@DateText(conversation.CreatedAt)</dd>
+                        </div>
+                        <div>
+                            <dt>Khách nhắn gần nhất</dt>
+                            <dd data-message-metric="lastCustomerMessageAt">@DateTextNullable(conversation.LastCustomerMessageAt)</dd>
+                        </div>
+                        <div>
+                            <dt>Admin trả lời gần nhất</dt>
+                            <dd data-message-metric="lastStaffMessageAt">@DateTextNullable(conversation.LastStaffMessageAt)</dd>
+                        </div>
+                        <div>
+                            <dt>AI trả lời gần nhất</dt>
+                            <dd data-message-metric="lastAiMessageAt">@DateTextNullable(conversation.LastAiMessageAt)</dd>
+                        </div>
+                    </dl>
+                </section>
+            </div>
+        </aside>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script src="~/js/customer-messages.js" asp-append-version="true"></script>
+}

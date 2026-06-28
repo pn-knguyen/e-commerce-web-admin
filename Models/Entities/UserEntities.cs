@@ -24,6 +24,8 @@ public class User
     public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     public ICollection<VoucherUser> VoucherUsers { get; set; } = new List<VoucherUser>();
     public ICollection<VoucherUsage> VoucherUsages { get; set; } = new List<VoucherUsage>();
+    public ICollection<CustomerConversation> CustomerConversations { get; set; } = new List<CustomerConversation>();
+    public ICollection<CustomerMessage> CustomerMessages { get; set; } = new List<CustomerMessage>();
 }
 
 public class UserAddress
