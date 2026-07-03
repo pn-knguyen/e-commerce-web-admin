@@ -289,6 +289,10 @@ function bindProductSpecifications() {
                 visibleCount += 1;
             }
 
+            group.querySelectorAll('input[name], select[name], textarea[name]').forEach(field => {
+                field.disabled = !isVisible;
+            });
+
             group.querySelectorAll('[data-product-spec-value]').forEach(field => {
                 setRequiredState(field, isVisible && field.dataset.productSpecRequired === 'true');
 

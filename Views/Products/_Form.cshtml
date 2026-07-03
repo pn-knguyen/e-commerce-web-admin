@@ -145,8 +145,11 @@
                     <div class="product-spec-groups">
                         @foreach (var group in specItems)
                         {
+                            var isGroupVisible = Model.CategoryId == group.Key.CategoryId;
+
                             <section class="product-spec-group" data-product-spec-group
-                                     data-category-id="@group.Key.CategoryId">
+                                     data-category-id="@group.Key.CategoryId"
+                                     hidden="@(!isGroupVisible)">
                                 <h4>@group.Key.GroupName</h4>
 
                                 <div class="product-spec-grid">
@@ -154,13 +157,16 @@
                                     {
                                         var fieldName = $"Specifications[{item.index}].Value";
                                         var isRequired = item.spec.IsRequired.ToString().ToLowerInvariant();
+                                        var isFieldDisabled = !isGroupVisible;
 
                                         <div class="product-spec-field" data-product-spec-row
                                              data-category-id="@item.spec.CategoryId">
                                             <input type="hidden" name="Specifications[@item.index].CategoryId"
-                                                   value="@item.spec.CategoryId" />
+                                                   value="@item.spec.CategoryId"
+                                                   disabled="@isFieldDisabled" />
                                             <input type="hidden" name="Specifications[@item.index].SpecificationId"
-                                                   value="@item.spec.SpecificationId" />
+                                                   value="@item.spec.SpecificationId"
+                                                   disabled="@isFieldDisabled" />
 
                                             <label for="Specifications_@(item.index)__Value">
                                                 @item.spec.Name
@@ -174,6 +180,7 @@
                                                 <input id="Specifications_@(item.index)__Value" name="@fieldName"
                                                        value="@item.spec.Value" maxlength="1000" data-product-spec-value
                                                        data-product-spec-required="@isRequired"
+                                                       disabled="@isFieldDisabled"
                                                        data-required-message="Vui lòng nhập @item.spec.Name."
                                                        class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 @(string.IsNullOrWhiteSpace(item.spec.Unit) ? string.Empty : "product-spec-input-has-unit")
                                                 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
@@ -192,7 +199,8 @@
 
                                             <label class="product-highlight-check">
                                                 <input type="checkbox" name="Specifications[@item.index].IsHighlight" value="true"
-                                                       checked="@item.spec.IsHighlight" />
+                                                       checked="@item.spec.IsHighlight"
+                                                       disabled="@isFieldDisabled" />
                                                 <span>Hiển thị nổi bật</span>
                                             </label>
                                         </div>
