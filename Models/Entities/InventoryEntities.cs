@@ -46,4 +46,36 @@ public class GoodReceiptItem
 
     public GoodsReceipt? GoodsReceipt { get; set; }
     public ProductVariant? ProductVariant { get; set; }
+    public InventoryBatch? InventoryBatch { get; set; }
+}
+
+public class InventoryBatch
+{
+    public long Id { get; set; }
+    public long GoodReceiptItemId { get; set; }
+    public long ProductVariantId { get; set; }
+    public int QuantityReceived { get; set; }
+    public int QuantityRemaining { get; set; }
+    public decimal UnitCost { get; set; }
+    public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public GoodReceiptItem? GoodReceiptItem { get; set; }
+    public ProductVariant? ProductVariant { get; set; }
+    public ICollection<OrderItemCostAllocation> OrderItemCostAllocations { get; set; } = new List<OrderItemCostAllocation>();
+}
+
+public class OrderItemCostAllocation
+{
+    public long Id { get; set; }
+    public long OrderItemId { get; set; }
+    public long InventoryBatchId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ReleasedAt { get; set; }
+
+    public OrderItem? OrderItem { get; set; }
+    public InventoryBatch? InventoryBatch { get; set; }
 }

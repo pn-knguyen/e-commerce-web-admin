@@ -72,6 +72,8 @@ public sealed class InventoryAdminService : IInventoryAdminService
                 Quantity = variant.Quantity,
                 SoldCount = variant.SoldCount,
                 IsActive = variant.IsActive,
+                FifoQuantity = variant.InventoryBatches.Sum(batch => batch.QuantityRemaining),
+                FifoStockValue = variant.InventoryBatches.Sum(batch => batch.QuantityRemaining * batch.UnitCost),
                 LastReceiptAt = variant.GoodReceiptItems
                     .Where(item => item.GoodsReceipt != null &&
                         item.GoodsReceipt.Status == GoodsReceiptStatus.Approved)
@@ -172,6 +174,60 @@ public sealed class InventoryAdminService : IInventoryAdminService
                     .ToList(),
             })
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<InventoryStockDetailsViewModel?> GetStockDetailsAsync(
+        long variantId,
+        CancellationToken ct = default)
+    {
+        var variant = await _db.ProductVariants
+            .AsNoTracking()
+            .Where(item => item.Id == variantId)
+            .Select(item => new InventoryStockDetailsViewModel
+            {
+                VariantId = item.Id,
+                VariantCode = item.Code,
+                ProductName = item.Product != null ? item.Product.Name : "Không rõ sản phẩm",
+                BrandName = item.Product != null && item.Product.Brand != null
+                    ? item.Product.Brand.Name
+                    : "Không rõ thương hiệu",
+                CategoryName = item.Product != null && item.Product.Category != null
+                    ? item.Product.Category.Name
+                    : "Không rõ danh mục",
+                SalePrice = item.Price,
+                Quantity = item.Quantity,
+                SoldCount = item.SoldCount,
+                IsActive = item.IsActive,
+                FifoQuantity = item.InventoryBatches.Sum(batch => batch.QuantityRemaining),
+                RemainingCapital = item.InventoryBatches.Sum(batch => batch.QuantityRemaining * batch.UnitCost),
+                OriginalCapital = item.InventoryBatches.Sum(batch => batch.QuantityReceived * batch.UnitCost),
+                ReceiptCount = item.InventoryBatches.Count,
+                LastReceiptAt = item.InventoryBatches.Max(batch => (DateTime?)batch.ReceivedAt),
+                Batches = item.InventoryBatches
+                    .OrderBy(batch => batch.ReceivedAt)
+                    .ThenBy(batch => batch.Id)
+                    .Select(batch => new InventoryBatchDetailsViewModel
+                    {
+                        BatchId = batch.Id,
+                        ReceiptId = batch.GoodReceiptItem != null ? batch.GoodReceiptItem.GoodsReceiptId : 0,
+                        ReceiptCode = batch.GoodReceiptItem != null && batch.GoodReceiptItem.GoodsReceipt != null
+                            ? batch.GoodReceiptItem.GoodsReceipt.ReceiptCode
+                            : "N/A",
+                        SupplierName = batch.GoodReceiptItem != null &&
+                            batch.GoodReceiptItem.GoodsReceipt != null &&
+                            batch.GoodReceiptItem.GoodsReceipt.Supplier != null
+                                ? batch.GoodReceiptItem.GoodsReceipt.Supplier.Name
+                                : "Không rõ nhà cung cấp",
+                        ReceivedAt = batch.ReceivedAt,
+                        QuantityReceived = batch.QuantityReceived,
+                        QuantityRemaining = batch.QuantityRemaining,
+                        UnitCost = batch.UnitCost,
+                    })
+                    .ToList(),
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return variant;
     }
 
     public async Task<GoodsReceiptFormViewModel> GetCreateFormAsync(
@@ -443,6 +499,25 @@ public sealed class InventoryAdminService : IInventoryAdminService
                 var variant = group.First().ProductVariant!;
                 variant.Quantity += group.Sum(item => item.Quantity);
                 variant.UpdatedAt = now;
+            }
+
+            foreach (var item in receipt.GoodReceiptItems)
+            {
+                if (item.InventoryBatch is not null)
+                {
+                    continue;
+                }
+
+                _db.InventoryBatches.Add(new InventoryBatch
+                {
+                    GoodReceiptItemId = item.Id,
+                    ProductVariantId = item.ProductVariantId,
+                    QuantityReceived = item.Quantity,
+                    QuantityRemaining = item.Quantity,
+                    UnitCost = item.ImportPrice,
+                    ReceivedAt = now,
+                    CreatedAt = now,
+                });
             }
 
             receipt.Status = GoodsReceiptStatus.Approved;

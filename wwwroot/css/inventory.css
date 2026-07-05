@@ -444,7 +444,8 @@
 }
 
 .inv-stock-grid,
-.inv-receipt-grid {
+.inv-receipt-grid,
+.inv-batch-grid {
     display: grid;
     gap: 0.875rem;
     align-items: center;
@@ -457,6 +458,11 @@
 
 .inv-receipt-grid {
     grid-template-columns: minmax(220px, 0.95fr) minmax(240px, 1fr) minmax(130px, 0.45fr) minmax(120px, 0.45fr) minmax(150px, 0.55fr) minmax(120px, 0.45fr);
+}
+
+.inv-batch-grid {
+    grid-template-columns: minmax(180px, 0.9fr) minmax(200px, 0.9fr) minmax(150px, 0.55fr) repeat(2, minmax(100px, 0.4fr)) repeat(3, minmax(130px, 0.5fr));
+    min-width: 1180px;
 }
 
 .inv-table-head {

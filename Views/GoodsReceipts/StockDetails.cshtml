@@ -1,0 +1,188 @@
+@model e_commerce_web_admin.ViewModels.Inventory.InventoryStockDetailsViewModel
+@using System.Globalization
+@using e_commerce_web_admin.ViewModels.Inventory
+@{
+    ViewData["Title"] = $"Tồn kho {Model.VariantCode}";
+    Layout = "_Layout";
+
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
+    string DateText(DateTime? value) => value.HasValue ? value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", vi) : "Chưa có";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/inventory.css" asp-append-version="true" />
+}
+
+<main class="inv-page">
+    <section class="inv-hero inv-anim" style="animation-delay:0.04s">
+        <div class="inv-page-mark">Chi tiết tồn kho</div>
+        <div class="inv-title-row">
+            <div>
+                <h1>@Model.VariantCode</h1>
+                <p>@Model.ProductName · @Model.BrandName · @Model.CategoryName</p>
+            </div>
+            <div class="inv-actions">
+                <a asp-action="Index" class="inv-secondary-action">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>Quay lại</span>
+                </a>
+                <a asp-action="Create" asp-route-variantId="@Model.VariantId" class="inv-primary-action">
+                    <span>Nhập thêm</span>
+                    <span class="inv-action-icon">
+                        <i data-lucide="package-plus" class="w-4 h-4"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="inv-metrics inv-anim" style="animation-delay:0.08s" aria-label="Tổng quan tồn kho">
+        <article class="inv-metric">
+            <span class="inv-metric-icon is-stock"><i data-lucide="warehouse" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.Quantity</p>
+                <span>Tồn hiện tại</span>
+            </div>
+        </article>
+        <article class="inv-metric">
+            <span class="inv-metric-icon"><i data-lucide="calculator" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Money(Model.AverageCost)</p>
+                <span>Giá vốn bình quân</span>
+            </div>
+        </article>
+        <article class="inv-metric">
+            <span class="inv-metric-icon is-pending"><i data-lucide="circle-dollar-sign" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Money(Model.RemainingCapital)</p>
+                <span>Tổng vốn còn lại</span>
+            </div>
+        </article>
+        <article class="inv-metric">
+            <span class="inv-metric-icon is-low"><i data-lucide="receipt-text" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Model.ReceiptCount</p>
+                <span>Lần nhập đã duyệt</span>
+            </div>
+        </article>
+    </section>
+
+    <section class="inv-section inv-anim" style="animation-delay:0.12s">
+        <header class="inv-section-head">
+            <div>
+                <h2>Tổng hợp SKU</h2>
+                <p>Tồn FIFO @Model.FifoQuantity sản phẩm · Đã bán @Model.SoldCount sản phẩm · Lần nhập gần nhất @DateText(Model.LastReceiptAt)</p>
+            </div>
+        </header>
+
+        <div class="inv-table-scroll">
+            <div class="inv-receipt-grid inv-table-head">
+                <span>Chỉ số</span>
+                <span>Giá trị</span>
+                <span class="text-center">Trạng thái</span>
+                <span class="text-center">Tồn FIFO</span>
+                <span class="text-right">Giá bán dự kiến</span>
+                <span class="text-right">Tổng vốn nhập</span>
+            </div>
+            <article class="inv-row inv-receipt-grid">
+                <div class="inv-code-cell">
+                    <h3>@Model.VariantCode</h3>
+                    <p>@Model.ProductName</p>
+                </div>
+                <div class="inv-product-cell">
+                    <h3>@Money(Model.RemainingCapital)</h3>
+                    <p>Vốn còn lại theo FIFO</p>
+                </div>
+                <div class="inv-status-cell">
+                    <span class="inv-stock-badge @InventoryDisplay.GetStockClass(Model.Quantity)">
+                        @InventoryDisplay.GetStockLabel(Model.Quantity)
+                    </span>
+                    <p>@(Model.IsActive ? "Đang bán" : "Đang tắt")</p>
+                </div>
+                <div class="inv-count-cell">
+                    <strong>@Model.FifoQuantity</strong>
+                    <span>trên @Model.Quantity tồn tổng</span>
+                </div>
+                <div class="inv-value-cell">
+                    <strong>@Money(Model.EstimatedRetailValue)</strong>
+                    <span>@Money(Model.SalePrice) / sp</span>
+                </div>
+                <div class="inv-value-cell">
+                    <strong>@Money(Model.OriginalCapital)</strong>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="inv-section inv-anim" style="animation-delay:0.16s">
+        <header class="inv-section-head">
+            <div>
+                <h2>Lịch sử nhập theo lô FIFO</h2>
+                <p>Mỗi dòng là một lần nhập đã duyệt, giữ nguyên giá vốn để tính lãi đúng theo FIFO.</p>
+            </div>
+        </header>
+
+        @if (!Model.Batches.Any())
+        {
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="package-search" class="w-9 h-9"></i>
+                </span>
+                <h2>Chưa có lô nhập đã duyệt</h2>
+                <p>SKU này chưa có batch FIFO. Hãy duyệt phiếu nhập để tạo lớp tồn kho.</p>
+            </div>
+        }
+        else
+        {
+            <div class="inv-table-scroll">
+                <div class="inv-batch-grid inv-table-head">
+                    <span>Phiếu nhập</span>
+                    <span>Nhà cung cấp</span>
+                    <span class="text-center">Ngày nhập</span>
+                    <span class="text-center">SL nhập</span>
+                    <span class="text-center">SL còn</span>
+                    <span class="text-right">Giá nhập</span>
+                    <span class="text-right">Vốn ban đầu</span>
+                    <span class="text-right">Vốn còn lại</span>
+                </div>
+
+                <div class="inv-table-body">
+                    @foreach (var batch in Model.Batches)
+                    {
+                        <article class="inv-row inv-batch-grid">
+                            <div class="inv-code-cell">
+                                <h3>@batch.ReceiptCode</h3>
+                                <p>Lô #@batch.BatchId</p>
+                            </div>
+                            <div class="inv-product-cell">
+                                <h3>@batch.SupplierName</h3>
+                                <p>Đã xuất @batch.QuantitySold sản phẩm</p>
+                            </div>
+                            <div class="inv-date-cell">@DateText(batch.ReceivedAt)</div>
+                            <div class="inv-count-cell">
+                                <strong>@batch.QuantityReceived</strong>
+                            </div>
+                            <div class="inv-count-cell">
+                                <strong>@batch.QuantityRemaining</strong>
+                            </div>
+                            <div class="inv-value-cell">
+                                <strong>@Money(batch.UnitCost)</strong>
+                            </div>
+                            <div class="inv-value-cell">
+                                <strong>@Money(batch.OriginalCapital)</strong>
+                            </div>
+                            <div class="inv-value-cell">
+                                <strong>@Money(batch.RemainingCapital)</strong>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+        }
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/inventory.js" asp-append-version="true"></script>
+}

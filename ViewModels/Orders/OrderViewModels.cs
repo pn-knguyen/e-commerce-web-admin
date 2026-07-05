@@ -35,6 +35,8 @@ public sealed class OrderIndexViewModel
     public int ShippingCount { get; set; }
     public int CompletedCount { get; set; }
     public decimal CompletedRevenue { get; set; }
+    public decimal CompletedCost { get; set; }
+    public decimal CompletedProfit => CompletedRevenue - CompletedCost;
 
     public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling((double)TotalCount / PageSize);
     public bool HasPrev => Page > 1;
@@ -93,6 +95,8 @@ public sealed class OrderDetailsViewModel
     public ShipmentPanelViewModel ShipmentPanel { get; set; } = new();
 
     public int TotalQuantity => Items.Sum(item => item.Quantity);
+    public decimal CostAmount => Items.Sum(item => item.CostAmount);
+    public decimal GrossProfit => SubtotalAmount - CostAmount;
     public string ShippingAddress => string.Join(", ", new[]
     {
         ShippingDetail,
@@ -109,6 +113,8 @@ public sealed class OrderItemViewModel
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal LineTotal { get; set; }
+    public decimal CostAmount { get; set; }
+    public decimal GrossProfit => LineTotal - CostAmount;
 }
 
 public sealed class OrderStatusUpdateViewModel
@@ -127,6 +133,54 @@ public sealed class OrderFilterOption
     public string Value { get; set; } = string.Empty;
     public string Text { get; set; } = string.Empty;
     public bool Selected { get; set; }
+}
+
+public sealed class OrderProfitReportQuery
+{
+    public string? Search { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+    public int Page { get; set; } = 1;
+}
+
+public sealed class OrderProfitReportViewModel
+{
+    public List<OrderProfitRowViewModel> Orders { get; set; } = [];
+    public string? Search { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+    public int TotalCount { get; set; }
+    public int MissingCostCount { get; set; }
+    public decimal ProductRevenue { get; set; }
+    public decimal NetRevenue { get; set; }
+    public decimal CostAmount { get; set; }
+    public decimal GrossProfit => ProductRevenue - CostAmount;
+    public decimal NetProfit => NetRevenue - CostAmount;
+    public decimal GrossMargin => ProductRevenue == 0 ? 0 : GrossProfit / ProductRevenue * 100m;
+    public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling((double)TotalCount / PageSize);
+    public bool HasPrev => Page > 1;
+    public bool HasNext => Page < TotalPages;
+    public bool HasFilters => !string.IsNullOrWhiteSpace(Search) || FromDate.HasValue || ToDate.HasValue;
+}
+
+public sealed class OrderProfitRowViewModel
+{
+    public long Id { get; set; }
+    public string OrderCode { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public DateTime CompletedAt { get; set; }
+    public int ItemQuantity { get; set; }
+    public decimal ProductRevenue { get; set; }
+    public decimal NetRevenue { get; set; }
+    public decimal CostAmount { get; set; }
+    public int OrderedQuantity { get; set; }
+    public int CostedQuantity { get; set; }
+    public decimal GrossProfit => ProductRevenue - CostAmount;
+    public decimal NetProfit => NetRevenue - CostAmount;
+    public decimal GrossMargin => ProductRevenue == 0 ? 0 : GrossProfit / ProductRevenue * 100m;
+    public bool HasMissingCost => CostedQuantity < OrderedQuantity;
 }
 
 public static class OrderDisplay

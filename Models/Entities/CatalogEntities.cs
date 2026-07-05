@@ -81,6 +81,7 @@ public class ProductVariant
     public ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     public ICollection<GoodReceiptItem> GoodReceiptItems { get; set; } = new List<GoodReceiptItem>();
+    public ICollection<InventoryBatch> InventoryBatches { get; set; } = new List<InventoryBatch>();
     public ICollection<PromotionRule> GiftPromotionRules { get; set; } = new List<PromotionRule>();
     public ICollection<ProductVariantImage> ProductVariantImages { get; set; } = new List<ProductVariantImage>();
 }

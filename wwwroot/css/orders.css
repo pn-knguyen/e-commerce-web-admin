@@ -396,6 +396,14 @@
     min-width: 980px;
 }
 
+.order-profit-grid {
+    display: grid;
+    grid-template-columns: minmax(13rem, 1fr) minmax(12rem, 0.95fr) repeat(4, minmax(8rem, 0.7fr)) minmax(7rem, 0.5fr);
+    gap: 1rem;
+    align-items: center;
+    min-width: 1120px;
+}
+
 .order-table-head {
     padding: 0.95rem 1.35rem;
     background: #f8fafc;
@@ -762,10 +770,10 @@
 .order-items-head,
 .order-item-row {
     display: grid;
-    grid-template-columns: minmax(16rem, 1fr) 4rem minmax(8rem, 0.4fr) minmax(8rem, 0.4fr);
+    grid-template-columns: minmax(16rem, 1fr) 4rem repeat(4, minmax(7rem, 0.35fr));
     gap: 1rem;
     align-items: center;
-    min-width: 720px;
+    min-width: 980px;
 }
 
 .order-items-head {

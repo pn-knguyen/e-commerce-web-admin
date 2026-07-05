@@ -54,6 +54,8 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<GoodsReceipt> GoodsReceipts => Set<GoodsReceipt>();
     public DbSet<GoodReceiptItem> GoodReceiptItems => Set<GoodReceiptItem>();
+    public DbSet<InventoryBatch> InventoryBatches => Set<InventoryBatch>();
+    public DbSet<OrderItemCostAllocation> OrderItemCostAllocations => Set<OrderItemCostAllocation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -425,6 +427,21 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
                 .HasForeignKey(item => item.ProductVariantId);
         });
 
+        modelBuilder.Entity<OrderItemCostAllocation>(entity =>
+        {
+            entity.ToTable("order_item_cost_allocations");
+            entity.HasIndex(item => item.OrderItemId);
+            entity.HasIndex(item => item.InventoryBatchId);
+            entity.HasIndex(item => new { item.OrderItemId, item.InventoryBatchId });
+            entity.Property(item => item.UnitCost).HasPrecision(18, 2);
+            entity.HasOne(item => item.OrderItem)
+                .WithMany(orderItem => orderItem.CostAllocations)
+                .HasForeignKey(item => item.OrderItemId);
+            entity.HasOne(item => item.InventoryBatch)
+                .WithMany(batch => batch.OrderItemCostAllocations)
+                .HasForeignKey(item => item.InventoryBatchId);
+        });
+
         modelBuilder.Entity<Rating>(entity =>
         {
             entity.ToTable("ratings");
@@ -702,6 +719,20 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
             entity.HasOne(item => item.ProductVariant)
                 .WithMany(variant => variant.GoodReceiptItems)
                 .HasForeignKey(item => item.ProductVariantId);
+        });
+
+        modelBuilder.Entity<InventoryBatch>(entity =>
+        {
+            entity.ToTable("inventory_batches");
+            entity.HasIndex(batch => batch.GoodReceiptItemId).IsUnique();
+            entity.HasIndex(batch => new { batch.ProductVariantId, batch.ReceivedAt, batch.Id });
+            entity.Property(batch => batch.UnitCost).HasPrecision(18, 2);
+            entity.HasOne(batch => batch.GoodReceiptItem)
+                .WithOne(item => item.InventoryBatch)
+                .HasForeignKey<InventoryBatch>(batch => batch.GoodReceiptItemId);
+            entity.HasOne(batch => batch.ProductVariant)
+                .WithMany(variant => variant.InventoryBatches)
+                .HasForeignKey(batch => batch.ProductVariantId);
         });
     }
 

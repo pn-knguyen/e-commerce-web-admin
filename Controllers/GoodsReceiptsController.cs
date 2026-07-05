@@ -46,6 +46,12 @@ public sealed class GoodsReceiptsController : Controller
         return viewModel is null ? NotFound() : View(viewModel);
     }
 
+    public async Task<IActionResult> StockDetails(long variantId, CancellationToken ct)
+    {
+        var viewModel = await _inventoryService.GetStockDetailsAsync(variantId, ct);
+        return viewModel is null ? NotFound() : View(viewModel);
+    }
+
     [RbacAuthorize("GoodsReceipts", Permissions.Create)]
     public async Task<IActionResult> Create(long? variantId, CancellationToken ct)
         => View(await _inventoryService.GetCreateFormAsync(variantId, ct));

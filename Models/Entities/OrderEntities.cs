@@ -56,6 +56,7 @@ public class OrderItem
     public Order? Order { get; set; }
     public ProductVariant? ProductVariant { get; set; }
     public Rating? Rating { get; set; }
+    public ICollection<OrderItemCostAllocation> CostAllocations { get; set; } = new List<OrderItemCostAllocation>();
 }
 
 public class Rating

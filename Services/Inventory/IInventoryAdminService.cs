@@ -12,6 +12,10 @@ public interface IInventoryAdminService
         long id,
         CancellationToken ct = default);
 
+    Task<InventoryStockDetailsViewModel?> GetStockDetailsAsync(
+        long variantId,
+        CancellationToken ct = default);
+
     Task<GoodsReceiptFormViewModel> GetCreateFormAsync(
         long? variantId = null,
         CancellationToken ct = default);

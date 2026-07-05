@@ -95,6 +95,8 @@
                         <span class="text-center">SL</span>
                         <span class="text-right">Đơn giá</span>
                         <span class="text-right">Thành tiền</span>
+                        <span class="text-right">Gia von</span>
+                        <span class="text-right">Lai gop</span>
                     </div>
                     @foreach (var item in Model.Items)
                     {
@@ -106,6 +108,8 @@
                             <span class="order-quantity-pill">@item.Quantity</span>
                             <span class="text-right">@Money(item.UnitPrice)</span>
                             <strong class="text-right">@Money(item.LineTotal)</strong>
+                            <span class="text-right">@Money(item.CostAmount)</span>
+                            <strong class="text-right">@Money(item.GrossProfit)</strong>
                         </article>
                     }
                 </div>
@@ -613,6 +617,14 @@
                     <div>
                         <dt>Giảm giá</dt>
                         <dd>-@Money(Model.VoucherDiscount)</dd>
+                    </div>
+                    <div>
+                        <dt>Gia von FIFO</dt>
+                        <dd>@Money(Model.CostAmount)</dd>
+                    </div>
+                    <div>
+                        <dt>Lai gop FIFO</dt>
+                        <dd>@Money(Model.GrossProfit)</dd>
                     </div>
                     <div class="is-total">
                         <dt>Tổng cộng</dt>

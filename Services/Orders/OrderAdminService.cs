@@ -38,6 +38,15 @@ public sealed class OrderAdminService : IOrderAdminService
             .AsNoTracking()
             .Where(order => order.OrderStatus == OrderStatus.Completed && order.PaymentStatus == PaymentStatus.Paid)
             .SumAsync(order => (decimal?)order.TotalAmount, ct) ?? 0m;
+        var completedCost = await _db.OrderItemCostAllocations
+            .AsNoTracking()
+            .Where(allocation =>
+                allocation.ReleasedAt == null &&
+                allocation.OrderItem != null &&
+                allocation.OrderItem.Order != null &&
+                allocation.OrderItem.Order.OrderStatus == OrderStatus.Completed &&
+                allocation.OrderItem.Order.PaymentStatus == PaymentStatus.Paid)
+            .SumAsync(allocation => (decimal?)(allocation.Quantity * allocation.UnitCost), ct) ?? 0m;
 
         var rows = await dbQuery
             .OrderByDescending(order => order.CreatedAt)
@@ -75,6 +84,7 @@ public sealed class OrderAdminService : IOrderAdminService
             ShippingCount = shippingCount,
             CompletedCount = completedCount,
             CompletedRevenue = completedRevenue,
+            CompletedCost = completedCost,
             DateRangeOptions = BuildDateRangeOptions(query.DateRange),
             OrderStatusOptions = BuildOrderStatusOptions(query.OrderStatus),
             PaymentStatusOptions = BuildPaymentStatusOptions(query.PaymentStatus),
@@ -126,6 +136,9 @@ public sealed class OrderAdminService : IOrderAdminService
                         Quantity = item.Quantity,
                         UnitPrice = item.UnitPrice,
                         LineTotal = item.UnitPrice * item.Quantity,
+                        CostAmount = item.CostAllocations
+                            .Where(allocation => allocation.ReleasedAt == null)
+                            .Sum(allocation => allocation.Quantity * allocation.UnitCost),
                     })
                     .ToList(),
             })
@@ -149,6 +162,102 @@ public sealed class OrderAdminService : IOrderAdminService
         return viewModel;
     }
 
+    public async Task<OrderProfitReportViewModel> GetProfitReportAsync(
+        OrderProfitReportQuery query,
+        CancellationToken ct = default)
+    {
+        var page = Math.Max(1, query.Page);
+        var dbQuery = _db.Orders
+            .AsNoTracking()
+            .Where(order => order.OrderStatus == OrderStatus.Completed);
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = query.Search.Trim();
+            dbQuery = dbQuery.Where(order =>
+                order.OrderCode.Contains(term) ||
+                order.ShippingContactName.Contains(term) ||
+                order.ShippingPhone.Contains(term) ||
+                (order.User != null &&
+                    (order.User.FullName.Contains(term) || order.User.Email.Contains(term))));
+        }
+
+        var dateRange = BuildProfitDateRange(query.FromDate, query.ToDate);
+        if (dateRange is not null)
+        {
+            if (dateRange.Value.StartUtc.HasValue)
+            {
+                dbQuery = dbQuery.Where(order => (order.UpdatedAt ?? order.CreatedAt) >= dateRange.Value.StartUtc.Value);
+            }
+
+            if (dateRange.Value.EndUtc.HasValue)
+            {
+                dbQuery = dbQuery.Where(order => (order.UpdatedAt ?? order.CreatedAt) < dateRange.Value.EndUtc.Value);
+            }
+        }
+
+        var projected = dbQuery.Select(order => new
+        {
+            order.Id,
+            order.OrderCode,
+            CustomerName = order.User != null ? order.User.FullName : order.ShippingContactName,
+            CompletedAt = order.UpdatedAt ?? order.CreatedAt,
+            ProductRevenue = order.OrderItems.Sum(item => item.UnitPrice * item.Quantity),
+            NetRevenue = order.TotalAmount,
+            ItemQuantity = order.OrderItems.Sum(item => item.Quantity),
+            OrderedQuantity = order.OrderItems.Sum(item => item.Quantity),
+            CostedQuantity = order.OrderItems
+                .SelectMany(item => item.CostAllocations)
+                .Where(allocation => allocation.ReleasedAt == null)
+                .Sum(allocation => (int?)allocation.Quantity) ?? 0,
+            CostAmount = order.OrderItems
+                .SelectMany(item => item.CostAllocations)
+                .Where(allocation => allocation.ReleasedAt == null)
+                .Sum(allocation => (decimal?)(allocation.Quantity * allocation.UnitCost)) ?? 0m,
+        });
+
+        var totalCount = await projected.CountAsync(ct);
+        var productRevenue = await projected.SumAsync(item => (decimal?)item.ProductRevenue, ct) ?? 0m;
+        var netRevenue = await projected.SumAsync(item => (decimal?)item.NetRevenue, ct) ?? 0m;
+        var costAmount = await projected.SumAsync(item => (decimal?)item.CostAmount, ct) ?? 0m;
+        var missingCostCount = await projected.CountAsync(item => item.CostedQuantity < item.OrderedQuantity, ct);
+
+        var rows = await projected
+            .OrderByDescending(order => order.CompletedAt)
+            .ThenByDescending(order => order.Id)
+            .Skip((page - 1) * DefaultPageSize)
+            .Take(DefaultPageSize)
+            .Select(order => new OrderProfitRowViewModel
+            {
+                Id = order.Id,
+                OrderCode = order.OrderCode,
+                CustomerName = order.CustomerName,
+                CompletedAt = order.CompletedAt,
+                ProductRevenue = order.ProductRevenue,
+                NetRevenue = order.NetRevenue,
+                CostAmount = order.CostAmount,
+                ItemQuantity = order.ItemQuantity,
+                OrderedQuantity = order.OrderedQuantity,
+                CostedQuantity = order.CostedQuantity,
+            })
+            .ToListAsync(ct);
+
+        return new OrderProfitReportViewModel
+        {
+            Orders = rows,
+            Search = query.Search,
+            FromDate = query.FromDate,
+            ToDate = query.ToDate,
+            Page = page,
+            PageSize = DefaultPageSize,
+            TotalCount = totalCount,
+            ProductRevenue = productRevenue,
+            NetRevenue = netRevenue,
+            CostAmount = costAmount,
+            MissingCostCount = missingCostCount,
+        };
+    }
+
     public async Task<OrderStatusUpdateResult> UpdateStatusAsync(
         long id,
         OrderStatusUpdateViewModel form,
@@ -165,6 +274,8 @@ public sealed class OrderAdminService : IOrderAdminService
                 .Include(o => o.OrderItems)
                     .ThenInclude(item => item.ProductVariant)
                     .ThenInclude(variant => variant!.Product)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(item => item.CostAllocations)
                 .FirstOrDefaultAsync(o => o.Id == id, ct);
 
             if (order is null)
@@ -200,7 +311,17 @@ public sealed class OrderAdminService : IOrderAdminService
             order.PaymentStatus = form.PaymentStatus;
             order.UpdatedAt = DateTime.UtcNow;
 
-            OrderInventoryHelper.ApplyInventoryChange(order, previousOrderStatus, form.OrderStatus);
+            var fifoResult = await OrderFifoCostHelper.ApplyStatusChangeAsync(
+                _db,
+                order,
+                previousOrderStatus,
+                form.OrderStatus,
+                ct);
+            if (!fifoResult.Succeeded)
+            {
+                return OrderStatusUpdateResult.Failed(
+                    [new OrderValidationError(nameof(form.OrderStatus), fifoResult.ErrorMessage ?? "Không thể ghi nhận giá vốn FIFO.")]);
+            }
 
             await _db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
@@ -400,6 +521,28 @@ public sealed class OrderAdminService : IOrderAdminService
         return (
             TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localStart, DateTimeKind.Unspecified), timeZone),
             TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localEnd, DateTimeKind.Unspecified), timeZone));
+    }
+
+    private static (DateTime? StartUtc, DateTime? EndUtc)? BuildProfitDateRange(DateTime? fromDate, DateTime? toDate)
+    {
+        if (!fromDate.HasValue && !toDate.HasValue)
+        {
+            return null;
+        }
+
+        var timeZone = TimeZoneHelper.GetVietnamTimeZone();
+        DateTime? startUtc = fromDate.HasValue
+            ? TimeZoneInfo.ConvertTimeToUtc(
+                DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Unspecified),
+                timeZone)
+            : null;
+        DateTime? endUtc = toDate.HasValue
+            ? TimeZoneInfo.ConvertTimeToUtc(
+                DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Unspecified),
+                timeZone)
+            : null;
+
+        return (startUtc, endUtc);
     }
 
     private static string? NormalizeDateRange(string? value)

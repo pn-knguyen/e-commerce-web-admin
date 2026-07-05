@@ -72,10 +72,50 @@ public sealed class InventoryStockRowViewModel
     public decimal Price { get; set; }
     public int Quantity { get; set; }
     public int SoldCount { get; set; }
+    public int FifoQuantity { get; set; }
+    public decimal FifoStockValue { get; set; }
     public bool IsActive { get; set; }
     public DateTime? LastReceiptAt { get; set; }
 
-    public decimal StockValue => Price * Quantity;
+    public decimal StockValue => FifoStockValue;
+    public decimal EstimatedRetailValue => Price * Quantity;
+}
+
+public sealed class InventoryStockDetailsViewModel
+{
+    public long VariantId { get; set; }
+    public string VariantCode { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string BrandName { get; set; } = string.Empty;
+    public string CategoryName { get; set; } = string.Empty;
+    public decimal SalePrice { get; set; }
+    public int Quantity { get; set; }
+    public int SoldCount { get; set; }
+    public bool IsActive { get; set; }
+    public int FifoQuantity { get; set; }
+    public decimal RemainingCapital { get; set; }
+    public decimal OriginalCapital { get; set; }
+    public int ReceiptCount { get; set; }
+    public DateTime? LastReceiptAt { get; set; }
+    public List<InventoryBatchDetailsViewModel> Batches { get; set; } = [];
+
+    public decimal AverageCost => FifoQuantity == 0 ? 0 : RemainingCapital / FifoQuantity;
+    public decimal EstimatedRetailValue => SalePrice * Quantity;
+}
+
+public sealed class InventoryBatchDetailsViewModel
+{
+    public long BatchId { get; set; }
+    public long ReceiptId { get; set; }
+    public string ReceiptCode { get; set; } = string.Empty;
+    public string SupplierName { get; set; } = string.Empty;
+    public DateTime ReceivedAt { get; set; }
+    public int QuantityReceived { get; set; }
+    public int QuantityRemaining { get; set; }
+    public int QuantitySold => Math.Max(0, QuantityReceived - QuantityRemaining);
+    public decimal UnitCost { get; set; }
+    public decimal OriginalCapital => QuantityReceived * UnitCost;
+    public decimal RemainingCapital => QuantityRemaining * UnitCost;
 }
 
 public sealed class GoodsReceiptRowViewModel

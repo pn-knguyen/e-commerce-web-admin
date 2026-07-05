@@ -1,0 +1,277 @@
+@model e_commerce_web_admin.ViewModels.Orders.OrderProfitReportViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Thống kê lãi đơn hàng";
+    Layout = "_Layout";
+
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
+    string Percent(decimal value) => string.Concat(value.ToString("N2", vi), "%");
+    string DateText(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", vi);
+    string DateInput(DateTime? value) => value.HasValue ? value.Value.ToString("yyyy-MM-dd") : string.Empty;
+    var activeFilterCount = new[]
+    {
+        !string.IsNullOrWhiteSpace(Model.Search),
+        Model.FromDate.HasValue,
+        Model.ToDate.HasValue,
+    }.Count(isActive => isActive);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+}
+
+<main class="order-page">
+    <section class="order-hero order-anim" style="animation-delay:0.04s">
+        <div>
+            <nav class="order-breadcrumb" aria-label="Điều hướng">
+                <a asp-action="Index">Quản lý đơn hàng</a>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                <span>Thống kê lãi</span>
+            </nav>
+            <div class="order-title-row">
+                <div>
+                    <h1>Thống kê lãi đơn hàng</h1>
+                    <p>Theo dõi doanh thu, giá vốn FIFO và lãi gộp theo từng đơn hoàn tất.</p>
+                </div>
+                <a asp-action="Index" class="order-secondary-action">
+                    <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                    <span>Đơn hàng</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="order-metrics order-anim" style="animation-delay:0.08s" aria-label="Thống kê lãi đơn hàng">
+        <article class="order-metric">
+            <span class="order-metric-icon">
+                <i data-lucide="receipt-text" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Model.TotalCount</p>
+                <span>Đơn hoàn tất</span>
+            </div>
+        </article>
+        <article class="order-metric">
+            <span class="order-metric-icon is-revenue">
+                <i data-lucide="wallet-cards" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Money(Model.ProductRevenue)</p>
+                <span>Doanh thu sản phẩm</span>
+            </div>
+        </article>
+        <article class="order-metric">
+            <span class="order-metric-icon is-shipping">
+                <i data-lucide="package-check" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Money(Model.CostAmount)</p>
+                <span>Giá vốn FIFO</span>
+            </div>
+        </article>
+        <article class="order-metric">
+            <span class="order-metric-icon is-revenue">
+                <i data-lucide="chart-no-axes-combined" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Money(Model.GrossProfit)</p>
+                <span>Lãi gộp FIFO</span>
+            </div>
+        </article>
+        <article class="order-metric">
+            <span class="order-metric-icon is-pending">
+                <i data-lucide="percent" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <p>@Percent(Model.GrossMargin)</p>
+                <span>Biên lãi gộp</span>
+            </div>
+        </article>
+    </section>
+
+    @if (Model.MissingCostCount > 0)
+    {
+        <div class="order-flash order-flash-error order-anim" style="animation-delay:0.1s">
+            <span class="order-flash-icon">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            </span>
+            <span>@Model.MissingCostCount đơn hoàn tất chưa đủ allocation giá vốn FIFO.</span>
+        </div>
+    }
+
+    <section class="order-console order-anim" style="animation-delay:0.12s">
+        <form method="get" asp-action="ProfitReport" class="order-filter-grid">
+            <label class="order-search-field">
+                <i data-lucide="search" class="w-4 h-4"></i>
+                <input type="text"
+                       name="search"
+                       value="@Model.Search"
+                       placeholder="Tìm mã đơn, khách hàng, email hoặc số điện thoại..." />
+            </label>
+
+            <label class="order-select-field">
+                <span>Từ ngày</span>
+                <input type="date" name="fromDate" value="@DateInput(Model.FromDate)" />
+            </label>
+
+            <label class="order-select-field">
+                <span>Đến ngày</span>
+                <input type="date" name="toDate" value="@DateInput(Model.ToDate)" />
+            </label>
+
+            <button type="submit" class="order-filter-submit">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                <span>Lọc</span>
+                @if (activeFilterCount > 0)
+                {
+                    <span class="order-filter-count">@activeFilterCount</span>
+                }
+            </button>
+
+            @if (Model.HasFilters)
+            {
+                <a asp-action="ProfitReport" class="order-filter-clear">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Xóa lọc</span>
+                </a>
+            }
+        </form>
+
+        @if (!Model.Orders.Any())
+        {
+            <div class="admin-empty">
+                <span class="admin-empty-icon">
+                    <i data-lucide="chart-no-axes-combined" class="w-9 h-9"></i>
+                </span>
+                <h2>Chưa có dữ liệu lãi đơn hàng</h2>
+                <p>Hoàn tất đơn hàng có giá vốn FIFO để xem báo cáo lợi nhuận.</p>
+            </div>
+        }
+        else
+        {
+            <div class="order-table-scroll">
+                <div class="order-profit-grid order-table-head">
+                    <span>Đơn hàng</span>
+                    <span>Khách hàng</span>
+                    <span class="text-right">Doanh thu SP</span>
+                    <span class="text-right">Giá vốn FIFO</span>
+                    <span class="text-right">Lãi gộp</span>
+                    <span class="text-right">Biên lãi</span>
+                    <span class="text-right">Thao tác</span>
+                </div>
+
+                <div class="order-table-body">
+                    @{
+                        var animIndex = 0;
+                    }
+                    @foreach (var order in Model.Orders)
+                    {
+                        <article class="order-row order-profit-grid order-anim"
+                                 style="animation-delay:@(0.14 + animIndex++ * 0.025)s">
+                            <div class="order-code-stack">
+                                <h2>@order.OrderCode</h2>
+                                <p>
+                                    <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i>
+                                    <span>@DateText(order.CompletedAt)</span>
+                                </p>
+                                <p>
+                                    <i data-lucide="boxes" class="w-3.5 h-3.5"></i>
+                                    <span>@order.ItemQuantity sản phẩm</span>
+                                </p>
+                            </div>
+
+                            <div class="order-customer-stack">
+                                <h3>@order.CustomerName</h3>
+                                @if (order.HasMissingCost)
+                                {
+                                    <p class="text-red-600">Thiếu giá vốn: @order.CostedQuantity/@order.OrderedQuantity</p>
+                                }
+                                else
+                                {
+                                    <p>Đã ghi nhận đủ FIFO</p>
+                                }
+                            </div>
+
+                            <div class="order-total-cell" data-label="Doanh thu SP">
+                                <strong>@Money(order.ProductRevenue)</strong>
+                                <span>Net @Money(order.NetRevenue)</span>
+                            </div>
+
+                            <div class="order-total-cell" data-label="Giá vốn FIFO">
+                                <strong>@Money(order.CostAmount)</strong>
+                            </div>
+
+                            <div class="order-total-cell" data-label="Lãi gộp">
+                                <strong>@Money(order.GrossProfit)</strong>
+                                <span>Net @Money(order.NetProfit)</span>
+                            </div>
+
+                            <div class="order-total-cell" data-label="Biên lãi">
+                                <strong>@Percent(order.GrossMargin)</strong>
+                            </div>
+
+                            <div class="order-actions" data-label="Thao tác">
+                                <a asp-action="Details"
+                                   asp-route-id="@order.Id"
+                                   class="order-action-btn">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                    <span>Chi tiết</span>
+                                </a>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <footer class="order-pagination">
+                    <p>
+                        Trang <strong>@Model.Page</strong> / @Model.TotalPages
+                        <span>@Model.TotalCount đơn</span>
+                    </p>
+                    <nav aria-label="Phân trang thống kê lãi">
+                        @if (Model.HasPrev)
+                        {
+                            <a asp-action="ProfitReport"
+                               asp-route-page="@(Model.Page - 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-fromDate="@DateInput(Model.FromDate)"
+                               asp-route-toDate="@DateInput(Model.ToDate)"
+                               class="order-page-btn">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </a>
+                        }
+                        @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                        {
+                            <a asp-action="ProfitReport"
+                               asp-route-page="@p"
+                               asp-route-search="@Model.Search"
+                               asp-route-fromDate="@DateInput(Model.FromDate)"
+                               asp-route-toDate="@DateInput(Model.ToDate)"
+                               class="order-page-btn @(p == Model.Page ? "is-active" : "")">
+                                @p
+                            </a>
+                        }
+                        @if (Model.HasNext)
+                        {
+                            <a asp-action="ProfitReport"
+                               asp-route-page="@(Model.Page + 1)"
+                               asp-route-search="@Model.Search"
+                               asp-route-fromDate="@DateInput(Model.FromDate)"
+                               asp-route-toDate="@DateInput(Model.ToDate)"
+                               class="order-page-btn">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </a>
+                        }
+                    </nav>
+                </footer>
+            }
+        }
+    </section>
+</main>
+
+@section Scripts {
+    <script src="~/js/orders.js" asp-append-version="true"></script>
+}

@@ -44,6 +44,26 @@ public sealed class OrdersController : Controller
         return viewModel is null ? NotFound() : View(viewModel);
     }
 
+    public async Task<IActionResult> ProfitReport(
+        string? search,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page = 1,
+        CancellationToken ct = default)
+    {
+        var viewModel = await _orderService.GetProfitReportAsync(
+            new OrderProfitReportQuery
+            {
+                Search = search,
+                FromDate = fromDate,
+                ToDate = toDate,
+                Page = page,
+            },
+            ct);
+
+        return View(viewModel);
+    }
+
     [HttpPost, ValidateAntiForgeryToken]
     [RbacAuthorize("Orders", Permissions.Approve)]
     public async Task<IActionResult> UpdateStatus(

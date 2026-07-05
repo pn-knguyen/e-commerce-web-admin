@@ -224,12 +224,19 @@
 
                             <div class="inv-value-cell">
                                 <strong>@Money(row.StockValue)</strong>
-                                <span>@Money(row.Price) / sp</span>
+                                <span>FIFO @row.FifoQuantity sp</span>
+                                <span>Giá bán @Money(row.Price) / sp</span>
                             </div>
 
                             <div class="inv-date-cell">@DateText(row.LastReceiptAt)</div>
 
                             <div class="inv-actions">
+                                <a asp-action="StockDetails"
+                                   asp-route-variantId="@row.VariantId"
+                                   class="inv-action-btn inv-action-view">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                    <span>Xem</span>
+                                </a>
                                 <a asp-action="Create"
                                    asp-route-variantId="@row.VariantId"
                                    class="inv-action-btn inv-action-edit">

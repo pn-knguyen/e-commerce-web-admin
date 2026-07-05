@@ -597,11 +597,20 @@ public sealed class ShipmentAdminService : IShipmentAdminService
             {
                 changedCount++;
                 if (beforeOrderStatus.HasValue && beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
-                    shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
+                    shipment.Order.OrderStatus is OrderStatus.Completed or OrderStatus.Returned or OrderStatus.Cancelled)
                 {
                     await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
                         .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
-                    OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus.Value, shipment.Order.OrderStatus);
+                    var fifoResult = await OrderFifoCostHelper.ApplyStatusChangeAsync(
+                        _db,
+                        shipment.Order,
+                        beforeOrderStatus.Value,
+                        shipment.Order.OrderStatus,
+                        ct);
+                    if (!fifoResult.Succeeded)
+                    {
+                        shipment.Order.OrderStatus = beforeOrderStatus.Value;
+                    }
                 }
             }
         }
@@ -675,11 +684,20 @@ public sealed class ShipmentAdminService : IShipmentAdminService
         ShipmentStatusMapper.SyncOrderStatusFromShipment(shipment.Order, nextStatus, DateTime.UtcNow);
 
         if (beforeOrderStatus != shipment.Order.OrderStatus &&
-            shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
+            shipment.Order.OrderStatus is OrderStatus.Completed or OrderStatus.Returned or OrderStatus.Cancelled)
         {
             await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
                 .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
-            OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus, shipment.Order.OrderStatus);
+            var fifoResult = await OrderFifoCostHelper.ApplyStatusChangeAsync(
+                _db,
+                shipment.Order,
+                beforeOrderStatus,
+                shipment.Order.OrderStatus,
+                ct);
+            if (!fifoResult.Succeeded)
+            {
+                return ShipmentActionResult.Failed(fifoResult.ErrorMessage ?? "Không thể ghi nhận giá vốn FIFO.");
+            }
         }
 
         if (ShipmentStatusMapper.IsPickupProgressStatus(nextStatus) && shipment.PickedUpAt is null)
@@ -779,11 +797,20 @@ public sealed class ShipmentAdminService : IShipmentAdminService
         ShipmentStatusMapper.SyncOrderStatusFromShipment(shipment.Order, nextStatus, now);
 
         if (beforeOrderStatus.HasValue && beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
-            shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
+            shipment.Order.OrderStatus is OrderStatus.Completed or OrderStatus.Returned or OrderStatus.Cancelled)
         {
             await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
                 .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
-            OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus.Value, shipment.Order.OrderStatus);
+            var fifoResult = await OrderFifoCostHelper.ApplyStatusChangeAsync(
+                _db,
+                shipment.Order,
+                beforeOrderStatus.Value,
+                shipment.Order.OrderStatus,
+                ct);
+            if (!fifoResult.Succeeded)
+            {
+                return ShipmentActionResult.Failed(fifoResult.ErrorMessage ?? "Khong the ghi nhan gia von FIFO.");
+            }
         }
 
         if (actualFee.HasValue)
