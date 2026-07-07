@@ -127,7 +127,7 @@
             <option value="month" selected>30 ngày qua</option>
             <option value="year">Năm nay</option>
         </select>
-        <button onclick="window.dashboardRefresh && window.dashboardRefresh()"
+        <button id="refreshBtn" onclick="window.dashboardRefresh && window.dashboardRefresh()"
                 class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
             Làm mới
@@ -242,21 +242,21 @@
 
 </div>
 
-@* Row 3: Lưu lượng truy cập + Doanh thu theo danh mục *@
+@* Row 3: Hoạt động hệ thống + Doanh thu theo danh mục *@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 db-anim-up"
      style="animation-delay: 0.42s">
 
-    @* Biểu đồ traffic (2/3) *@
+    @* Biểu đồ hoạt động hệ thống (2/3) *@
     <div class="surface-dashboard-card lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h2 class="font-bold text-slate-800">Lưu lượng truy cập</h2>
+                <h2 class="font-bold text-slate-800">Hoạt động hệ thống</h2>
                 <p class="text-slate-400 text-xs mt-0.5">7 ngày gần nhất</p>
             </div>
             <div class="flex items-center gap-3 text-xs flex-wrap">
-                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-brand-500 inline-block"></span>Phiên</span>
-                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-violet-400 inline-block"></span>Lượt xem</span>
-                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-amber-400 inline-block"></span>Người mới</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-brand-500 inline-block"></span>Đơn hàng</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-violet-400 inline-block"></span>Doanh thu</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-amber-400 inline-block"></span>Khách mới</span>
             </div>
         </div>
         <div class="chart-container h-48 sm:h-56">

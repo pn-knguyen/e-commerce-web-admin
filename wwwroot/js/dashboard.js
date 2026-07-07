@@ -86,12 +86,17 @@ const ApiService = {
         return response.json();
     },
 
-    fetchKpis()           { return this.get(CONFIG.api.kpis); },
+    withPeriod(url) {
+        const period = document.getElementById('periodSelect')?.value || 'month';
+        return `${url}?period=${encodeURIComponent(period)}`;
+    },
+
+    fetchKpis()           { return this.get(this.withPeriod(CONFIG.api.kpis)); },
     fetchRevenueChart()   { return this.get(CONFIG.api.revenueChart); },
-    fetchOrderStatus()    { return this.get(CONFIG.api.orderStatus); },
-    fetchTopProducts()    { return this.get(CONFIG.api.topProducts); },
+    fetchOrderStatus()    { return this.get(this.withPeriod(CONFIG.api.orderStatus)); },
+    fetchTopProducts()    { return this.get(this.withPeriod(CONFIG.api.topProducts)); },
     fetchRecentOrders()   { return this.get(CONFIG.api.recentOrders); },
-    fetchCategoryRevenue(){ return this.get(CONFIG.api.categoryRevenue); },
+    fetchCategoryRevenue(){ return this.get(this.withPeriod(CONFIG.api.categoryRevenue)); },
     fetchTraffic()        { return this.get(CONFIG.api.traffic); },
 };
 
@@ -129,11 +134,21 @@ const Helpers = {
      * @param {'up'|'down'} trend
      */
     changeBadge(change, trend) {
+        if (change === 0) {
+            return '<span class="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-0.5 rounded-full kpi-badge">→ 0,0%</span>';
+        }
+
         const isUp   = trend === 'up';
         const color  = isUp ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600';
         const arrow  = isUp ? '↑' : '↓';
         const abs    = Math.abs(change).toFixed(1);
         return `<span class="${color} text-xs font-semibold px-2 py-0.5 rounded-full kpi-badge">${arrow} ${abs}%</span>`;
+    },
+
+    escapeHtml(value) {
+        const element = document.createElement('div');
+        element.textContent = value ?? '';
+        return element.innerHTML;
     },
 
     /**
@@ -174,6 +189,7 @@ const ChartBuilder = {
      * @param {'up'|'down'} trend
      */
     buildSparkline(canvas, data, trend) {
+        data = Array.isArray(data) && data.length ? data : [0, 0];
         const ctx = canvas.getContext('2d');
         const lineColor = trend === 'up' ? CONFIG.colors.brand : '#ef4444';
         const gradient  = Helpers.sparklineGradient(ctx, trend);
@@ -306,13 +322,16 @@ const ChartBuilder = {
 
         if (chartRegistry.has('orderStatus')) chartRegistry.get('orderStatus').destroy();
 
+        const total = data.values.reduce((sum, value) => sum + value, 0);
+        const hasData = total > 0;
+
         const chart = new Chart(canvas.getContext('2d'), {
             type: 'doughnut',
             data: {
-                labels:   data.labels,
+                labels: hasData ? data.labels : ['Chưa có dữ liệu'],
                 datasets: [{
-                    data:            data.values,
-                    backgroundColor: data.colors,
+                    data: hasData ? data.values : [1],
+                    backgroundColor: hasData ? data.colors : ['#e2e8f0'],
                     borderWidth:     0,
                     hoverOffset:     8,
                 }],
@@ -326,7 +345,9 @@ const ChartBuilder = {
                     legend:  { display: false },
                     tooltip: {
                         callbacks: {
-                            label: ctx => ` ${ctx.label}: ${Helpers.formatNumber(ctx.raw)} đơn`,
+                            label: ctx => hasData
+                                ? ` ${ctx.label}: ${Helpers.formatNumber(ctx.raw)} đơn`
+                                : ' Chưa có đơn hàng trong kỳ',
                         },
                     },
                 },
@@ -338,7 +359,11 @@ const ChartBuilder = {
         // Vẽ legend tùy chỉnh
         const legendEl = document.getElementById('orderStatusLegend');
         if (legendEl) {
-            const total = data.values.reduce((a, b) => a + b, 0);
+            if (!hasData) {
+                legendEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-3">Chưa có đơn hàng trong kỳ</p>';
+                return;
+            }
+
             legendEl.innerHTML = data.labels.map((label, i) => {
                 const pct = ((data.values[i] / total) * 100).toFixed(1);
                 return `
@@ -356,10 +381,7 @@ const ChartBuilder = {
         }
     },
 
-    /**
-     * Biểu đồ đường lưu lượng truy cập
-     * @param {object} data
-     */
+    /** Biểu đồ hoạt động hệ thống trong 7 ngày gần nhất. */
     buildTrafficChart(data) {
         const canvas = document.getElementById('trafficChart');
         if (!canvas) return;
@@ -375,18 +397,19 @@ const ChartBuilder = {
                 datasets: [
                     {
                         type:            'bar',
-                        label:           'Phiên',
-                        data:            data.sessions,
+                        label:           'Đơn hàng',
+                        data:            data.orders,
                         backgroundColor: CONFIG.colors.brandDim,
                         borderColor:     CONFIG.colors.brand,
                         borderWidth:     1.5,
                         borderRadius:    6,
                         order:           2,
+                        yAxisID:         'y',
                     },
                     {
                         type:            'line',
-                        label:           'Lượt xem trang',
-                        data:            data.pageViews,
+                        label:           'Doanh thu (triệu ₫)',
+                        data:            data.revenue,
                         borderColor:     CONFIG.colors.violet,
                         backgroundColor: 'transparent',
                         borderWidth:     2,
@@ -395,11 +418,12 @@ const ChartBuilder = {
                         pointHoverRadius:6,
                         pointBackgroundColor: CONFIG.colors.violet,
                         order:           1,
+                        yAxisID:         'yRevenue',
                     },
                     {
                         type:            'line',
-                        label:           'Người dùng mới',
-                        data:            data.newUsers,
+                        label:           'Khách mới',
+                        data:            data.newCustomers,
                         borderColor:     CONFIG.colors.amber,
                         backgroundColor: 'transparent',
                         borderWidth:     2,
@@ -409,6 +433,7 @@ const ChartBuilder = {
                         borderDash:      [4, 3],
                         pointBackgroundColor: CONFIG.colors.amber,
                         order:           0,
+                        yAxisID:         'y',
                     },
                 ],
             },
@@ -421,7 +446,9 @@ const ChartBuilder = {
                     legend:  { display: false },
                     tooltip: {
                         callbacks: {
-                            label: ctx => ` ${ctx.dataset.label}: ${Helpers.formatNumber(ctx.parsed.y)}`,
+                            label: ctx => ctx.dataset.yAxisID === 'yRevenue'
+                                ? ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('vi-VN')} tr ₫`
+                                : ` ${ctx.dataset.label}: ${Helpers.formatNumber(ctx.parsed.y)}`,
                         },
                     },
                 },
@@ -434,9 +461,17 @@ const ChartBuilder = {
                     y: {
                         grid:   { color: '#f1f5f9' },
                         border: { display: false },
-                        ticks:  {
+                        beginAtZero: true,
+                        ticks: { font: { size: 11 }, precision: 0 },
+                    },
+                    yRevenue: {
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false },
+                        border: { display: false },
+                        ticks: {
                             font: { size: 11 },
-                            callback: v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v,
+                            callback: value => value + ' tr',
                         },
                     },
                 },
@@ -466,7 +501,7 @@ const Renderer = {
         cards.forEach(({ id, key, format }) => {
             const card   = document.getElementById(id);
             if (!card) return;
-            const info   = data[key];
+            const info   = data[key] || { value: 0, change: 0, trend: 'up', sparkline: [0, 0] };
             const valueEl = card.querySelector('.kpi-value');
             const badgeEl = card.querySelector('.kpi-badge');
             const sparkEl = card.querySelector('.kpi-spark');
@@ -495,6 +530,11 @@ const Renderer = {
 
         const rankColors = ['text-amber-500', 'text-slate-400', 'text-orange-400', 'text-slate-300', 'text-slate-200'];
 
+        if (!data.length) {
+            container.innerHTML = '<p class="text-sm text-slate-400 text-center py-10">Chưa có sản phẩm bán thành công trong kỳ</p>';
+            return;
+        }
+
         container.innerHTML = data.map((p, i) => {
             const growthClass = p.growth >= 0 ? 'text-emerald-600' : 'text-red-500';
             const growthSign  = p.growth >= 0 ? '+' : '';
@@ -502,8 +542,8 @@ const Renderer = {
             <div class="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors cursor-default">
                 <span class="text-lg font-black ${rankColors[i]} w-5 text-center shrink-0">${p.rank}</span>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-800 truncate" title="${p.name}">${p.name}</p>
-                    <p class="text-xs text-slate-400">${p.category} · ${Helpers.formatNumber(p.sold)} sản phẩm</p>
+                    <p class="text-sm font-medium text-slate-800 truncate" title="${Helpers.escapeHtml(p.name)}">${Helpers.escapeHtml(p.name)}</p>
+                    <p class="text-xs text-slate-400">${Helpers.escapeHtml(p.category)} · ${Helpers.formatNumber(p.sold)} sản phẩm</p>
                 </div>
                 <div class="text-right shrink-0">
                     <p class="text-sm font-bold text-slate-800">${Helpers.formatVND(p.revenue)}</p>
@@ -520,21 +560,26 @@ const Renderer = {
         const tbody = document.getElementById('recentOrdersBody');
         if (!tbody) return;
 
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-10 text-sm text-slate-400 text-center">Chưa có đơn hàng</td></tr>';
+            return;
+        }
+
         tbody.innerHTML = data.map(order => {
             return `
             <tr class="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
                 <td class="py-3 pr-4">
-                    <span class="font-mono text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">${order.id}</span>
+                    <span class="font-mono text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">${Helpers.escapeHtml(order.id)}</span>
                 </td>
                 <td class="py-3 pr-4">
-                    <span class="text-sm text-slate-700 font-medium">${order.customer}</span>
+                    <span class="text-sm text-slate-700 font-medium">${Helpers.escapeHtml(order.customer)}</span>
                 </td>
                 <td class="py-3 pr-4">
                     <span class="text-sm font-bold text-slate-800">${Helpers.formatVND(order.total)}</span>
                 </td>
                 <td class="py-3 pr-4">
                     <span class="badge-${order.statusKey} text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap">
-                        ${order.status}
+                        ${Helpers.escapeHtml(order.status)}
                     </span>
                 </td>
                 <td class="py-3">
@@ -556,12 +601,17 @@ const Renderer = {
             'bg-amber-500', 'bg-rose-500', 'bg-slate-400',
         ];
 
+        if (!data.labels.length) {
+            container.innerHTML = '<p class="text-sm text-slate-400 text-center py-10">Chưa có doanh thu trong kỳ</p>';
+            return;
+        }
+
         container.innerHTML = data.labels.map((label, i) => {
             const pct = data.values[i];
             return `
             <div>
                 <div class="flex items-center justify-between mb-1">
-                    <span class="text-xs font-medium text-slate-700">${label}</span>
+                    <span class="text-xs font-medium text-slate-700">${Helpers.escapeHtml(label)}</span>
                     <span class="text-xs font-bold text-slate-800">${pct}%</span>
                 </div>
                 <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -606,7 +656,7 @@ const Dashboard = {
         // Indicator loading trên nút refresh
         const refreshBtn = document.getElementById('refreshBtn');
         if (refreshBtn) {
-            refreshBtn.querySelector('i')?.classList.add('animate-spin');
+            refreshBtn.querySelector('svg, i')?.classList.add('animate-spin');
         }
 
         try {
@@ -660,7 +710,7 @@ const Dashboard = {
             console.error('[Dashboard] Lỗi không mong đợi:', err);
         } finally {
             if (refreshBtn) {
-                refreshBtn.querySelector('i')?.classList.remove('animate-spin');
+                refreshBtn.querySelector('svg, i')?.classList.remove('animate-spin');
             }
         }
     },
@@ -675,5 +725,6 @@ window.dashboardRefresh = () => Dashboard.loadAll();
 
 // Tải dữ liệu lần đầu khi DOM sẵn sàng
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('periodSelect')?.addEventListener('change', () => Dashboard.loadAll());
     Dashboard.loadAll();
 });
