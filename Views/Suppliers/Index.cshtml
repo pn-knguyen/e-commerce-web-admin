@@ -176,6 +176,7 @@
                                  style="animation-delay:@(0.14 + animIndex++ * 0.025)s"
                                  data-id="@supplier.Id">
                             <div class="supplier-identity">
+                                <span class="supplier-card-label">Nhà cung cấp</span>
                                 <div class="supplier-avatar" aria-hidden="true">
                                     @supplierInitial
                                 </div>
@@ -186,6 +187,7 @@
                             </div>
 
                             <div class="supplier-contact-stack">
+                                <span class="supplier-card-label">Liên hệ</span>
                                 <p class="supplier-contact-line">
                                     <i data-lucide="phone" class="w-3.5 h-3.5"></i>
                                     <span>@(string.IsNullOrWhiteSpace(supplier.Phone) ? "Chưa có SĐT" : supplier.Phone)</span>
@@ -197,6 +199,7 @@
                             </div>
 
                             <div class="supplier-receipt-cell">
+                                <span class="supplier-card-label">Phiếu nhập</span>
                                 <span class="supplier-receipt-pill @(supplier.GoodsReceiptCount > 0 ? "has-receipts" : "")">
                                     <i data-lucide="receipt-text" class="w-3.5 h-3.5"></i>
                                     @supplier.GoodsReceiptCount
@@ -204,6 +207,7 @@
                             </div>
 
                             <div class="supplier-status-cell">
+                                <span class="supplier-card-label">Trạng thái</span>
                                 <button type="button"
                                         data-supplier-toggle
                                         data-supplier-id="@supplier.Id"
@@ -215,6 +219,7 @@
                             </div>
 
                             <div class="supplier-actions index-actions">
+                                <span class="supplier-card-label">Thao tác</span>
                                 <a asp-action="Edit" asp-route-id="@supplier.Id" title="Chỉnh sửa" class="supplier-action-btn supplier-action-edit index-action-btn index-action-edit">
                                     <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                                     <span>Sửa</span>

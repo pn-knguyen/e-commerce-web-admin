@@ -17,16 +17,16 @@
     <link rel="stylesheet" href="~/css/customers.css" asp-append-version="true" />
 }
 
-<main class="surface-page">
+<section class="surface-page customer-page customer-details-page" aria-labelledby="customerDetailTitle">
     <div class="surface-form-hero product-anim surface-anim" style="animation-delay:0.04s">
-        <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+        <nav class="customer-breadcrumb flex items-center gap-2 text-xs text-slate-400 mb-2" aria-label="Đường dẫn trang">
             <a asp-action="Index" class="hover:text-teal-600 transition-colors">Khách hàng</a>
             <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
             <span class="text-slate-600 font-medium">@Model.FullName</span>
         </nav>
         <div class="surface-hero">
             <div>
-                <h1>@Model.FullName</h1>
+                <h1 id="customerDetailTitle">@Model.FullName</h1>
                 <p>@Model.Email · Tạo lúc @DateText(Model.CreatedAt) · Cập nhật @DateTextNullable(Model.UpdatedAt)</p>
             </div>
             <a asp-action="Index">
@@ -57,48 +57,68 @@
         </div>
     }
 
-    <section class="surface-metrics product-anim surface-anim" style="animation-delay:0.08s" aria-label="Thống kê khách hàng">
-        <article>
-            <span><i data-lucide="shopping-bag" class="w-5 h-5"></i></span>
-            <div>
-                <p>@Model.OrderCount</p>
-                <p>Tổng đơn hàng</p>
+    <section class="customer-detail-form product-anim surface-anim" style="animation-delay:0.08s" aria-label="Thông tin chi tiết khách hàng">
+        <header class="customer-detail-form-header">
+            <div class="customer-detail-identity">
+                <span class="customer-detail-avatar @(Model.IsActive ? string.Empty : "is-muted")">
+                    @if (!string.IsNullOrWhiteSpace(Model.AvatarImage))
+                    {
+                        <img src="@Model.AvatarImage" alt="Ảnh đại diện của @Model.FullName" />
+                    }
+                    else
+                    {
+                        <i data-lucide="user-round" class="w-6 h-6"></i>
+                    }
+                </span>
+                <div>
+                    <p class="customer-detail-eyebrow">Hồ sơ khách hàng</p>
+                    <h2>@Model.FullName</h2>
+                    <p>@($"@{Model.Username}")</p>
+                </div>
             </div>
-        </article>
-        <article>
-            <span><i data-lucide="check-circle-2" class="w-5 h-5"></i></span>
-            <div>
-                <p>@Model.CompletedOrderCount</p>
-                <p>Đơn hoàn tất</p>
-            </div>
-        </article>
-        <article>
-            <span><i data-lucide="badge-dollar-sign" class="w-5 h-5"></i></span>
-            <div>
-                <p>@Money(Model.TotalSpent)</p>
-                <p>Đã thanh toán</p>
-            </div>
-        </article>
-        <article>
-            <span><i data-lucide="message-square-star" class="w-5 h-5"></i></span>
-            <div>
-                <p>@Model.RatingCount</p>
-                <p>Đánh giá</p>
-            </div>
-        </article>
-    </section>
+            <span class="product-status-btn @(Model.IsActive ? "is-active" : "is-inactive")">
+                <span class="dot"></span>
+                <span>@(Model.IsActive ? "Hoạt động" : "Tạm khóa")</span>
+            </span>
+        </header>
 
-    <section class="customer-detail-grid">
-        <div class="grid gap-4">
-            <section class="customer-panel product-anim surface-anim" style="animation-delay:0.1s">
-                <header class="customer-panel-header">
+        <div class="customer-detail-profile">
+            <dl class="customer-info-list">
+                <div><dt>Email</dt><dd>@Model.Email</dd></div>
+                <div><dt>Số điện thoại</dt><dd>@(string.IsNullOrWhiteSpace(Model.Phone) ? "Chưa có SĐT" : Model.Phone)</dd></div>
+                <div><dt>Giới tính</dt><dd>@CustomerDisplay.GetGenderLabel(Model.Gender)</dd></div>
+                <div><dt>Ngày tạo</dt><dd>@DateText(Model.CreatedAt)</dd></div>
+                <div><dt>Cập nhật gần nhất</dt><dd>@DateTextNullable(Model.UpdatedAt)</dd></div>
+            </dl>
+
+            <div class="customer-account-action">
+                <div>
+                    <h3>Trạng thái đăng nhập</h3>
+                    <p>Tạm khóa không xóa đơn hàng, địa chỉ hoặc đánh giá của khách hàng.</p>
+                </div>
+                <form asp-action="ToggleActive" asp-route-id="@Model.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="product-action-btn @(Model.IsActive ? "product-action-delete" : "product-action-edit")">
+                        <i data-lucide="@(Model.IsActive ? "lock" : "unlock")" class="w-4 h-4"></i>
+                        <span>@(Model.IsActive ? "Tạm khóa khách hàng" : "Mở khóa khách hàng")</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <section class="customer-detail-metrics" aria-label="Thống kê khách hàng">
+            <article><span><i data-lucide="shopping-bag" class="w-4 h-4"></i></span><div><strong>@Model.OrderCount</strong><p>Tổng đơn hàng</p></div></article>
+            <article><span><i data-lucide="check-circle-2" class="w-4 h-4"></i></span><div><strong>@Model.CompletedOrderCount</strong><p>Đơn hoàn tất</p></div></article>
+            <article><span><i data-lucide="badge-dollar-sign" class="w-4 h-4"></i></span><div><strong>@Money(Model.TotalSpent)</strong><p>Đã thanh toán</p></div></article>
+            <article><span class="is-rating"><i data-lucide="star" class="w-4 h-4"></i></span><div><strong>@Model.RatingCount</strong><p>Đánh giá</p></div></article>
+        </section>
+
+        <div class="customer-detail-sections">
+            <section class="customer-detail-section customer-orders-section">
+                <header class="customer-section-header">
                     <span><i data-lucide="receipt-text" class="w-5 h-5"></i></span>
-                    <div>
-                        <h2>Đơn hàng gần đây</h2>
-                        <p>@Model.RecentOrders.Count đơn mới nhất của khách hàng</p>
-                    </div>
+                    <div><h2>Đơn hàng gần đây</h2><p>@Model.RecentOrders.Count đơn mới nhất của khách hàng</p></div>
                 </header>
-
                 @if (!Model.RecentOrders.Any())
                 {
                     <div class="customer-empty-small">Khách hàng chưa có đơn hàng.</div>
@@ -109,19 +129,14 @@
                         @foreach (var order in Model.RecentOrders)
                         {
                             <article class="customer-card-row">
-                                <div class="flex flex-wrap items-center justify-between gap-3">
-                                    <div>
-                                        <h3>@order.OrderCode</h3>
-                                        <p>@order.ItemCount sản phẩm · @DateText(order.CreatedAt)</p>
-                                    </div>
+                                <div class="customer-card-heading">
+                                    <div><h3>@order.OrderCode</h3><p>@order.ItemCount sản phẩm · @DateText(order.CreatedAt)</p></div>
                                     <strong class="customer-title">@Money(order.TotalAmount)</strong>
                                 </div>
                                 <div class="customer-card-meta">
                                     <span class="customer-pill is-primary">@OrderDisplay.GetOrderStatusLabel(order.OrderStatus)</span>
                                     <span class="customer-pill">@OrderDisplay.GetPaymentStatusLabel(order.PaymentStatus)</span>
-                                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="customer-pill is-revenue">
-                                        Xem đơn
-                                    </a>
+                                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="customer-pill is-revenue">Xem đơn</a>
                                 </div>
                             </article>
                         }
@@ -129,15 +144,11 @@
                 }
             </section>
 
-            <section class="customer-panel product-anim surface-anim" style="animation-delay:0.14s">
-                <header class="customer-panel-header">
+            <section class="customer-detail-section">
+                <header class="customer-section-header">
                     <span><i data-lucide="map-pin" class="w-5 h-5"></i></span>
-                    <div>
-                        <h2>Địa chỉ</h2>
-                        <p>@Model.AddressCount địa chỉ đang sử dụng</p>
-                    </div>
+                    <div><h2>Địa chỉ</h2><p>@Model.AddressCount địa chỉ đang sử dụng</p></div>
                 </header>
-
                 @if (!Model.Addresses.Any())
                 {
                     <div class="customer-empty-small">Khách hàng chưa lưu địa chỉ.</div>
@@ -148,12 +159,9 @@
                         @foreach (var address in Model.Addresses)
                         {
                             <article class="customer-card-row">
-                                <div class="flex flex-wrap items-center gap-2">
+                                <div class="customer-card-meta">
                                     <h3>@address.ContactName</h3>
-                                    @if (address.IsDefault)
-                                    {
-                                        <span class="customer-pill is-primary">Mặc định</span>
-                                    }
+                                    @if (address.IsDefault) { <span class="customer-pill is-primary">Mặc định</span> }
                                     <span class="customer-pill">@CustomerDisplay.GetAddressTypeLabel(address.Type)</span>
                                 </div>
                                 <p>@address.Phone</p>
@@ -164,15 +172,11 @@
                 }
             </section>
 
-            <section class="customer-panel product-anim surface-anim" style="animation-delay:0.18s">
-                <header class="customer-panel-header">
-                    <span><i data-lucide="message-square-star" class="w-5 h-5"></i></span>
-                    <div>
-                        <h2>Đánh giá gần đây</h2>
-                        <p>Theo dõi nội dung phản hồi của khách hàng</p>
-                    </div>
+            <section class="customer-detail-section customer-ratings-section">
+                <header class="customer-section-header">
+                    <span class="is-rating"><i data-lucide="star" class="w-5 h-5"></i></span>
+                    <div><h2>Đánh giá gần đây</h2><p>Theo dõi nội dung phản hồi của khách hàng</p></div>
                 </header>
-
                 @if (!Model.RecentRatings.Any())
                 {
                     <div class="customer-empty-small">Khách hàng chưa gửi đánh giá.</div>
@@ -182,22 +186,23 @@
                     <div class="customer-card-list">
                         @foreach (var rating in Model.RecentRatings)
                         {
-                            <article class="customer-card-row">
-                                <div class="flex flex-wrap items-center justify-between gap-3">
-                                    <div>
-                                        <h3>@rating.ProductName</h3>
-                                        <p>SKU @rating.VariantCode · @DateText(rating.CreatedAt)</p>
+                            <article class="customer-card-row customer-rating-row">
+                                <span class="customer-rating-icon"><i data-lucide="star" class="w-4 h-4"></i></span>
+                                <div>
+                                    <div class="customer-card-heading">
+                                        <div><h3>@rating.ProductName</h3><p>SKU @rating.VariantCode · @DateText(rating.CreatedAt)</p></div>
+                                        <span class="customer-pill customer-rating-score">
+                                            <i data-lucide="star" class="w-3 h-3" aria-hidden="true"></i>
+                                            @rating.Stars sao
+                                        </span>
                                     </div>
-                                    <span class="customer-pill is-primary">
-                                        <i data-lucide="star" class="w-3 h-3"></i>
-                                        @rating.Stars sao
-                                    </span>
-                                </div>
-                                <p>@(string.IsNullOrWhiteSpace(rating.Comment) ? "Không có nội dung nhận xét." : rating.Comment)</p>
-                                <div class="customer-card-meta">
-                                    <span class="customer-pill @(rating.IsApproved ? "is-revenue" : string.Empty)">
-                                        @(rating.IsApproved ? "Đã duyệt" : "Chờ duyệt")
-                                    </span>
+                                    <p>@(string.IsNullOrWhiteSpace(rating.Comment) ? "Không có nội dung nhận xét." : rating.Comment)</p>
+                                    <div class="customer-card-meta">
+                                        <span class="customer-pill @(rating.IsApproved ? "is-revenue" : string.Empty)">
+                                            <i data-lucide="@(rating.IsApproved ? "badge-check" : "clock-3")" class="w-3 h-3" aria-hidden="true"></i>
+                                            @(rating.IsApproved ? "Đã duyệt" : "Chờ duyệt")
+                                        </span>
+                                    </div>
                                 </div>
                             </article>
                         }
@@ -205,69 +210,5 @@
                 }
             </section>
         </div>
-
-        <aside class="grid gap-4">
-            <section class="customer-panel product-anim surface-anim" style="animation-delay:0.12s">
-                <header class="customer-panel-header">
-                    <span><i data-lucide="user-round" class="w-5 h-5"></i></span>
-                    <div>
-                        <h2>Hồ sơ</h2>
-                        <p>@Model.Username</p>
-                    </div>
-                </header>
-
-                <dl class="customer-info-list">
-                    <div>
-                        <dt>Trạng thái</dt>
-                        <dd>
-                            <span class="product-status-btn @(Model.IsActive ? "is-active" : "is-inactive")">
-                                <span class="dot"></span>
-                                <span>@(Model.IsActive ? "Hoạt động" : "Tạm khóa")</span>
-                            </span>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Email</dt>
-                        <dd>@Model.Email</dd>
-                    </div>
-                    <div>
-                        <dt>Số điện thoại</dt>
-                        <dd>@(string.IsNullOrWhiteSpace(Model.Phone) ? "Chưa có SĐT" : Model.Phone)</dd>
-                    </div>
-                    <div>
-                        <dt>Giới tính</dt>
-                        <dd>@CustomerDisplay.GetGenderLabel(Model.Gender)</dd>
-                    </div>
-                    <div>
-                        <dt>Ngày tạo</dt>
-                        <dd>@DateText(Model.CreatedAt)</dd>
-                    </div>
-                </dl>
-            </section>
-
-            <section class="customer-panel product-anim surface-anim" style="animation-delay:0.16s">
-                <header class="customer-panel-header">
-                    <span><i data-lucide="settings-2" class="w-5 h-5"></i></span>
-                    <div>
-                        <h2>Thao tác</h2>
-                        <p>Quản lý trạng thái đăng nhập của khách hàng</p>
-                    </div>
-                </header>
-
-                <div class="p-4">
-                    <form asp-action="ToggleActive" asp-route-id="@Model.Id" method="post">
-                        @Html.AntiForgeryToken()
-                        <button type="submit"
-                                class="product-action-btn @(Model.IsActive ? "product-action-delete" : "product-action-edit") w-full min-h-11">
-                            <i data-lucide="@(Model.IsActive ? "lock" : "unlock")" class="w-4 h-4"></i>
-                            <span>@(Model.IsActive ? "Tạm khóa khách hàng" : "Mở khóa khách hàng")</span>
-                        </button>
-                    </form>
-                    <p class="mt-3 text-xs leading-relaxed text-slate-500">
-                        Tạm khóa chỉ đổi trạng thái <code>IsActive</code> của bản ghi trong bảng users. Dữ liệu đơn hàng, địa chỉ và đánh giá vẫn được giữ nguyên.
-                    </p>
-                </div>
-            </section>
-        </aside>
     </section>
-</main>
+</section>

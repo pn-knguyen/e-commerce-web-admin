@@ -175,6 +175,47 @@
         -webkit-backdrop-filter: blur(12px);
         }
 
+        button,
+        a,
+        select {
+        -webkit-tap-highlight-color: transparent;
+        }
+
+        @@media (max-width: 639px) {
+        #adminTopbar {
+        padding-right: max(0.75rem, env(safe-area-inset-right));
+        padding-left: max(0.75rem, env(safe-area-inset-left));
+        }
+
+        #adminTopbar .topbar-page-context {
+        max-width: min(55vw, 15rem);
+        }
+
+        #adminTopbar .topbar-page-context p {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        }
+
+        #adminSidebar {
+        width: min(18rem, calc(100vw - 2rem));
+        padding-left: env(safe-area-inset-left);
+        }
+
+        .admin-page-content {
+        padding: 0.875rem;
+        }
+        }
+
+        @@media (prefers-reduced-motion: reduce) {
+        #adminSidebar,
+        #adminTopbar,
+        .dash-animate {
+        animation: none;
+        transition-duration: 0.01ms;
+        }
+        }
+
         /* ── Dashboard Entrance Animations ── */
         @@keyframes fadeSlideUp {
         from {
@@ -572,7 +613,7 @@
                                         aria-controls="adminSidebar" aria-expanded="false">
                                     <i data-lucide="menu" class="w-4 h-4 text-slate-600"></i>
                                 </button>
-                                <div>
+                                <div class="topbar-page-context">
                                     <p class="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Trang quản trị</p>
                                     <p class="font-semibold text-slate-800 text-sm leading-tight">@pageTitle</p>
                                 </div>
@@ -588,13 +629,15 @@
 
                                 @* Notification bell *@
                                 <button
+                                    type="button" aria-label="Thông báo"
                                     class="relative w-9 h-9 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors">
                                     <i data-lucide="bell" class="w-4 h-4 text-slate-600"></i>
                                     <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                                 </button>
 
                                 @* Refresh *@
-                                <button id="refreshBtn" onclick="window.dashboardRefresh && window.dashboardRefresh()"
+                                <button id="topbarRefreshBtn" type="button" data-dashboard-refresh onclick="window.dashboardRefresh && window.dashboardRefresh()"
+                                        aria-label="Làm mới dữ liệu bảng điều khiển"
                                         class="hidden sm:flex w-9 h-9 rounded-lg border border-slate-200 hover:bg-slate-100 items-center justify-center transition-colors"
                                         title="Làm mới dữ liệu">
                                     <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-600"></i>
@@ -603,7 +646,7 @@
                         </header>
 
                         @* Page content *@
-                        <main class="flex-1 @(isCustomerMessagesPage ? "p-0 overflow-hidden" : "p-4 lg:p-6 xl:p-8")" role="main">
+                        <main class="flex-1 @(isCustomerMessagesPage ? "p-0 overflow-hidden" : "admin-page-content p-4 lg:p-6 xl:p-8")" role="main">
                             @RenderBody()
                         </main>
                     </div>

@@ -15,10 +15,10 @@
     <link rel="stylesheet" href="~/css/identity-admin.css" asp-append-version="true" />
 }
 
-<main class="surface-page identity-page">
+<section class="surface-page identity-page identity-staff-page" aria-labelledby="staffPageTitle">
     <div class="surface-hero product-anim surface-anim" style="animation-delay:0.04s">
         <div>
-            <h1>Nhân sự quản trị</h1>
+            <h1 id="staffPageTitle">Nhân sự quản trị</h1>
             <p>Quản lý tài khoản đăng nhập trang quản trị bằng bảng staff và ASP.NET Core Identity.</p>
         </div>
         <a asp-action="Create">
@@ -81,9 +81,10 @@
 
     <section class="surface-console surface-table-card product-anim surface-anim" style="animation-delay:0.12s">
         <div class="product-toolbar">
-            <form method="get" asp-action="Index" class="identity-filter-grid">
+            <form method="get" asp-action="Index" class="identity-filter-grid" role="search" aria-label="Tìm kiếm nhân sự">
                 <label class="product-search-field">
                     <i data-lucide="search" class="w-4 h-4"></i>
+                    <span class="sr-only">Tìm nhân sự</span>
                     <input type="text"
                            name="search"
                            value="@Model.Search"
@@ -126,22 +127,21 @@
         }
         else
         {
-            <div class="surface-table-scroll">
-                <div class="surface-table-head identity-staff-grid px-6 py-3.5">
+            <div class="surface-table-scroll identity-staff-table-scroll">
+                <div class="surface-table-head identity-staff-grid identity-staff-head px-6 py-3.5">
                     <span>Nhân sự</span>
                     <span>Liên hệ</span>
                     <span>Vai trò</span>
                     <span class="text-center">Trạng thái</span>
                     <span class="text-right">Thao tác</span>
                 </div>
-
-                <div>
+                <div class="identity-staff-list">
                     @{
                         var animIndex = 0;
                     }
                     @foreach (var staff in staffRows)
                     {
-                        <article class="surface-row identity-staff-grid px-6 py-3.5 product-anim"
+                        <article class="surface-row identity-staff-grid identity-staff-card px-6 py-3.5 product-anim"
                                  style="animation-delay:@(0.14 + animIndex++ * 0.025)s">
                             <div class="identity-person-cell">
                                 <span class="identity-avatar @(staff.IsActive ? string.Empty : "is-muted")">
@@ -160,12 +160,14 @@
                                 </div>
                             </div>
 
-                            <div class="min-w-0">
+                            <div class="identity-contact-cell min-w-0">
+                                <span class="identity-cell-label">Liên hệ</span>
                                 <p class="identity-cell-title truncate">@staff.Email</p>
                                 <p class="identity-cell-subtitle truncate">@(string.IsNullOrWhiteSpace(staff.PhoneNumber) ? "Chưa có SĐT" : staff.PhoneNumber)</p>
                             </div>
 
-                            <div class="flex flex-wrap gap-1.5">
+                            <div class="identity-roles-cell flex flex-wrap gap-1.5">
+                                <span class="identity-cell-label">Vai trò</span>
                                 @if (staff.Roles.Any())
                                 {
                                     @foreach (var role in staff.Roles)
@@ -182,7 +184,8 @@
                                 }
                             </div>
 
-                            <div class="text-center">
+                            <div class="identity-status-cell text-center">
+                                <span class="identity-cell-label">Trạng thái</span>
                                 <span class="product-status-btn @(staff.IsActive ? "is-active" : "is-inactive")">
                                     <span class="dot"></span>
                                     <span>@(staff.IsActive ? "Hoạt động" : "Tạm khóa")</span>
@@ -210,4 +213,4 @@
             </div>
         }
     </section>
-</main>
+</section>

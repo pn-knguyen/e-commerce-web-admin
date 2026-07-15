@@ -13,6 +13,7 @@
 .fulfillment-page {
     display: grid;
     gap: 1rem;
+    min-width: 0;
     color: #172033;
 }
 
@@ -104,6 +105,7 @@
 .fulfillment-metrics,
 .fulfillment-console,
 .fulfillment-card {
+    min-width: 0;
     border: 1px solid #dbe8ea;
     background: #ffffff;
     box-shadow: 0 18px 46px rgba(15, 23, 42, 0.08);
@@ -223,6 +225,15 @@
     margin: auto;
 }
 
+.fulfillment-primary-action svg,
+.fulfillment-filter-submit svg,
+.fulfillment-filter-clear svg,
+.fulfillment-action-btn svg,
+.fulfillment-submit-btn svg,
+.fulfillment-cancel-btn svg {
+    margin: 0;
+}
+
 .fulfillment-metric-icon {
     width: 3rem;
     height: 3rem;
@@ -332,8 +343,8 @@
 
 .fulfillment-index-grid {
     display: grid;
-    grid-template-columns: minmax(20rem, 1.65fr) minmax(12rem, 0.85fr) minmax(5.5rem, 0.35fr) minmax(5rem, 0.32fr) minmax(9rem, 0.55fr) minmax(15.5rem, 0.78fr);
-    gap: 0.85rem;
+    grid-template-columns: minmax(17rem, 1.55fr) minmax(10.5rem, 0.82fr) minmax(5rem, 0.36fr) minmax(4.5rem, 0.32fr) minmax(8rem, 0.55fr) minmax(13.5rem, 0.8fr);
+    gap: 0.65rem;
     align-items: center;
     min-width: 0;
     width: 100%;
@@ -344,7 +355,7 @@
 }
 
 .fulfillment-table-head {
-    padding: 0.95rem 1.25rem;
+    padding: 0.95rem 1rem;
     background: #f8fafc;
     color: #64748b;
     font-size: 0.74rem;
@@ -354,7 +365,7 @@
 
 .fulfillment-row {
     align-items: start;
-    padding: 1rem 1.25rem;
+    padding: 1rem;
     border-top: 1px solid #eef4f5;
 }
 
@@ -395,6 +406,7 @@
     font-size: 0.92rem;
     font-weight: 850;
     line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 .fulfillment-contact {
@@ -527,6 +539,33 @@
     cursor: pointer;
 }
 
+.fulfillment-primary-action:active,
+.fulfillment-filter-submit:active,
+.fulfillment-submit-btn:active,
+.fulfillment-action-btn:active,
+.fulfillment-status-btn:active,
+.fulfillment-cancel-btn:active,
+.fulfillment-page-btn:active {
+    transform: translateY(1px) scale(0.99);
+}
+
+.fulfillment-primary-action:focus-visible,
+.fulfillment-filter-submit:focus-visible,
+.fulfillment-filter-clear:focus-visible,
+.fulfillment-submit-btn:focus-visible,
+.fulfillment-action-btn:focus-visible,
+.fulfillment-status-btn:focus-visible,
+.fulfillment-cancel-btn:focus-visible,
+.fulfillment-page-btn:focus-visible,
+.fulfillment-search-field:focus-within,
+.fulfillment-select-field:focus-within,
+.fulfillment-field input:focus,
+.fulfillment-field textarea:focus,
+.fulfillment-field select:focus {
+    outline: 3px solid rgba(15, 118, 110, 0.18);
+    outline-offset: 2px;
+}
+
 .fulfillment-action-btn.is-edit {
     background: #eff6ff;
     color: #2563eb;
@@ -585,6 +624,7 @@
 .fulfillment-form-unified {
     width: 100%;
     max-width: none;
+    min-width: 0;
 }
 
 .fulfillment-card-head {
@@ -647,6 +687,7 @@
     display: grid;
     grid-template-columns: minmax(12rem, 0.26fr) minmax(0, 1fr);
     gap: 1rem;
+    min-width: 0;
     padding: 1rem 1.25rem;
     border-top: 1px solid #eef4f5;
 }
@@ -659,6 +700,14 @@
     display: flex;
     align-items: flex-start;
     gap: 0.6rem;
+    min-width: 0;
+}
+
+.fulfillment-section-title > div,
+.fulfillment-fields,
+.fulfillment-field,
+.fulfillment-field-row,
+.fulfillment-ghn-address {
     min-width: 0;
 }
 
@@ -720,6 +769,7 @@
 .fulfillment-field textarea,
 .fulfillment-field select {
     width: 100%;
+    min-width: 0;
     border: 1px solid #d6e3e6;
     border-radius: 1rem;
     background: #ffffff;
@@ -879,30 +929,140 @@
     }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1320px) {
+    .fulfillment-table-scroll {
+        overflow: visible;
+    }
+
     .fulfillment-table-head {
         display: none;
     }
 
-    .fulfillment-row {
-        grid-template-columns: 1fr;
+    .fulfillment-table-body {
+        display: grid;
         gap: 0.9rem;
-        padding: 1.15rem 1.25rem;
+        border-top: 1px solid #dbe8ea;
+        background: #f8fbfb;
+        padding: 0.9rem;
+    }
+
+    .fulfillment-row {
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+        grid-template-areas:
+            "identity identity"
+            "contact coord"
+            "shipment status"
+            "actions actions";
+        gap: 0;
+        overflow: hidden;
+        border: 1px solid #dbe8ea;
+        border-radius: 1.05rem;
+        background: #ffffff;
+        padding: 0;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .fulfillment-row:hover {
+        background: #ffffff;
+    }
+
+    .fulfillment-row > * {
+        min-width: 0;
+        padding: 0.82rem 0.95rem;
+    }
+
+    .fulfillment-row > *::before {
+        display: block;
+        margin-bottom: 0.36rem;
+        color: #94a3b8;
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.055em;
+        line-height: 1.1;
+        text-transform: uppercase;
+    }
+
+    .fulfillment-identity {
+        grid-area: identity;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        border-bottom: 1px solid #eef4f5;
+    }
+
+    .fulfillment-identity::before {
+        content: "Điểm lấy hàng";
+        grid-column: 1 / -1;
     }
 
     .fulfillment-contact {
-        padding-left: 3.6rem;
+        grid-area: contact;
+        border-right: 1px solid #eef4f5;
+    }
+
+    .fulfillment-contact::before {
+        content: "Liên hệ";
     }
 
     .fulfillment-center-cell {
-        justify-content: flex-start;
-        padding-top: 0;
-        padding-left: 3.6rem;
+        display: grid;
+        justify-items: start;
+        align-content: start;
+        justify-content: stretch;
+        gap: 0.35rem;
+        border-bottom: 1px solid #eef4f5;
+        padding-top: 0.82rem;
+    }
+
+    .fulfillment-row > .fulfillment-center-cell:nth-child(3) {
+        grid-area: coord;
+    }
+
+    .fulfillment-row > .fulfillment-center-cell:nth-child(3)::before {
+        content: "Tọa độ";
+    }
+
+    .fulfillment-row > .fulfillment-center-cell:nth-child(4) {
+        grid-area: shipment;
+        border-right: 1px solid #eef4f5;
+    }
+
+    .fulfillment-row > .fulfillment-center-cell:nth-child(4)::before {
+        content: "Vận đơn";
+    }
+
+    .fulfillment-row > .fulfillment-center-cell:nth-child(5) {
+        grid-area: status;
+    }
+
+    .fulfillment-row > .fulfillment-center-cell:nth-child(5)::before {
+        content: "Trạng thái";
     }
 
     .fulfillment-actions {
-        justify-content: flex-start;
-        padding-left: 3.6rem;
+        grid-area: actions;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+        align-items: stretch;
+        justify-content: stretch;
+        gap: 0.5rem;
+        background: #fbfefd;
+        padding-top: 0.82rem;
+    }
+
+    .fulfillment-actions::before {
+        content: "Thao tác";
+        grid-column: 1 / -1;
+    }
+
+    .fulfillment-actions form,
+    .fulfillment-action-btn,
+    .fulfillment-status-btn {
+        width: 100%;
+    }
+
+    .fulfillment-action-btn,
+    .fulfillment-status-btn {
+        min-height: 2.55rem;
     }
 }
 
@@ -942,5 +1102,97 @@
     .fulfillment-metric + .fulfillment-metric {
         border-top: 1px solid #dbe8ea;
         border-left: 0;
+    }
+
+    .fulfillment-flash,
+    .fulfillment-metrics,
+    .fulfillment-console,
+    .fulfillment-card {
+        border-radius: 1rem;
+    }
+
+    .fulfillment-filter-grid,
+    .fulfillment-table-body,
+    .fulfillment-form-section,
+    .fulfillment-card-head,
+    .fulfillment-form-footer {
+        padding-inline: 0.9rem;
+    }
+
+    .fulfillment-row {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "identity"
+            "contact"
+            "coord"
+            "shipment"
+            "status"
+            "actions";
+        border-radius: 0.95rem;
+    }
+
+    .fulfillment-contact,
+    .fulfillment-row > .fulfillment-center-cell:nth-child(4) {
+        border-right: 0;
+    }
+
+    .fulfillment-contact,
+    .fulfillment-row > .fulfillment-center-cell {
+        border-bottom: 1px solid #eef4f5;
+    }
+
+    .fulfillment-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .fulfillment-location-title {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .fulfillment-form-alert {
+        margin-inline: 0.9rem;
+    }
+
+    .fulfillment-card-head {
+        gap: 0.75rem;
+    }
+
+    .fulfillment-section-title {
+        gap: 0.7rem;
+    }
+
+    .fulfillment-section-title p,
+    .fulfillment-card-head p,
+    .fulfillment-title-row p {
+        text-wrap: pretty;
+    }
+}
+
+@media (max-width: 420px) {
+    .fulfillment-table-body {
+        padding: 0.65rem;
+    }
+
+    .fulfillment-row > * {
+        padding: 0.78rem 0.85rem;
+    }
+
+    .fulfillment-identity {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .fulfillment-avatar {
+        width: 2.45rem;
+        height: 2.45rem;
+    }
+
+    .fulfillment-identity .fulfillment-avatar {
+        margin-bottom: 0.35rem;
+    }
+
+    .fulfillment-pagination nav {
+        flex-wrap: wrap;
     }
 }

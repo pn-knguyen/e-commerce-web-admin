@@ -9,6 +9,7 @@
 }
 
 @* ── Breadcrumb + Header ── *@
+<main class="surface-page category-form-page">
 <div class="surface-form-hero cat-anim surface-anim" style="animation-delay:0.05s">
     <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
         <a asp-action="Index" class="hover:text-brand-600 transition-colors">Danh mục</a>
@@ -24,6 +25,7 @@
     @Html.AntiForgeryToken()
     <partial name="_Form" model="Model" />
 </form>
+</main>
 
 @section Scripts {
     <script src="~/js/categories.js" asp-append-version="true"></script>

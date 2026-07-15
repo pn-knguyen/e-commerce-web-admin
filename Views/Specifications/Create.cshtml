@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="~/css/specifications.css" asp-append-version="true" />
 }
 
-<div class="surface-form-hero spec-anim surface-anim" style="animation-delay:0.04s">
+<main class="surface-page specification-form-page">
+<div class="surface-form-hero spec-form-hero spec-anim surface-anim" style="animation-delay:0.04s">
     <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
         <a asp-action="Index" class="hover:text-teal-600 transition-colors">Thông số kỹ thuật</a>
         <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
@@ -21,6 +22,7 @@
     @Html.AntiForgeryToken()
     <partial name="_Form" model="Model" />
 </form>
+</main>
 
 @section Scripts {
     <script src="~/js/specifications.js" asp-append-version="true"></script>

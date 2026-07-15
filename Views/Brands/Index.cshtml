@@ -10,11 +10,11 @@
 }
 
 @* ── Header ── *@
-<main class="surface-page">
+<main class="surface-page brand-page" aria-labelledby="brandPageTitle">
     <div class="surface-hero brand-anim surface-anim" style="animation-delay:0.04s">
         <div>
             <div class="flex items-center gap-2 mb-1">
-                <h1 class="text-2xl font-bold text-slate-800">Thương hiệu</h1>
+                <h1 id="brandPageTitle" class="text-2xl font-bold text-slate-800">Thương hiệu</h1>
             </div>
             <p class="text-slate-500 text-sm">Quản lý danh sách thương hiệu sản phẩm</p>
         </div>
@@ -98,39 +98,39 @@
         </div>
     </div>
 
-    @* ── Filter bar ── *@
-    <div class="surface-console surface-toolbar-panel brand-anim surface-anim" style="animation-delay:0.12s">
-        <form method="get" asp-action="Index" class="flex flex-col sm:flex-row gap-3">
-            <div class="relative flex-1">
-                <i data-lucide="search"
-                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
-                <input type="text" name="search" value="@Model.Search" placeholder="Tìm theo tên hoặc slug..." class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
-                focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition" />
-            </div>
-            <select name="status" class="border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 bg-white
-                focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
-                <option value="" selected="@(string.IsNullOrEmpty(Model.Status))">Tất cả</option>
-                <option value="active" selected="@(Model.Status == "active")">Đang hoạt động</option>
-                <option value="inactive" selected="@(Model.Status == "inactive")">Đã tắt</option>
-            </select>
-            <button type="submit" class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700
-                text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                <i data-lucide="search" class="w-4 h-4"></i>
-                Tìm kiếm
-            </button>
-            @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.Status))
-            {
-                <a asp-action="Index"
-                class="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
-                    <i data-lucide="x-circle" class="w-4 h-4"></i>
-                    Xoá lọc
-                </a>
-            }
-        </form>
-    </div>
-
     @* ── Brand table ── *@
-    <div class="surface-console surface-table-card brand-anim surface-anim" style="animation-delay:0.16s">
+    <div class="surface-console surface-table-card brand-index-card brand-anim surface-anim" style="animation-delay:0.12s">
+        <div class="brand-toolbar">
+            <form method="get" asp-action="Index" class="brand-filter-grid" role="search" aria-label="Tìm kiếm thương hiệu">
+                <label class="brand-search-field">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <span class="sr-only">Tìm thương hiệu</span>
+                    <input type="text" name="search" value="@Model.Search" placeholder="Tìm theo tên hoặc slug..." />
+                </label>
+
+                <label class="brand-select-field">
+                    <span>Trạng thái</span>
+                    <select name="status">
+                        <option value="" selected="@(string.IsNullOrEmpty(Model.Status))">Tất cả</option>
+                        <option value="active" selected="@(Model.Status == "active")">Đang hoạt động</option>
+                        <option value="inactive" selected="@(Model.Status == "inactive")">Đã tắt</option>
+                    </select>
+                </label>
+
+                <button type="submit" class="brand-filter-submit">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Lọc</span>
+                </button>
+
+                @if (hasFilters)
+                {
+                    <a asp-action="Index" class="brand-filter-clear">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Xoá lọc</span>
+                    </a>
+                }
+            </form>
+        </div>
 
         @if (!Model.Brands.Any())
         {
@@ -154,28 +154,28 @@
         else
         {
             @* Table header *@
-            <div class="surface-table-head px-6 py-3.5
-                grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center">
+            <div class="surface-table-scroll brand-table-scroll">
+            <div class="surface-table-head brand-table-head brand-grid px-6 py-3.5">
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Thương hiệu</span>
-                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center w-28">Sản phẩm</span>
-                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center w-28">Trạng
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Sản phẩm</span>
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Trạng
                     thái</span>
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center w-28">Ngày tạo</span>
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-36">Thao tác</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Ngày tạo</span>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Thao tác</span>
                 </div>
 
                 @* Rows *@
-                <div class="divide-y divide-slate-50">
+                <div class="brand-list divide-y divide-slate-50">
                     @{
                         int animIdx = 0;
                     }
                     @foreach (var brand in Model.Brands)
                     {
-                        <div class="surface-row brand-row grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-6 py-3.5 brand-anim"
+                        <article class="surface-row brand-row brand-grid px-6 py-3.5 brand-anim"
                              style="animation-delay:@(0.16 + animIdx++ * 0.03)s" data-id="@brand.Id">
 
                             @* Name + slug + logo *@
-                            <div class="flex items-center gap-3 min-w-0">
+                            <div class="brand-info-cell flex items-center gap-3 min-w-0">
                                 <div class="brand-logo w-11 h-11 rounded-xl flex-shrink-0 border border-slate-100">
                                     @if (!string.IsNullOrWhiteSpace(brand.ImagePath))
                                     {
@@ -195,7 +195,8 @@
                             </div>
 
                             @* Product count *@
-                            <div class="w-28 text-center">
+                            <div class="brand-product-cell text-center">
+                                <span class="brand-cell-label">Sản phẩm</span>
                                 <span
                                     class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
                                     @(brand.ProductCount > 0 ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-400")">
@@ -205,7 +206,8 @@
                             </div>
 
                             @* Status toggle *@
-                            <div class="w-28 text-center">
+                            <div class="brand-status-cell text-center">
+                                <span class="brand-cell-label">Trạng thái</span>
                                 <button type="button" data-brand-toggle data-brand-id="@brand.Id" class="badge-active inline-flex items-center gap-1.5 text-xs font-semibold
                                     px-3 py-1.5 rounded-full cursor-pointer transition-all duration-200
                                     @(brand.IsActive
@@ -219,14 +221,15 @@
                             </div>
 
                             @* Created date *@
-                            <div class="w-28 text-center">
+                            <div class="brand-date-cell text-center">
+                                <span class="brand-cell-label">Ngày tạo</span>
                                 <span class="text-xs text-slate-400">
                                     @brand.CreatedAt.ToString("dd/MM/yyyy")
                                 </span>
                             </div>
 
                             @* Actions *@
-                            <div class="w-36 index-actions">
+                            <div class="brand-actions-cell index-actions">
                                 <a asp-action="Edit" asp-route-id="@brand.Id" title="Chỉnh sửa"
                                 class="index-action-btn index-action-edit">
                                     <i data-lucide="pencil" class="w-4 h-4 shrink-0"></i>
@@ -242,8 +245,9 @@
                                     </button>
                                 </form>
                             </div>
-                        </div>
+                        </article>
                     }
+                </div>
                 </div>
 
                 @* Pagination *@

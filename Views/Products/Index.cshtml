@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
 }
 
-<main class="surface-page">
+<main class="surface-page product-page">
 <div class="surface-hero product-anim surface-anim"
      style="animation-delay:0.04s">
     <div>
@@ -61,7 +61,7 @@
     </div>
 }
 
-<div class="surface-metrics product-anim surface-anim" style="animation-delay:0.08s">
+<div class="surface-metrics product-metrics product-anim surface-anim" style="animation-delay:0.08s">
     <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
         <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0">
             <i data-lucide="package" class="w-5 h-5 text-teal-500"></i>
@@ -192,9 +192,9 @@
     }
     else
     {
-        <div class="product-table-scroll">
+        <div class="surface-table-scroll product-table-scroll">
                 <div
-                    class="surface-table-head product-index-grid px-6 py-3.5">
+                    class="surface-table-head product-table-head product-index-grid px-6 py-3.5">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sản phẩm</span>
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Phân loại</span>
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Biến thể</span>
@@ -205,15 +205,15 @@
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Thao tác</span>
                 </div>
 
-                <div class="divide-y divide-slate-50">
+                <div class="product-list divide-y divide-slate-50">
                     @{
                         int animIdx = 0;
                     }
                     @foreach (var product in Model.Products)
                     {
-                        <div class="surface-row product-row product-index-grid px-6 py-3.5 product-anim"
+                        <article class="surface-row product-row product-index-grid px-6 py-3.5 product-anim"
                              style="animation-delay:@(0.16 + animIdx++ * 0.025)s" data-id="@product.Id">
-                            <div class="flex items-center gap-3 min-w-0">
+                            <div class="product-main-cell flex items-center gap-3 min-w-0">
                                 <div class="product-icon w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0">
                                     <i data-lucide="package" class="w-4 h-4 text-teal-600"></i>
                                 </div>
@@ -234,12 +234,14 @@
                                 </div>
                             </div>
 
-                            <div class="min-w-0">
+                            <div class="product-classification-cell min-w-0">
+                                <span class="product-card-label">Phân loại</span>
                                 <p class="text-xs font-semibold text-slate-700 truncate">@product.BrandName</p>
                                 <p class="text-[11px] text-slate-400 truncate">@product.CategoryName</p>
                             </div>
 
-                            <div class="text-center">
+                            <div class="product-stat-cell product-variants-cell text-center">
+                                <span class="product-card-label">Biến thể</span>
                                 <span
                                     class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
                                     @(product.VariantCount > 0 ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-400")">
@@ -248,7 +250,8 @@
                                 </span>
                             </div>
 
-                            <div class="text-center">
+                            <div class="product-stat-cell product-views-cell text-center">
+                                <span class="product-card-label">Lượt xem</span>
                                 <span
                                     class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
                                     @(product.ViewsCount > 0 ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-400")">
@@ -257,7 +260,8 @@
                                 </span>
                             </div>
 
-                            <div class="text-center">
+                            <div class="product-stat-cell product-sold-cell text-center">
+                                <span class="product-card-label">Đã bán</span>
                                 <span
                                     class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
                                     @(product.TotalSoldCount > 0 ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-400")">
@@ -266,7 +270,8 @@
                                 </span>
                             </div>
 
-                            <div class="text-center">
+                            <div class="product-stat-cell product-rating-cell text-center">
+                                <span class="product-card-label">Đánh giá</span>
                                 <span
                                     class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
                                     @(product.RatingCount > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400")">
@@ -275,7 +280,8 @@
                                 </span>
                             </div>
 
-                            <div class="flex items-center justify-center gap-1.5">
+                            <div class="product-status-cell flex items-center justify-center gap-1.5">
+                                <span class="product-card-label">Trạng thái</span>
                                 <button type="button" data-product-toggle data-product-id="@product.Id"
                                         class="product-status-btn @(product.IsActive ? "is-active" : "is-inactive")"
                                         data-active="@product.IsActive.ToString().ToLower()">
@@ -288,7 +294,8 @@
                                 </button>
                             </div>
 
-                            <div class="w-36 index-actions">
+                            <div class="product-actions-cell index-actions">
+                                <span class="product-card-label">Thao tác</span>
                                 <a asp-action="Edit" asp-route-id="@product.Id" title="Chỉnh sửa"
                                    class="product-action-btn product-action-edit index-action-btn index-action-edit">
                                     <i data-lucide="pencil" class="w-4 h-4 shrink-0"></i>
@@ -303,7 +310,7 @@
                                     </button>
                                 </form>
                             </div>
-                        </div>
+                        </article>
                     }
                 </div>
             </div>

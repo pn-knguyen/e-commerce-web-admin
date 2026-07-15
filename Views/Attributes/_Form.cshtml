@@ -4,94 +4,91 @@
     bool isEdit = Model.Id.HasValue;
 }
 
-<div class="surface-form-grid grid grid-cols-1 lg:grid-cols-3 gap-6">
+<section class="surface-form-card attr-form-shell bg-white rounded-2xl border border-slate-200">
+    <header class="attr-form-head">
+        <span class="attr-form-head-icon" aria-hidden="true">
+            <i data-lucide="list-filter" class="w-5 h-5"></i>
+        </span>
+        <div>
+            <p class="attr-form-eyebrow">Biến thể sản phẩm</p>
+            <h2>Thông tin thuộc tính</h2>
+            <p>Thiết lập mã định danh và tên hiển thị dùng chung cho các lựa chọn biến thể sản phẩm.</p>
+        </div>
+    </header>
 
-    @* ── Left: main fields ── *@
-    <div class="surface-form-main lg:col-span-2 space-y-5">
-        <div class="surface-form-card bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Thông tin thuộc tính</h3>
-
-            <div data-surface-form-alert
-                 class="surface-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
-                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                <div>
-                    <p>Vui lòng kiểm tra lại thông tin.</p>
-                    <div asp-validation-summary="ModelOnly"></div>
-                </div>
-            </div>
-
-            <div class="space-y-4">
-                @* Code *@
-                <div>
-                    <label asp-for="Code" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Mã thuộc tính <span class="text-red-500">*</span>
-                        <span class="font-normal text-slate-400 ml-1">(snake_case, duy nhất)</span>
-                    </label>
-                    @if (isEdit)
-                    {
-                        <input asp-for="Code" readonly class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm
-                        text-slate-500 font-mono bg-slate-50 cursor-not-allowed
-                        focus:outline-none transition" />
-                        <p class="text-[11px] text-slate-400 mt-1">Mã thuộc tính không thể thay đổi sau khi tạo.</p>
-                    }
-                    else
-                    {
-                        <input asp-for="Code" placeholder="ví dụ: storage, screen_size" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm
-                        text-slate-800 font-mono
-                        focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                        <p class="text-[11px] text-slate-400 mt-1">Chỉ gồm chữ thường a-z, số và dấu _. Không thể thay đổi
-                            sau khi tạo.</p>
-                        }
-                        <span asp-validation-for="Code" class="text-xs text-red-500 mt-1 block"></span>
-                    </div>
-
-                    @* Name *@
-                    <div>
-                        <label asp-for="Name" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                            Tên thuộc tính <span class="text-red-500">*</span>
-                        </label>
-                        <input asp-for="Name" placeholder="ví dụ: Dung lượng, Kích cỡ, Chất liệu" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
-                        focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                        <span asp-validation-for="Name" class="text-xs text-red-500 mt-1 block"></span>
-                    </div>
-                </div>
+    <div class="attr-form-body">
+        <div data-surface-form-alert
+             class="surface-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            <div>
+                <p>Vui lòng kiểm tra lại thông tin.</p>
+                <div asp-validation-summary="ModelOnly"></div>
             </div>
         </div>
 
-        @* ── Right: actions + info ── *@
-        <div class="space-y-5">
-
-            @* Action buttons *@
-            <div class="surface-form-card surface-submit-card bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-                <button type="submit" class="w-full flex items-center justify-center gap-2
-                    bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700
-                    text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md">
-                    <i data-lucide="save" class="w-4 h-4"></i>
-                    @(isEdit ? "Lưu thay đổi" : "Tạo thuộc tính")
-                </button>
-                <a asp-action="Index" class="surface-cancel-link w-full flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50
-                    text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
-                    Huỷ bỏ
-                </a>
+        <div class="attr-form-fields">
+            <div class="attr-form-field">
+                <label asp-for="Code" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                    Mã thuộc tính <span class="text-red-500">*</span>
+                    <span class="font-normal text-slate-400 ml-1">(snake_case, duy nhất)</span>
+                </label>
+                @if (isEdit)
+                {
+                    <input asp-for="Code" readonly
+                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm
+                                  text-slate-500 font-mono bg-slate-50 cursor-not-allowed
+                                  focus:outline-none transition" />
+                    <p class="attr-form-help">Mã thuộc tính không thể thay đổi sau khi tạo.</p>
+                }
+                else
+                {
+                    <input asp-for="Code"
+                           placeholder="ví dụ: storage, screen_size"
+                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm
+                                  text-slate-800 font-mono
+                                  focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                    <p class="attr-form-help">Chỉ gồm chữ thường a-z, số và dấu _. Không thể thay đổi sau khi tạo.</p>
+                }
+                <span asp-validation-for="Code" class="text-xs text-red-500 mt-1 block"></span>
             </div>
 
-            @* Info card *@
-            <div class="surface-form-card bg-teal-50 border border-teal-100 rounded-2xl p-4">
-                <div class="flex items-start gap-2">
-                    <i data-lucide="info" class="w-4 h-4 text-teal-500 flex-shrink-0 mt-0.5"></i>
-                    <p class="text-xs text-teal-700">
-                        @if (isEdit)
-                        {
-                            <text>Bạn có thể quản lý các <strong>giá trị (options)</strong> của thuộc tính ở khối bên
-                                dưới.</text>
-                            }
-                    else
-                            {
-                                <text>Bạn cần nhập ít nhất một <strong>giá trị (option)</strong> để thuộc tính có thể dùng cho biến
-                                    thể.</text>
-                                }
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            <div class="attr-form-field">
+                <label asp-for="Name" class="block text-xs font-semibold text-slate-600 mb-1.5">
+                    Tên thuộc tính <span class="text-red-500">*</span>
+                </label>
+                <input asp-for="Name"
+                       placeholder="ví dụ: Dung lượng, Kích cỡ, Chất liệu"
+                       class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800
+                              focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
+                <span asp-validation-for="Name" class="text-xs text-red-500 mt-1 block"></span>
             </div>
+        </div>
+    </div>
+
+    <aside class="attr-form-note">
+        <span aria-hidden="true">
+            <i data-lucide="info" class="w-4 h-4"></i>
+        </span>
+        <p>
+            @if (isEdit)
+            {
+                <text>Bạn có thể quản lý các <strong>giá trị (options)</strong> của thuộc tính ở khối bên dưới.</text>
+            }
+            else
+            {
+                <text>Bạn cần nhập ít nhất một <strong>giá trị (option)</strong> để thuộc tính có thể dùng cho biến thể.</text>
+            }
+        </p>
+    </aside>
+
+    <footer class="attr-form-actions">
+        <a asp-action="Index" class="surface-cancel-link attr-form-cancel">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Hủy bỏ
+        </a>
+        <button type="submit" class="attr-form-submit">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            @(isEdit ? "Lưu thay đổi" : "Tạo thuộc tính")
+        </button>
+    </footer>
+</section>

@@ -14,6 +14,7 @@
 .promotion-crud-page {
     display: grid;
     gap: 1rem;
+    min-width: 0;
     color: #172033;
 }
 
@@ -32,9 +33,15 @@
 .promotion-title-row,
 .promotion-form-hero {
     display: flex;
+    min-width: 0;
     align-items: center;
     justify-content: space-between;
     gap: 1.5rem;
+}
+
+.promotion-title-row > *,
+.promotion-form-hero > * {
+    min-width: 0;
 }
 
 .promotion-title-row h1,
@@ -112,6 +119,7 @@
 .promotion-metrics,
 .promotion-console,
 .promotion-form-card {
+    min-width: 0;
     border: 1px solid #dbe8ea;
     background: #ffffff;
     box-shadow: 0 18px 46px rgba(15, 23, 42, 0.08);
@@ -1405,6 +1413,169 @@ select.promotion-multiselect {
     text-align: right;
 }
 
+@media (max-width: 1320px) {
+    .promotion-table-scroll {
+        overflow: visible;
+    }
+
+    .promotion-table-head {
+        display: none;
+    }
+
+    .promotion-table-body {
+        display: grid;
+        gap: 0.9rem;
+        padding: 0.9rem;
+        border-top: 1px solid #e2ecee;
+        background: #f8fbfb;
+    }
+
+    .promotion-index-grid {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .promotion-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        grid-template-areas:
+            "identity identity"
+            "rule condition"
+            "usage status"
+            "actions actions" !important;
+        gap: 0;
+        align-items: stretch;
+        overflow: hidden;
+        border: 1px solid #dbe8ea;
+        border-radius: 1.05rem;
+        background: #ffffff;
+        padding: 0;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .promotion-row:hover {
+        background: #ffffff;
+        transform: none;
+    }
+
+    .promotion-row::before {
+        display: none;
+    }
+
+    .promotion-row:last-child {
+        border-bottom: 1px solid #dbe8ea;
+    }
+
+    .promotion-row > * {
+        min-width: 0;
+        padding: 0.82rem 0.95rem;
+    }
+
+    .promotion-row > *::before {
+        display: block;
+        margin-bottom: 0.36rem;
+        color: #94a3b8;
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.055em;
+        line-height: 1.1;
+        text-transform: uppercase;
+    }
+
+    .promotion-row > :nth-child(1) {
+        grid-area: identity;
+        border-bottom: 1px solid #eef4f5;
+    }
+
+    .promotion-row > :nth-child(1)::before {
+        content: "Khuyến mãi";
+    }
+
+    .promotion-row > :nth-child(2) {
+        grid-area: rule;
+        border-right: 1px solid #eef4f5;
+        border-bottom: 1px solid #eef4f5;
+    }
+
+    .promotion-row > :nth-child(2)::before {
+        content: "Quy tắc";
+    }
+
+    .promotion-row > :nth-child(3) {
+        grid-area: condition;
+        border-bottom: 1px solid #eef4f5;
+    }
+
+    .promotion-row > :nth-child(3)::before {
+        content: "Điều kiện";
+    }
+
+    .promotion-row > :nth-child(4) {
+        grid-area: usage;
+        border-right: 1px solid #eef4f5;
+        border-bottom: 1px solid #eef4f5;
+    }
+
+    .promotion-row > :nth-child(4)::before {
+        content: "Lượt dùng";
+    }
+
+    .promotion-row > :nth-child(5) {
+        grid-area: status;
+        justify-content: stretch;
+        border-bottom: 1px solid #eef4f5;
+    }
+
+    .promotion-row > :nth-child(5)::before {
+        content: "Trạng thái";
+    }
+
+    .promotion-status-cell {
+        display: grid;
+        align-content: start;
+        justify-items: stretch;
+    }
+
+    .promotion-status-btn {
+        width: 100%;
+    }
+
+    .promotion-row > :nth-child(6) {
+        display: grid;
+        grid-area: actions;
+        grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+        gap: 0.5rem;
+        width: 100%;
+        background: #fbfefd;
+    }
+
+    .promotion-row > :nth-child(6)::before {
+        grid-column: 1 / -1;
+        content: "Thao tác";
+    }
+
+    .promotion-actions form,
+    .promotion-action-btn {
+        width: 100%;
+    }
+
+    .promotion-action-btn {
+        min-height: 2.55rem;
+    }
+
+    .promotion-row .promotion-identity h2,
+    .promotion-row .promotion-identity p,
+    .promotion-row .promotion-identity small,
+    .promotion-row .promotion-rule-cell p,
+    .promotion-row .promotion-rule-cell small,
+    .promotion-row .promotion-condition-cell p,
+    .promotion-row .promotion-condition-cell small {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+}
+
 @media (max-width: 1180px) {
     .promotion-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1418,13 +1589,13 @@ select.promotion-multiselect {
         border-top: 1px solid #e2ecee;
     }
 
-    .promotion-table-scroll {
-        overflow-x: auto;
+    .promotion-form-section {
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
     }
 
-    .promotion-index-grid {
-        grid-template-columns: minmax(250px, 1.15fr) minmax(180px, 0.82fr) minmax(210px, 0.9fr) minmax(130px, 0.55fr) 124px 136px;
-        min-width: 1040px;
+    .promotion-field-row-three {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -1437,11 +1608,6 @@ select.promotion-multiselect {
 
     .promotion-form-grid {
         grid-template-columns: 1fr;
-    }
-
-    .promotion-form-section {
-        grid-template-columns: 1fr;
-        gap: 0.9rem;
     }
 
     .promotion-section-title {
@@ -1458,6 +1624,35 @@ select.promotion-multiselect {
 }
 
 @media (max-width: 640px) {
+    .promotion-table-body {
+        padding: 0.65rem;
+    }
+
+    .promotion-row {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-areas:
+            "identity"
+            "rule"
+            "condition"
+            "usage"
+            "status"
+            "actions" !important;
+        border-radius: 0.95rem;
+    }
+
+    .promotion-row > * {
+        padding: 0.78rem 0.85rem;
+    }
+
+    .promotion-row > :nth-child(2),
+    .promotion-row > :nth-child(4) {
+        border-right: 0;
+    }
+
+    .promotion-row > :nth-child(6) {
+        grid-template-columns: 1fr;
+    }
+
     .promotion-primary-action {
         width: 100%;
         justify-content: space-between;
@@ -1494,6 +1689,14 @@ select.promotion-multiselect {
 
     .promotion-search-field {
         grid-column: auto;
+    }
+
+    .promotion-target-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .promotion-target-count {
+        width: 100%;
     }
 
     .promotion-pagination {

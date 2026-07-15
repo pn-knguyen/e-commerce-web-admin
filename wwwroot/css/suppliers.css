@@ -1301,3 +1301,465 @@
     cursor: wait;
     opacity: 0.65;
 }
+
+.supplier-page,
+.supplier-crud-page,
+.supplier-hero,
+.supplier-title-row,
+.supplier-form-hero,
+.supplier-console,
+.supplier-toolbar,
+.supplier-filter-grid,
+.supplier-table-scroll,
+.supplier-table-body,
+.supplier-row,
+.supplier-row > *,
+.supplier-form-card,
+.supplier-form-body,
+.supplier-form-section,
+.supplier-form-fields,
+.supplier-field-row,
+.supplier-field,
+.supplier-status-grid,
+.supplier-submit-panel {
+    min-width: 0;
+}
+
+.supplier-card-label {
+    display: none;
+}
+
+.supplier-form-unified {
+    display: grid;
+    gap: 0;
+}
+
+.supplier-form-body {
+    display: grid;
+    gap: 1.15rem;
+    padding: 1.2rem;
+}
+
+.supplier-form-unified .supplier-form-alert {
+    margin: 0;
+}
+
+.supplier-form-section {
+    display: grid;
+    gap: 1rem;
+    border-bottom: 1px solid #e2ecee;
+    padding-bottom: 1.15rem;
+}
+
+.supplier-form-section:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.supplier-form-section-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+}
+
+.supplier-form-section-title > span {
+    display: inline-flex;
+    width: 2.15rem;
+    height: 2.15rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.9rem;
+    background: #f0fdfa;
+    color: #0f766e;
+}
+
+.supplier-form-section-title h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 850;
+    line-height: 1.25;
+}
+
+.supplier-form-section-title p {
+    margin: 0.22rem 0 0;
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.supplier-form-unified .supplier-form-fields {
+    padding: 0;
+}
+
+.supplier-status-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.85rem;
+}
+
+.supplier-status-grid .supplier-switch-row {
+    min-height: 3.4rem;
+    border: 1px solid #dbe8ea;
+    border-radius: 1rem;
+    background: #fbfefd;
+    padding: 0.85rem 0.95rem;
+}
+
+.supplier-form-unified > .supplier-submit-panel {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-top: 1px solid #e2ecee;
+    background: #fbfefd;
+    padding: 1rem 1.15rem;
+}
+
+.supplier-form-unified > .supplier-submit-panel .supplier-submit-btn,
+.supplier-form-unified > .supplier-submit-panel .supplier-cancel-btn {
+    width: auto;
+    min-width: 10.5rem;
+    padding-inline: 1rem;
+}
+
+@media (max-width: 1180px) {
+    .supplier-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .supplier-search-field {
+        grid-column: 1 / -1;
+    }
+
+    .supplier-filter-submit,
+    .supplier-filter-clear {
+        width: 100%;
+        min-height: 3rem;
+    }
+
+    .supplier-filter-clear {
+        border: 1px solid #dbe8ea;
+        background: #ffffff;
+    }
+
+    .supplier-table-scroll {
+        overflow: visible;
+    }
+
+    .supplier-table-head {
+        display: none;
+    }
+
+    .supplier-table-body {
+        gap: 0.9rem;
+        border-top: 1px solid #e2ecee;
+        background: #f8fbfb;
+        padding: 0.9rem;
+    }
+
+    .supplier-row.supplier-index-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-areas:
+            "identity contact contact"
+            "receipt status actions";
+        gap: 0;
+        align-items: stretch;
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid #e2ecee;
+        border-radius: 1.05rem;
+        background: #ffffff;
+        padding: 0;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.055);
+    }
+
+    .supplier-row::before,
+    .supplier-row:hover::before {
+        display: none;
+    }
+
+    .supplier-row:hover {
+        background: #ffffff;
+        transform: none;
+    }
+
+    .supplier-identity {
+        grid-area: identity;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+    }
+
+    .supplier-contact-stack {
+        grid-area: contact;
+        border-left: 1px solid #edf3f4;
+    }
+
+    .supplier-receipt-cell {
+        grid-area: receipt;
+    }
+
+    .supplier-status-cell {
+        grid-area: status;
+        border-left: 1px solid #edf3f4;
+    }
+
+    .supplier-actions {
+        grid-area: actions;
+        border-left: 1px solid #edf3f4;
+    }
+
+    .supplier-identity,
+    .supplier-contact-stack,
+    .supplier-receipt-cell,
+    .supplier-status-cell,
+    .supplier-actions {
+        width: auto;
+        padding: 0.85rem;
+    }
+
+    .supplier-identity,
+    .supplier-contact-stack {
+        border-bottom: 1px solid #edf3f4;
+    }
+
+    .supplier-contact-stack,
+    .supplier-receipt-cell,
+    .supplier-status-cell {
+        display: grid;
+        justify-items: start;
+        align-content: center;
+        gap: 0.45rem;
+    }
+
+    .supplier-receipt-cell,
+    .supplier-status-cell {
+        justify-items: center;
+    }
+
+    .supplier-page .supplier-row .supplier-actions,
+    .supplier-row .supplier-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-content: center;
+        gap: 0.55rem;
+    }
+
+    .supplier-actions form,
+    .supplier-actions .supplier-action-btn,
+    .supplier-status-btn {
+        width: 100%;
+    }
+
+    .supplier-card-label {
+        display: none !important;
+    }
+
+    .supplier-identity::before,
+    .supplier-contact-stack::before,
+    .supplier-receipt-cell::before,
+    .supplier-status-cell::before,
+    .supplier-actions::before {
+        display: block;
+        width: 100%;
+        color: #94a3b8;
+        font-size: 0.62rem;
+        font-weight: 850;
+        letter-spacing: 0.07em;
+        line-height: 1;
+        text-transform: uppercase;
+    }
+
+    .supplier-identity::before {
+        grid-column: 1 / -1;
+        content: "Nhà cung cấp";
+    }
+
+    .supplier-contact-stack::before {
+        content: "Liên hệ";
+    }
+
+    .supplier-receipt-cell::before {
+        content: "Phiếu nhập";
+    }
+
+    .supplier-status-cell::before {
+        content: "Trạng thái";
+    }
+
+    .supplier-actions::before {
+        grid-column: 1 / -1;
+        content: "Thao tác";
+    }
+}
+
+@media (max-width: 900px) {
+    .supplier-filter-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .supplier-search-field {
+        grid-column: auto;
+    }
+
+    .supplier-row.supplier-index-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+            "identity identity"
+            "contact contact"
+            "receipt status"
+            "actions actions";
+    }
+
+    .supplier-contact-stack,
+    .supplier-status-cell,
+    .supplier-actions {
+        border-left: 0;
+    }
+
+    .supplier-receipt-cell,
+    .supplier-status-cell {
+        border-bottom: 1px solid #edf3f4;
+    }
+
+    .supplier-status-cell {
+        border-left: 1px solid #edf3f4;
+    }
+
+    .supplier-form-card-head,
+    .supplier-form-body,
+    .supplier-form-unified > .supplier-submit-panel {
+        padding-right: 1rem;
+        padding-left: 1rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .supplier-crud-page {
+        gap: 0.85rem;
+    }
+
+    .supplier-form-card {
+        border-radius: 1rem;
+    }
+
+    .supplier-form-card-head {
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .supplier-form-section-title {
+        align-items: flex-start;
+    }
+
+    .supplier-title-row p,
+    .supplier-form-hero p,
+    .supplier-form-card-head p,
+    .supplier-form-section-title p {
+        font-size: 0.76rem;
+    }
+
+    .supplier-toolbar {
+        padding: 0.8rem;
+    }
+
+    .supplier-table-body {
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .supplier-row.supplier-index-grid {
+        border-radius: 0.95rem;
+    }
+
+    .supplier-identity,
+    .supplier-contact-stack,
+    .supplier-receipt-cell,
+    .supplier-status-cell,
+    .supplier-actions {
+        padding: 0.78rem;
+    }
+
+    .supplier-action-btn,
+    .supplier-status-btn {
+        min-height: 2.45rem;
+        padding-inline: 0.7rem;
+    }
+
+    .supplier-form-body {
+        gap: 0.95rem;
+        padding-top: 0.95rem;
+        padding-bottom: 0.95rem;
+    }
+
+    .supplier-form-fields {
+        gap: 0.8rem;
+    }
+
+    .supplier-form-unified > .supplier-submit-panel {
+        flex-direction: column;
+    }
+
+    .supplier-form-unified > .supplier-submit-panel .supplier-submit-btn,
+    .supplier-form-unified > .supplier-submit-panel .supplier-cancel-btn {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 520px) {
+    .supplier-row.supplier-index-grid {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "identity"
+            "contact"
+            "receipt"
+            "status"
+            "actions";
+    }
+
+    .supplier-row > * {
+        border-left: 0 !important;
+    }
+
+    .supplier-status-cell,
+    .supplier-receipt-cell {
+        border-bottom: 1px solid #edf3f4;
+    }
+
+    .supplier-page .supplier-row .supplier-actions,
+    .supplier-row .supplier-actions {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .supplier-form-head-icon,
+    .supplier-form-section-title > span {
+        width: 2.1rem;
+        height: 2.1rem;
+        border-radius: 0.82rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .supplier-metric,
+    .supplier-toolbar,
+    .supplier-table-body,
+    .supplier-form-card-head,
+    .supplier-form-body,
+    .supplier-form-unified > .supplier-submit-panel {
+        padding-right: 0.72rem;
+        padding-left: 0.72rem;
+    }
+
+    .supplier-identity,
+    .supplier-contact-stack,
+    .supplier-receipt-cell,
+    .supplier-status-cell,
+    .supplier-actions {
+        padding-right: 0.7rem;
+        padding-left: 0.7rem;
+    }
+}

@@ -295,7 +295,12 @@ const ChartBuilder = {
                     x: {
                         grid: { display: false },
                         border: { dash: [4, 4] },
-                        ticks: { font: { size: 11 } },
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 0,
+                            maxTicksLimit: 7,
+                            font: { size: 11 },
+                        },
                     },
                     y: {
                         grid: { color: '#f1f5f9' },
@@ -456,7 +461,12 @@ const ChartBuilder = {
                     x: {
                         grid:   { display: false },
                         border: { dash: [4, 4] },
-                        ticks:  { font: { size: 11 } },
+                        ticks:  {
+                            autoSkip: true,
+                            maxRotation: 0,
+                            maxTicksLimit: 7,
+                            font: { size: 11 },
+                        },
                     },
                     y: {
                         grid:   { color: '#f1f5f9' },
@@ -466,6 +476,7 @@ const ChartBuilder = {
                     },
                     yRevenue: {
                         position: 'right',
+                        display: canvas.clientWidth >= 480,
                         beginAtZero: true,
                         grid: { drawOnChartArea: false },
                         border: { display: false },
@@ -539,11 +550,11 @@ const Renderer = {
             const growthClass = p.growth >= 0 ? 'text-emerald-600' : 'text-red-500';
             const growthSign  = p.growth >= 0 ? '+' : '';
             return `
-            <div class="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors cursor-default">
+            <div class="top-product-item flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded-lg px-2 -mx-2 transition-colors cursor-default">
                 <span class="text-lg font-black ${rankColors[i]} w-5 text-center shrink-0">${p.rank}</span>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate" title="${Helpers.escapeHtml(p.name)}">${Helpers.escapeHtml(p.name)}</p>
-                    <p class="text-xs text-slate-400">${Helpers.escapeHtml(p.category)} · ${Helpers.formatNumber(p.sold)} sản phẩm</p>
+                    <p class="top-product-meta text-xs text-slate-400">${Helpers.escapeHtml(p.category)} · ${Helpers.formatNumber(p.sold)} sản phẩm</p>
                 </div>
                 <div class="text-right shrink-0">
                     <p class="text-sm font-bold text-slate-800">${Helpers.formatVND(p.revenue)}</p>
@@ -561,28 +572,28 @@ const Renderer = {
         if (!tbody) return;
 
         if (!data.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="py-10 text-sm text-slate-400 text-center">Chưa có đơn hàng</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="dashboard-empty-cell py-10 text-sm text-slate-400 text-center">Chưa có đơn hàng</td></tr>';
             return;
         }
 
         tbody.innerHTML = data.map(order => {
             return `
             <tr class="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
-                <td class="py-3 pr-4">
+                <td class="py-3 pr-4" data-label="Mã đơn">
                     <span class="font-mono text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">${Helpers.escapeHtml(order.id)}</span>
                 </td>
-                <td class="py-3 pr-4">
+                <td class="py-3 pr-4" data-label="Khách hàng">
                     <span class="text-sm text-slate-700 font-medium">${Helpers.escapeHtml(order.customer)}</span>
                 </td>
-                <td class="py-3 pr-4">
+                <td class="py-3 pr-4" data-label="Tổng tiền">
                     <span class="text-sm font-bold text-slate-800">${Helpers.formatVND(order.total)}</span>
                 </td>
-                <td class="py-3 pr-4">
+                <td class="py-3 pr-4" data-label="Trạng thái">
                     <span class="badge-${order.statusKey} text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap">
                         ${Helpers.escapeHtml(order.status)}
                     </span>
                 </td>
-                <td class="py-3">
+                <td class="py-3" data-label="Thời gian">
                     <span class="text-xs text-slate-400">${order.date}</span>
                 </td>
             </tr>`;
@@ -654,10 +665,12 @@ const Dashboard = {
      */
     async loadAll() {
         // Indicator loading trên nút refresh
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) {
-            refreshBtn.querySelector('svg, i')?.classList.add('animate-spin');
-        }
+        const refreshButtons = document.querySelectorAll('[data-dashboard-refresh]');
+        refreshButtons.forEach(button => {
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            button.querySelector('svg, i')?.classList.add('animate-spin');
+        });
 
         try {
             // Chạy tất cả API calls song song
@@ -709,9 +722,11 @@ const Dashboard = {
         } catch (err) {
             console.error('[Dashboard] Lỗi không mong đợi:', err);
         } finally {
-            if (refreshBtn) {
-                refreshBtn.querySelector('svg, i')?.classList.remove('animate-spin');
-            }
+            refreshButtons.forEach(button => {
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                button.querySelector('svg, i')?.classList.remove('animate-spin');
+            });
         }
     },
 };

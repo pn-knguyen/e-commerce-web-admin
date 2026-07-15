@@ -8,23 +8,25 @@
     <link rel="stylesheet" href="~/css/brands.css" asp-append-version="true" />
 }
 
-@* Breadcrumb + Header *@
-<div class="surface-form-hero brand-anim surface-anim" style="animation-delay:0.04s">
-    <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
-        <a asp-action="Index" class="hover:text-teal-600 transition-colors">Thương hiệu</a>
-        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
-        <span class="text-slate-600 font-medium">@Model.Name</span>
-    </nav>
-    <h1 class="text-2xl font-bold text-slate-800">Chỉnh sửa thương hiệu</h1>
-    <p class="text-slate-500 text-sm mt-0.5">Cập nhật thông tin thương hiệu <strong class="text-slate-700">@Model.Name</strong></p>
-</div>
+<section class="surface-page brand-page brand-form-page" aria-labelledby="brandEditTitle">
+    @* Breadcrumb + Header *@
+    <div class="surface-form-hero brand-anim surface-anim" style="animation-delay:0.04s">
+        <nav class="brand-breadcrumb flex items-center gap-2 text-xs text-slate-400 mb-2">
+            <a asp-action="Index" class="hover:text-teal-600 transition-colors">Thương hiệu</a>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            <span class="text-slate-600 font-medium">@Model.Name</span>
+        </nav>
+        <h1 id="brandEditTitle" class="text-2xl font-bold text-slate-800">Chỉnh sửa thương hiệu</h1>
+        <p class="text-slate-500 text-sm mt-0.5">Cập nhật thông tin thương hiệu <strong class="text-slate-700">@Model.Name</strong></p>
+    </div>
 
-<form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data"
-      class="brand-anim surface-anim" style="animation-delay:0.1s">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="Id" />
-    <partial name="_Form" model="Model" />
-</form>
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data"
+          class="brand-anim surface-anim" style="animation-delay:0.1s">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <partial name="_Form" model="Model" />
+    </form>
+</section>
 
 @section Scripts {
     <script src="~/js/brands.js" asp-append-version="true"></script>

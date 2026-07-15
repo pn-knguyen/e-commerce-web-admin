@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="~/css/payment-methods.css" asp-append-version="true" />
 }
 
-<main class="surface-page">
+<main class="surface-page payment-page">
 <div class="surface-hero payment-anim surface-anim"
      style="animation-delay:0.04s">
     <div>
@@ -94,8 +94,9 @@
     </div>
 </div>
 
-<div class="surface-console surface-toolbar-panel payment-anim surface-anim" style="animation-delay:0.12s">
-    <form method="get" asp-action="Index" class="payment-filter-grid">
+<div class="surface-console surface-table-card payment-index-card payment-anim surface-anim" style="animation-delay:0.12s">
+    <div class="payment-toolbar">
+        <form method="get" asp-action="Index" class="payment-filter-grid">
         <div class="relative payment-filter-search">
             <i data-lucide="search"
                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
@@ -110,25 +111,20 @@
             <option value="inactive" selected="@(Model.Status == "inactive")">Đang tắt</option>
         </select>
 
-        <button type="submit" class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700
-            text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-            <i data-lucide="search" class="w-4 h-4"></i>
+        <button type="submit" class="payment-filter-submit">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
             Tìm
         </button>
 
         @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.Status))
         {
-            <a asp-action="Index"
-               class="inline-flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700 text-sm px-2 transition-colors">
-                <i data-lucide="x-circle" class="w-4 h-4"></i>
+            <a asp-action="Index" class="payment-filter-clear">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
                 Xóa lọc
             </a>
         }
-    </form>
-</div>
-
-<div class="surface-console surface-table-card payment-anim surface-anim"
-     style="animation-delay:0.16s">
+        </form>
+    </div>
     @if (!Model.PaymentMethods.Any())
     {
         <div class="admin-empty">

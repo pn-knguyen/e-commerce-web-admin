@@ -1,224 +1,243 @@
 @model e_commerce_web_admin.ViewModels.Vouchers.VoucherFormViewModel
 
-<div class="surface-form-grid grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="surface-form-main lg:col-span-2 space-y-5">
-        <div class="surface-form-card bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Thông tin voucher</h3>
-
-            <div data-surface-form-alert
-                 class="surface-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
-                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                <div>
-                    <p>Vui lòng kiểm tra lại thông tin.</p>
-                    <div asp-validation-summary="ModelOnly"></div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label asp-for="Code" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Mã voucher <span class="text-red-500">*</span>
-                    </label>
-                    <input asp-for="Code"
-                           id="voucherCode"
-                           autocomplete="off"
-                           maxlength="@Model.CodeInputMaxLength"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
-                           placeholder="SUMMER2026" />
-                    <span asp-validation-for="Code" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-
-                <div>
-                    <label asp-for="DiscountType" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Loại giảm giá
-                    </label>
-                    <select asp-for="DiscountType"
-                            id="discountType"
-                            class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition">
-                        @foreach (var option in Model.DiscountTypeOptions)
-                        {
-                            <option value="@option.Value" selected="@(Model.DiscountType.ToString() == option.Value)">
-                                @option.Label
-                            </option>
-                        }
-                    </select>
-                    <span asp-validation-for="DiscountType" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-
-                <div>
-                    <label asp-for="DiscountValue" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Giá trị giảm <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <input asp-for="DiscountValue"
-                               id="discountValue"
-                               type="number"
-                               min="0.01"
-                               step="1000"
-                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                        <span id="discountUnit"
-                              class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">đ</span>
-                    </div>
-                    <span asp-validation-for="DiscountValue" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-
-                <div>
-                    <label asp-for="MaxDiscountValue" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Mức giảm tối đa
-                    </label>
-                    <div class="relative">
-                        <input asp-for="MaxDiscountValue"
-                               type="number"
-                               min="0.01"
-                               step="1000"
-                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                        <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">đ</span>
-                    </div>
-                    <span asp-validation-for="MaxDiscountValue" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label asp-for="Description" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Mô tả
-                    </label>
-                    <textarea asp-for="Description"
-                              rows="3"
-                              class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition resize-none"
-                              placeholder="Mô tả ngắn về voucher..."></textarea>
-                    <span asp-validation-for="Description" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
+<div class="surface-form-grid surface-form-card voucher-editor-shell">
+    <header class="voucher-editor-header">
+        <div class="voucher-editor-heading">
+            <span class="voucher-editor-heading-icon" aria-hidden="true">
+                <i data-lucide="ticket-percent" class="w-5 h-5"></i>
+            </span>
+            <div>
+                <h2>Thiết lập voucher</h2>
+                <p>Quản lý mức giảm, giới hạn sử dụng và thời gian áp dụng trong cùng một biểu mẫu.</p>
             </div>
         </div>
 
-        <div class="surface-form-card bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Điều kiện áp dụng</h3>
+        <div data-surface-form-alert
+             class="surface-form-alert @(ViewData.ModelState.IsValid ? "hidden" : "")">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            <div>
+                <p>Vui lòng kiểm tra lại thông tin.</p>
+                <div asp-validation-summary="ModelOnly"></div>
+            </div>
+        </div>
+    </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label asp-for="MinOrderValue" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Đơn tối thiểu
-                    </label>
-                    <div class="relative">
-                        <input asp-for="MinOrderValue"
+    <div class="voucher-editor-body">
+        <div class="voucher-editor-main">
+            <section class="voucher-editor-section" aria-labelledby="voucherInfoTitle">
+                <div class="voucher-editor-section-title">
+                    <span class="voucher-editor-step">01</span>
+                    <div>
+                        <h3 id="voucherInfoTitle">Thông tin voucher</h3>
+                        <p>Thiết lập mã và giá trị ưu đãi khách hàng sẽ nhận được.</p>
+                    </div>
+                </div>
+
+                <div class="voucher-editor-field-grid">
+                    <div class="voucher-editor-field">
+                        <label asp-for="Code">
+                            Mã voucher <span class="text-red-500">*</span>
+                        </label>
+                        <input asp-for="Code"
+                               id="voucherCode"
+                               autocomplete="off"
+                               maxlength="@Model.CodeInputMaxLength"
+                               class="voucher-code-input"
+                               placeholder="SUMMER2026" />
+                        <span asp-validation-for="Code" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="voucher-editor-field">
+                        <label asp-for="DiscountType">Loại giảm giá</label>
+                        <select asp-for="DiscountType" id="discountType">
+                            @foreach (var option in Model.DiscountTypeOptions)
+                            {
+                                <option value="@option.Value" selected="@(Model.DiscountType.ToString() == option.Value)">
+                                    @option.Label
+                                </option>
+                            }
+                        </select>
+                        <span asp-validation-for="DiscountType" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="voucher-editor-field">
+                        <label asp-for="DiscountValue">
+                            Giá trị giảm <span class="text-red-500">*</span>
+                        </label>
+                        <div class="voucher-money-control">
+                            <input asp-for="DiscountValue"
+                                   id="discountValue"
+                                   type="number"
+                                   min="0.01"
+                                   step="1000"
+                                   inputmode="decimal" />
+                            <span id="discountUnit">đ</span>
+                        </div>
+                        <span asp-validation-for="DiscountValue" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="voucher-editor-field">
+                        <label asp-for="MaxDiscountValue">
+                            Mức giảm tối đa
+                            <span class="voucher-field-hint">Có thể để trống</span>
+                        </label>
+                        <div class="voucher-money-control">
+                            <input asp-for="MaxDiscountValue"
+                                   type="number"
+                                   min="0.01"
+                                   step="1000"
+                                   inputmode="decimal" />
+                            <span>đ</span>
+                        </div>
+                        <span asp-validation-for="MaxDiscountValue" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="voucher-editor-field voucher-editor-field-wide">
+                        <label asp-for="Description">
+                            Mô tả
+                            <span class="voucher-field-hint">Tối đa 1000 ký tự</span>
+                        </label>
+                        <textarea asp-for="Description" rows="4"
+                                  placeholder="Mô tả ngắn về voucher..."></textarea>
+                        <span asp-validation-for="Description" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="voucher-editor-section" aria-labelledby="voucherConditionTitle">
+                <div class="voucher-editor-section-title">
+                    <span class="voucher-editor-step">02</span>
+                    <div>
+                        <h3 id="voucherConditionTitle">Điều kiện áp dụng</h3>
+                        <p>Giới hạn giá trị đơn hàng và số lần mỗi voucher được sử dụng.</p>
+                    </div>
+                </div>
+
+                <div class="voucher-condition-grid">
+                    <div class="voucher-editor-field">
+                        <label asp-for="MinOrderValue">Đơn tối thiểu</label>
+                        <div class="voucher-money-control">
+                            <input asp-for="MinOrderValue"
+                                   type="number"
+                                   min="0"
+                                   step="1000"
+                                   inputmode="decimal" />
+                            <span>đ</span>
+                        </div>
+                        <span asp-validation-for="MinOrderValue" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="voucher-editor-field">
+                        <label asp-for="MaxUses">
+                            Tổng lượt dùng
+                            <span class="voucher-field-hint">Không giới hạn nếu trống</span>
+                        </label>
+                        <input asp-for="MaxUses" type="number" min="1" inputmode="numeric"
+                               placeholder="Không giới hạn" />
+                        <span asp-validation-for="MaxUses" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="voucher-editor-field">
+                        <label asp-for="MaxUsesPerUser">
+                            Lượt dùng mỗi khách
+                            <span class="voucher-field-hint">Không giới hạn nếu trống</span>
+                        </label>
+                        <input asp-for="MaxUsesPerUser" type="number" min="1" inputmode="numeric"
+                               placeholder="Không giới hạn" />
+                        <span asp-validation-for="MaxUsesPerUser" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <aside class="voucher-editor-side" aria-label="Thời gian và trạng thái voucher">
+            <section class="voucher-editor-section" aria-labelledby="voucherTimeTitle">
+                <div class="voucher-editor-section-title">
+                    <span class="voucher-editor-step">03</span>
+                    <div>
+                        <h3 id="voucherTimeTitle">Thời gian áp dụng</h3>
+                        <p>Xác định thời điểm voucher bắt đầu và kết thúc hiệu lực.</p>
+                    </div>
+                </div>
+
+                <div class="voucher-time-grid">
+                    <div class="voucher-editor-field">
+                        <label asp-for="StartDate">
+                            Bắt đầu <span class="text-red-500">*</span>
+                        </label>
+                        <input asp-for="StartDate"
+                               type="datetime-local"
+                               asp-format="{0:yyyy-MM-ddTHH:mm}" />
+                        <span asp-validation-for="StartDate" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="voucher-editor-field">
+                        <label asp-for="EndDate">
+                            Kết thúc <span class="text-red-500">*</span>
+                        </label>
+                        <input asp-for="EndDate"
+                               type="datetime-local"
+                               asp-format="{0:yyyy-MM-ddTHH:mm}" />
+                        <span asp-validation-for="EndDate" class="text-xs text-red-500 mt-1 block"></span>
+                    </div>
+
+                    <div class="voucher-editor-field">
+                        <label asp-for="Priority">
+                            Độ ưu tiên
+                            <span class="voucher-field-hint">Từ 0 đến 9999</span>
+                        </label>
+                        <input asp-for="Priority"
                                type="number"
                                min="0"
-                               step="1000"
-                               class="w-full border border-slate-200 rounded-xl px-3.5 pr-12 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                        <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">đ</span>
+                               max="9999"
+                               inputmode="numeric" />
+                        <span asp-validation-for="Priority" class="text-xs text-red-500 mt-1 block"></span>
                     </div>
-                    <span asp-validation-for="MinOrderValue" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
+            </section>
 
-                <div>
-                    <label asp-for="MaxUses" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Tổng lượt dùng
-                    </label>
-                    <input asp-for="MaxUses"
-                           type="number"
-                           min="1"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
-                           placeholder="Không giới hạn" />
-                    <span asp-validation-for="MaxUses" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-
-                <div>
-                    <label asp-for="MaxUsesPerUser" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Lượt dùng mỗi khách
-                    </label>
-                    <input asp-for="MaxUsesPerUser"
-                           type="number"
-                           min="1"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
-                           placeholder="Không giới hạn" />
-                    <span asp-validation-for="MaxUsesPerUser" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="space-y-5">
-        <div class="surface-form-card bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Thời gian</h3>
-
-            <div class="space-y-4">
-                <div>
-                    <label asp-for="StartDate" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Bắt đầu <span class="text-red-500">*</span>
-                    </label>
-                    <input asp-for="StartDate"
-                           type="datetime-local"
-                           asp-format="{0:yyyy-MM-ddTHH:mm}"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                    <span asp-validation-for="StartDate" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-
-                <div>
-                    <label asp-for="EndDate" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Kết thúc <span class="text-red-500">*</span>
-                    </label>
-                    <input asp-for="EndDate"
-                           type="datetime-local"
-                           asp-format="{0:yyyy-MM-ddTHH:mm}"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                    <span asp-validation-for="EndDate" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-
-                <div>
-                    <label asp-for="Priority" class="block text-xs font-semibold text-slate-600 mb-1.5">
-                        Độ ưu tiên
-                    </label>
-                    <input asp-for="Priority"
-                           type="number"
-                           min="0"
-                           max="9999"
-                           class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition" />
-                    <span asp-validation-for="Priority" class="text-xs text-red-500 mt-1 block"></span>
-                </div>
-            </div>
-        </div>
-
-        <div class="surface-form-card bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Trạng thái</h3>
-
-            <label class="flex items-center gap-3 cursor-pointer group">
-                <div class="relative">
-                    <input asp-for="IsActive" type="checkbox" id="isActiveToggle" class="sr-only peer" />
-                    <div class="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-teal-500 transition-colors"></div>
-                    <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
-                </div>
-                <span class="text-sm text-slate-700 group-hover:text-slate-900">Bật voucher</span>
-            </label>
-            <p class="text-xs text-slate-400 mt-2">
-                Voucher chỉ có hiệu lực khi được bật và nằm trong thời gian áp dụng.
-            </p>
-        </div>
-
-        @if (Model.Id > 0)
-        {
-            <div class="surface-form-card bg-white rounded-2xl border border-slate-200 p-5">
-                <h3 class="text-sm font-semibold text-slate-700 mb-4">Sử dụng</h3>
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center">
-                        <i data-lucide="receipt-text" class="w-5 h-5 text-sky-500"></i>
-                    </div>
+            <section class="voucher-editor-section voucher-editor-status" aria-labelledby="voucherStatusTitle">
+                <div class="voucher-status-copy">
+                    <span class="voucher-status-icon" aria-hidden="true">
+                        <i data-lucide="badge-check" class="w-4 h-4"></i>
+                    </span>
                     <div>
-                        <p class="text-xl font-bold text-slate-800">@Model.UsedCount</p>
-                        <p class="text-xs text-slate-400">Lượt đã dùng</p>
+                        <h3 id="voucherStatusTitle">Bật voucher</h3>
+                        <p>Voucher chỉ có hiệu lực khi được bật và nằm trong thời gian áp dụng.</p>
                     </div>
                 </div>
-            </div>
-        }
 
-        <div class="surface-form-card surface-submit-card bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-            <button type="submit"
-                    class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-md">
-                <i data-lucide="save" class="w-4 h-4"></i>
-                Lưu voucher
-            </button>
-            <a asp-action="Index"
-               class="surface-cancel-link w-full flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
-                Huỷ bỏ
-            </a>
-        </div>
+                <label class="voucher-status-switch" for="isActiveToggle">
+                    <input asp-for="IsActive" type="checkbox" id="isActiveToggle" />
+                    <span class="voucher-status-track" aria-hidden="true"></span>
+                    <span class="sr-only">Thay đổi trạng thái voucher</span>
+                </label>
+            </section>
+
+            @if (Model.Id > 0)
+            {
+                <section class="voucher-editor-section voucher-usage" aria-labelledby="voucherUsageTitle">
+                    <span class="voucher-usage-icon" aria-hidden="true">
+                        <i data-lucide="receipt-text" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h3 id="voucherUsageTitle">Lượt đã sử dụng</h3>
+                        <strong>@Model.UsedCount</strong>
+                        <p>Dữ liệu sử dụng thực tế của voucher.</p>
+                    </div>
+                </section>
+            }
+        </aside>
     </div>
+
+    <footer class="voucher-editor-actions">
+        <a asp-action="Index" class="surface-cancel-link">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Quay lại
+        </a>
+        <button type="submit" class="voucher-submit-button">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            Lưu voucher
+        </button>
+    </footer>
 </div>

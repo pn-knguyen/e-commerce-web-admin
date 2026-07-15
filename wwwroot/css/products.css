@@ -162,10 +162,10 @@
 
 .product-index-grid {
     display: grid;
-    grid-template-columns: minmax(260px, 1.35fr) 140px 82px 76px 76px 105px 124px 144px;
-    gap: 0.75rem;
+    grid-template-columns: minmax(220px, 1.65fr) minmax(100px, 0.75fr) 68px 68px 68px 100px 116px 132px;
+    gap: 0.5rem;
     align-items: center;
-    min-width: 980px;
+    min-width: 0;
 }
 
 .product-row {
@@ -1397,7 +1397,7 @@ body {
   opacity: 0.65;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 700px) {
   .product-form-field,
   .product-form-field-grid-primary > .product-form-field:nth-child(2),
   .product-field-wide,
@@ -1407,6 +1407,347 @@ body {
 
   .product-state-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Product module responsive layout */
+.product-page,
+.product-form-page,
+.product-form-page > form {
+  min-width: 0;
+}
+
+.product-list {
+  display: grid;
+}
+
+.product-card-label {
+  display: none;
+}
+
+.product-actions-cell {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1279px) {
+  .product-page .product-table-head {
+    display: none !important;
+  }
+
+  .product-page .product-table-scroll {
+    overflow: visible;
+  }
+
+  .product-page .product-list {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+    padding: 0.9rem;
+    background:
+      radial-gradient(circle at top left, rgba(20, 184, 166, 0.07), transparent 24rem),
+      #f8fbfb;
+  }
+
+  .product-page .product-row {
+    display: grid !important;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "main main"
+      "classification classification"
+      "variants views"
+      "sold rating"
+      "status actions";
+    align-items: stretch;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--surface-border-soft);
+    border-radius: 1.05rem;
+    padding: 0 !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.055);
+  }
+
+  .product-page .product-row::before {
+    display: none;
+  }
+
+  .product-page .product-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 34px rgba(15, 23, 42, 0.075);
+  }
+
+  .product-main-cell {
+    grid-area: main;
+    padding: 0.95rem;
+    border-bottom: 1px solid #edf3f4;
+  }
+
+  .product-main-cell > div:last-child {
+    min-width: 0;
+  }
+
+  .product-classification-cell {
+    grid-area: classification;
+    padding: 0.75rem 0.95rem;
+    border-bottom: 1px solid #edf3f4;
+  }
+
+  .product-variants-cell {
+    grid-area: variants;
+  }
+
+  .product-views-cell {
+    grid-area: views;
+    border-left: 1px solid #edf3f4;
+  }
+
+  .product-sold-cell {
+    grid-area: sold;
+    border-top: 1px solid #edf3f4;
+  }
+
+  .product-rating-cell {
+    grid-area: rating;
+    border-top: 1px solid #edf3f4;
+    border-left: 1px solid #edf3f4;
+  }
+
+  .product-page .product-stat-cell {
+    display: grid;
+    min-width: 0;
+    justify-items: center;
+    align-content: center;
+    gap: 0.4rem;
+    padding: 0.72rem 0.55rem;
+    background: #fbfefd;
+  }
+
+  .product-page .product-stat-cell > span:last-child {
+    max-width: 100%;
+  }
+
+  .product-status-cell {
+    grid-area: status;
+    display: flex !important;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border-top: 1px solid #edf3f4;
+    padding: 0.75rem;
+  }
+
+  .product-actions-cell {
+    grid-area: actions;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: center;
+    gap: 0.45rem !important;
+    border-top: 1px solid #edf3f4;
+    border-left: 1px solid #edf3f4;
+    padding: 0.75rem;
+  }
+
+  .product-actions-cell form,
+  .product-actions-cell .index-action-btn {
+    width: 100% !important;
+  }
+
+  .product-card-label {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.35rem;
+    color: #94a3b8;
+    font-size: 0.61rem;
+    font-weight: 850;
+    letter-spacing: 0.065em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .product-status-cell > .product-card-label,
+  .product-actions-cell > .product-card-label {
+    grid-column: 1 / -1;
+    margin-bottom: 0.1rem;
+    text-align: center;
+  }
+}
+
+@media (max-width: 900px) {
+  .product-page .product-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .product-page .product-search-field,
+  .product-page .product-filter-submit,
+  .product-page .product-filter-clear {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .product-form-page .product-form-card-head,
+  .product-form-page .product-form-body,
+  .product-form-page .product-submit-bar {
+    padding-inline: 1rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .product-page .product-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-page .product-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-page .product-search-field,
+  .product-page .product-filter-submit,
+  .product-page .product-filter-clear {
+    grid-column: auto;
+  }
+
+  .product-form-page .product-spec-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .product-page .product-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .product-page .product-metrics > div {
+    min-width: 0;
+    gap: 0.65rem;
+    border-top: 0;
+    padding: 0.85rem;
+  }
+
+  .product-page .product-metrics > div + div {
+    border-top: 0;
+    border-left: 1px solid var(--surface-border-soft);
+  }
+
+  .product-page .product-metrics > div:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .product-page .product-metrics > div:nth-child(n + 3) {
+    border-top: 1px solid var(--surface-border-soft);
+  }
+
+  .product-page .product-metrics > div > div:first-child {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 0.8rem;
+  }
+
+  .product-page .product-metrics p:first-child {
+    font-size: clamp(1.05rem, 5vw, 1.3rem);
+  }
+
+  .product-page .product-toolbar {
+    padding: 0.75rem;
+  }
+
+  .product-page .product-list {
+    gap: 0.75rem;
+    padding: 0.7rem;
+  }
+
+  .product-page .surface-pagination > div {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .product-form-page .product-form-card-head,
+  .product-form-page .product-form-body,
+  .product-form-page .product-submit-bar {
+    padding-inline: 0.85rem;
+  }
+
+  .product-form-page .product-form-section-title,
+  .product-form-page .product-form-card-head {
+    gap: 0.7rem;
+  }
+
+  .product-form-page .product-form-head-icon,
+  .product-form-page .product-form-section-title > span {
+    width: 2.3rem;
+    height: 2.3rem;
+    flex-basis: 2.3rem;
+    border-radius: 0.85rem;
+  }
+
+  .product-form-page .product-spec-group {
+    padding: 0.8rem;
+  }
+
+  .product-form-page .product-switch-card {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-page .product-row {
+    grid-template-areas:
+      "main main"
+      "classification classification"
+      "variants views"
+      "sold rating"
+      "status status"
+      "actions actions";
+  }
+
+  .product-actions-cell {
+    border-left: 0;
+  }
+
+  .product-page .surface-pagination {
+    align-items: center;
+  }
+
+  .product-page .surface-pagination p {
+    width: 100%;
+    text-align: center;
+  }
+
+  .product-page .surface-pagination > div {
+    justify-content: center;
+  }
+
+  .product-form-page .surface-form-hero nav {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 374px) {
+  .product-page .product-metrics {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .product-page .product-metrics > div,
+  .product-page .product-metrics > div + div,
+  .product-page .product-metrics > div:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .product-page .product-metrics > div + div {
+    border-top: 1px solid var(--surface-border-soft);
+  }
+
+  .product-actions-cell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-actions-cell > .product-card-label {
+    grid-column: auto;
   }
 }
 

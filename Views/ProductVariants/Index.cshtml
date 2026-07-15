@@ -196,6 +196,7 @@
                                  style="animation-delay:@(0.14 + animIndex++ * 0.025)s"
                                  data-id="@variant.Id">
                             <div class="pv-code-cell">
+                                <span class="pv-card-label">Biến thể</span>
                                 <span class="pv-avatar"><i data-lucide="layers" class="w-4 h-4"></i></span>
                                 <div>
                                     <h2>@variant.Code</h2>
@@ -204,11 +205,13 @@
                             </div>
 
                             <div class="pv-product-cell">
+                                <span class="pv-card-label">Sản phẩm</span>
                                 <h3>@variant.ProductName</h3>
                                 <p>@variant.BrandName · @variant.CategoryName</p>
                             </div>
 
                             <div class="pv-attribute-cell">
+                                <span class="pv-card-label">Thuộc tính</span>
                                 <span class="pv-attribute-text" title="@variant.AttributeSummary">@variant.AttributeSummary</span>
                                 <span class="pv-image-pill @(variant.ImageCount > 0 ? "has-images" : "")">
                                     <i data-lucide="image" class="w-3.5 h-3.5"></i>
@@ -217,11 +220,13 @@
                             </div>
 
                             <div class="pv-price-cell">
+                                <span class="pv-card-label">Giá / tồn</span>
                                 <strong>@variant.Price.ToString("N0") đ</strong>
                                 <span>@variant.Quantity tồn · @variant.SoldCount bán</span>
                             </div>
 
                             <div class="pv-status-stack">
+                                <span class="pv-card-label">Trạng thái</span>
                                 <button type="button"
                                         data-pv-toggle
                                         data-pv-id="@variant.Id"
@@ -240,6 +245,7 @@
                             </div>
 
                             <div class="pv-actions">
+                                <span class="pv-card-label">Thao tác</span>
                                 <a asp-action="Edit" asp-route-id="@variant.Id" class="pv-action-btn pv-action-edit">
                                     <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                                     <span>Sửa</span>

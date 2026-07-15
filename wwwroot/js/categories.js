@@ -252,10 +252,12 @@ function bindImagePreview() {
 
         previewImg.src = URL.createObjectURL(file);
         previewBox.classList.remove('hidden');
+        previewBox.classList.remove('is-empty');
     });
 
     previewImg.addEventListener('error', () => {
-        previewBox.classList.add('hidden');
+        previewBox.classList.remove('hidden');
+        previewBox.classList.add('is-empty');
     });
 }
 

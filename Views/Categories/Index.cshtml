@@ -11,7 +11,7 @@
 }
 
 @* ── Header ── *@
-<main class="surface-page">
+<main class="surface-page category-page">
 <div class="surface-hero cat-anim surface-anim" style="animation-delay:0.04s">
     <div>
         <div class="flex items-center gap-2 mb-1">
@@ -62,7 +62,7 @@
 }
 
 @* ── Stats cards ── *@
-<div class="surface-metrics cat-anim surface-anim" style="animation-delay:0.1s">
+<div class="surface-metrics category-metrics cat-anim surface-anim" style="animation-delay:0.1s">
     <div class="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
         <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0">
             <i data-lucide="folders" class="w-5 h-5 text-teal-500"></i>
@@ -158,9 +158,9 @@
     }
     else
     {
-        <div class="category-table-scroll">
+        <div class="surface-table-scroll category-table-scroll">
         @* Table header *@
-        <div class="surface-table-head category-index-grid px-6 py-3.5">
+        <div class="surface-table-head category-table-head category-index-grid px-6 py-3.5">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Danh mục</span>
             <div class="category-order-cell text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Thứ tự</div>
             <div class="category-product-cell text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Sản phẩm</div>
@@ -170,20 +170,20 @@
         </div>
 
         @* Rows *@
-        <div class="divide-y divide-slate-50">
+        <div class="category-list divide-y divide-slate-50">
             @foreach (var cat in Model.Categories)
             {
                 bool isParent = cat.Depth == 0;
-                <div class="surface-row cat-row category-index-grid @(isParent ? "cat-row-parent" : "cat-row-child")
+                <article class="surface-row cat-row category-index-grid @(isParent ? "cat-row-parent" : "cat-row-child")
                             px-6 @(isParent ? "py-4" : "py-3") @(isParent ? "" : "bg-slate-50/40")"
                      data-id="@cat.Id">
 
                     @* ─ Tên + slug (với thụt lề theo cấp) ─ *@
-                    <div class="flex items-center gap-0 min-w-0">
+                    <div class="category-main-cell flex items-center gap-0 min-w-0">
                         @* Thụt lề cho từng cấp *@
                         @for (int d = 0; d < cat.Depth; d++)
                         {
-                            <span class="w-6 flex-shrink-0 self-stretch relative">
+                            <span class="category-depth-line w-6 flex-shrink-0 self-stretch relative">
                                 <span class="absolute left-3 top-0 bottom-0 w-px bg-slate-200"></span>
                             </span>
                         }
@@ -191,7 +191,7 @@
                         @if (cat.Depth > 0)
                         {
                             @* Connector L-shape *@
-                            <span class="w-5 flex-shrink-0 self-center relative mr-1">
+                            <span class="category-depth-connector w-5 flex-shrink-0 self-center relative mr-1">
                                 <span class="absolute left-0 top-0 bottom-1/2 w-px bg-slate-200"></span>
                                 <span class="absolute left-0 top-1/2 w-4 h-px bg-slate-200"></span>
                             </span>
@@ -225,6 +225,7 @@
                         </div>
 
                         <div class="min-w-0">
+                            <span class="category-level-badge">@(isParent ? "Danh mục cha" : $"Cấp {cat.Depth}")</span>
                             @if (isParent)
                             {
                                 <p class="font-bold text-slate-800 text-[15px] truncate leading-tight">
@@ -242,6 +243,7 @@
 
                     @* ─ Thứ tự ─ *@
                     <div class="category-order-cell text-center">
+                        <span class="category-card-label">Thứ tự</span>
                         <span class="inline-block text-xs font-semibold rounded-lg px-2.5 py-1
                                      @(isParent ? "text-teal-700 bg-teal-50" : "text-slate-500 bg-slate-100")">
                             @cat.Position
@@ -250,6 +252,7 @@
 
                     @* ─ Số sản phẩm ─ *@
                     <div class="category-product-cell text-center">
+                        <span class="category-card-label">Sản phẩm</span>
                         @if (isParent)
                         {
                             @* Cha: tổng gồm cả con → màu amber nổi bật *@
@@ -273,6 +276,7 @@
 
                     @* ─ Trạng thái toggle ─ *@
                     <div class="category-status-cell text-center">
+                        <span class="category-card-label">Trạng thái</span>
                         <button type="button"
                                 data-category-toggle
                                 data-category-id="@cat.Id"
@@ -290,6 +294,7 @@
 
                     @* ─ Cấu hình (Thông số + Thuộc tính biến thể) ─ *@
                     <div class="category-config-cell flex items-center gap-1.5 justify-center">
+                        <span class="category-card-label">Cấu hình</span>
                         <a asp-controller="CategorySpecifications" asp-action="Index" asp-route-categoryId="@cat.Id"
                            title="Thông số kỹ thuật — mô tả đặc điểm sản phẩm"
                            class="cat-action-btn cat-action-spec">
@@ -306,6 +311,7 @@
 
                     @* ─ Thao tác (Sửa + Xoá) ─ *@
                     <div class="category-actions-cell index-actions">
+                        <span class="category-card-label">Thao tác</span>
                         <a asp-action="Edit" asp-route-id="@cat.Id"
                            title="Chỉnh sửa"
                            class="cat-action-icon cat-action-edit index-action-btn index-action-edit">
@@ -328,7 +334,7 @@
                             </button>
                         </form>
                     </div>
-                </div>
+                </article>
             }
         </div>
         </div>

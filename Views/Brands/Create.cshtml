@@ -8,21 +8,23 @@
     <link rel="stylesheet" href="~/css/brands.css" asp-append-version="true" />
 }
 
-@* Breadcrumb + Header *@
-<div class="surface-form-hero brand-anim surface-anim" style="animation-delay:0.04s">
-    <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
-        <a asp-action="Index" class="hover:text-teal-600 transition-colors">Thương hiệu</a>
-        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
-        <span class="text-slate-600 font-medium">Thêm mới</span>
-    </nav>
-    <h1 class="text-2xl font-bold text-slate-800">Thêm thương hiệu mới</h1>
-    <p class="text-slate-500 text-sm mt-0.5">Điền đầy đủ thông tin để tạo thương hiệu sản phẩm</p>
-</div>
+<section class="surface-page brand-page brand-form-page" aria-labelledby="brandCreateTitle">
+    @* Breadcrumb + Header *@
+    <div class="surface-form-hero brand-anim surface-anim" style="animation-delay:0.04s">
+        <nav class="brand-breadcrumb flex items-center gap-2 text-xs text-slate-400 mb-2">
+            <a asp-action="Index" class="hover:text-teal-600 transition-colors">Thương hiệu</a>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            <span class="text-slate-600 font-medium">Thêm mới</span>
+        </nav>
+        <h1 id="brandCreateTitle" class="text-2xl font-bold text-slate-800">Thêm thương hiệu mới</h1>
+        <p class="text-slate-500 text-sm mt-0.5">Điền đầy đủ thông tin để tạo thương hiệu sản phẩm</p>
+    </div>
 
-<form asp-action="Create" method="post" enctype="multipart/form-data" class="brand-anim surface-anim" style="animation-delay:0.1s">
-    @Html.AntiForgeryToken()
-    <partial name="_Form" model="Model" />
-</form>
+    <form asp-action="Create" method="post" enctype="multipart/form-data" class="brand-anim surface-anim" style="animation-delay:0.1s">
+        @Html.AntiForgeryToken()
+        <partial name="_Form" model="Model" />
+    </form>
+</section>
 
 @section Scripts {
     <script src="~/js/brands.js" asp-append-version="true"></script>

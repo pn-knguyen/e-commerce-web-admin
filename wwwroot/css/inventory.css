@@ -13,6 +13,7 @@
 .inv-page {
     display: grid;
     gap: 1rem;
+    min-width: 0;
     color: #172033;
 }
 
@@ -266,6 +267,7 @@
 .inv-panel,
 .inv-form-card,
 .inv-submit-panel {
+    min-width: 0;
     overflow: hidden;
     border-radius: 1.25rem;
 }
@@ -440,23 +442,31 @@
 }
 
 .inv-table-scroll {
+    width: 100%;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .inv-stock-grid,
 .inv-receipt-grid {
     display: grid;
-    gap: 0.875rem;
+    gap: 0.7rem;
     align-items: center;
     min-width: 980px;
 }
 
 .inv-stock-grid {
-    grid-template-columns: minmax(210px, 0.95fr) minmax(260px, 1.15fr) minmax(130px, 0.5fr) minmax(150px, 0.6fr) minmax(160px, 0.6fr) minmax(150px, 0.55fr);
+    grid-template-columns: minmax(13.5rem, 1.05fr) minmax(15rem, 1.25fr) minmax(7.25rem, 0.52fr) minmax(8.5rem, 0.62fr) minmax(8.75rem, 0.68fr) minmax(8.25rem, max-content);
 }
 
 .inv-receipt-grid {
-    grid-template-columns: minmax(220px, 0.95fr) minmax(240px, 1fr) minmax(130px, 0.45fr) minmax(120px, 0.45fr) minmax(150px, 0.55fr) minmax(120px, 0.45fr);
+    grid-template-columns: minmax(13.5rem, 1fr) minmax(14.5rem, 1.08fr) minmax(7.5rem, 0.48fr) minmax(7rem, 0.44fr) minmax(8.75rem, 0.58fr) minmax(7.5rem, max-content);
+}
+
+.inv-table-body {
+    display: grid;
+    min-width: 0;
 }
 
 .inv-table-head {
@@ -498,6 +508,16 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+.inv-sku-cell > div,
+.inv-product-cell {
+    min-width: 0;
+}
+
+.inv-product-cell {
+    display: grid;
+    align-content: center;
 }
 
 .inv-avatar {
@@ -1202,7 +1222,7 @@
     }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1320px) {
     .inv-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1219,6 +1239,202 @@
         grid-template-columns: 1fr;
     }
 
+    .inv-table-scroll {
+        overflow: visible;
+    }
+
+    .inv-stock-grid,
+    .inv-receipt-grid {
+        min-width: 0;
+    }
+
+    .inv-table-head {
+        display: none;
+    }
+
+    .inv-table-body {
+        gap: 0.9rem;
+        border-top: 1px solid #e2ecee;
+        background: #f8fbfb;
+        padding: 0.9rem;
+    }
+
+    .inv-row.inv-stock-grid,
+    .inv-row.inv-receipt-grid {
+        gap: 0;
+        align-items: stretch;
+        overflow: hidden;
+        border: 1px solid #dbe8ea;
+        border-radius: 1.05rem;
+        background: #ffffff;
+        padding: 0;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .inv-row.inv-stock-grid:hover,
+    .inv-row.inv-receipt-grid:hover {
+        background: #ffffff;
+        transform: none;
+    }
+
+    .inv-row.inv-stock-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-areas:
+            "sku product product"
+            "stock value date"
+            "actions actions actions";
+    }
+
+    .inv-row.inv-receipt-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-areas:
+            "code supplier supplier"
+            "status count value"
+            "actions actions actions";
+    }
+
+    .inv-row.inv-stock-grid > *,
+    .inv-row.inv-receipt-grid > * {
+        min-width: 0;
+        padding: 0.82rem 0.95rem;
+    }
+
+    .inv-row.inv-stock-grid > *::before,
+    .inv-row.inv-receipt-grid > *::before {
+        display: block;
+        margin-bottom: 0.36rem;
+        color: #94a3b8;
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.055em;
+        line-height: 1.1;
+        text-transform: uppercase;
+    }
+
+    .inv-row.inv-stock-grid .inv-sku-cell {
+        grid-area: sku;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        border-right: 1px solid #eef4f5;
+    }
+
+    .inv-row.inv-stock-grid .inv-sku-cell::before {
+        content: "SKU";
+        grid-column: 1 / -1;
+    }
+
+    .inv-row.inv-stock-grid .inv-product-cell {
+        grid-area: product;
+    }
+
+    .inv-row.inv-stock-grid .inv-product-cell::before {
+        content: "Sản phẩm";
+    }
+
+    .inv-row.inv-stock-grid .inv-stock-cell {
+        grid-area: stock;
+    }
+
+    .inv-row.inv-stock-grid .inv-stock-cell::before {
+        content: "Tồn kho";
+    }
+
+    .inv-row.inv-stock-grid .inv-value-cell {
+        grid-area: value;
+    }
+
+    .inv-row.inv-stock-grid .inv-value-cell::before {
+        content: "Giá trị";
+    }
+
+    .inv-row.inv-stock-grid .inv-date-cell {
+        grid-area: date;
+    }
+
+    .inv-row.inv-stock-grid .inv-date-cell::before {
+        content: "Lần nhập";
+    }
+
+    .inv-row.inv-receipt-grid .inv-code-cell {
+        grid-area: code;
+    }
+
+    .inv-row.inv-receipt-grid .inv-code-cell::before {
+        content: "Phiếu nhập";
+    }
+
+    .inv-row.inv-receipt-grid .inv-product-cell {
+        grid-area: supplier;
+    }
+
+    .inv-row.inv-receipt-grid .inv-product-cell::before {
+        content: "Nhà cung cấp";
+    }
+
+    .inv-row.inv-receipt-grid .inv-status-cell {
+        grid-area: status;
+    }
+
+    .inv-row.inv-receipt-grid .inv-status-cell::before {
+        content: "Trạng thái";
+    }
+
+    .inv-row.inv-receipt-grid .inv-count-cell {
+        grid-area: count;
+    }
+
+    .inv-row.inv-receipt-grid .inv-count-cell::before {
+        content: "Số lượng";
+    }
+
+    .inv-row.inv-receipt-grid .inv-value-cell {
+        grid-area: value;
+    }
+
+    .inv-row.inv-receipt-grid .inv-value-cell::before {
+        content: "Tổng tiền";
+    }
+
+    .inv-row.inv-stock-grid .inv-actions,
+    .inv-row.inv-receipt-grid .inv-actions {
+        grid-area: actions;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+        align-items: stretch;
+        border-top: 1px solid #eef4f5;
+        background: #fbfefd;
+    }
+
+    .inv-row.inv-stock-grid .inv-actions::before,
+    .inv-row.inv-receipt-grid .inv-actions::before {
+        display: none;
+    }
+
+    .inv-row.inv-stock-grid .inv-action-btn,
+    .inv-row.inv-receipt-grid .inv-action-btn {
+        width: 100%;
+        min-height: 2.55rem;
+    }
+
+    .inv-row.inv-stock-grid .inv-stock-cell,
+    .inv-row.inv-stock-grid .inv-value-cell,
+    .inv-row.inv-stock-grid .inv-date-cell,
+    .inv-row.inv-receipt-grid .inv-status-cell,
+    .inv-row.inv-receipt-grid .inv-count-cell,
+    .inv-row.inv-receipt-grid .inv-value-cell {
+        justify-items: start;
+        border-top: 1px solid #eef4f5;
+        text-align: left;
+    }
+
+    .inv-row.inv-stock-grid .inv-value-cell,
+    .inv-row.inv-receipt-grid .inv-value-cell {
+        display: grid;
+        align-content: start;
+        gap: 0.18rem;
+    }
+
     .inv-item-form-row {
         grid-template-columns: minmax(260px, 1fr) repeat(2, minmax(120px, 0.5fr));
     }
@@ -1232,6 +1448,80 @@
     .inv-line-total {
         width: auto;
         min-width: 150px;
+    }
+}
+
+@media (max-width: 1180px) {
+    .inv-items-head {
+        display: none;
+    }
+
+    .inv-items-table {
+        gap: 0.75rem;
+        background: #f8fbfb;
+        padding: 0.85rem;
+    }
+
+    .inv-item-row {
+        gap: 0.7rem;
+        grid-template-columns: 1fr;
+        align-items: start;
+        border: 1px solid #dbe8ea;
+        border-radius: 1rem;
+        background: #ffffff;
+        padding: 0.9rem;
+    }
+
+    .inv-item-row > * {
+        min-width: 0;
+        justify-self: stretch;
+        text-align: left;
+    }
+
+    .inv-item-row > *::before {
+        display: block;
+        margin-bottom: 0.32rem;
+        color: #94a3b8;
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.055em;
+        text-transform: uppercase;
+    }
+
+    .inv-item-row > div::before {
+        content: "SKU";
+    }
+
+    .inv-item-row > .inv-quantity-pill,
+    .inv-item-row > span:not(.inv-quantity-pill),
+    .inv-item-row > strong {
+        display: flex;
+        width: 100%;
+        min-height: 2.65rem;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 0.9rem;
+        padding: 0.65rem 0.75rem;
+    }
+
+    .inv-item-row > .inv-quantity-pill {
+        min-width: 0;
+    }
+
+    .inv-item-row > .inv-quantity-pill::before {
+        content: "SL nhập";
+    }
+
+    .inv-item-row > span:nth-child(3)::before {
+        content: "Giá nhập";
+    }
+
+    .inv-item-row > strong:nth-child(4)::before {
+        content: "Thành tiền";
+    }
+
+    .inv-item-row > span:nth-child(5)::before {
+        content: "Tồn hiện tại";
     }
 }
 
@@ -1258,13 +1548,32 @@
         grid-column: 1 / -1;
     }
 
-    .inv-items-head {
-        display: none;
+    .inv-row.inv-stock-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+            "sku sku"
+            "product product"
+            "stock value"
+            "date date"
+            "actions actions";
     }
 
-    .inv-item-row {
-        grid-template-columns: 1fr;
-        align-items: start;
+    .inv-row.inv-receipt-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+            "code code"
+            "supplier supplier"
+            "status count"
+            "value value"
+            "actions actions";
+    }
+
+    .inv-row.inv-stock-grid .inv-sku-cell,
+    .inv-row.inv-stock-grid .inv-product-cell,
+    .inv-row.inv-receipt-grid .inv-code-cell,
+    .inv-row.inv-receipt-grid .inv-product-cell {
+        border-right: 0;
+        border-bottom: 1px solid #eef4f5;
     }
 }
 
@@ -1308,7 +1617,79 @@
     .inv-submit-btn,
     .inv-cancel-btn,
     .inv-add-item-btn,
-    .inv-remove-item-btn {
+    .inv-remove-item-btn,
+    .inv-filter-submit,
+    .inv-filter-clear {
         width: 100%;
+    }
+
+    .inv-form-body,
+    .inv-form-fields,
+    .inv-item-list {
+        padding: 0.9rem;
+    }
+
+    .inv-form-unified .inv-form-fields,
+    .inv-form-unified .inv-item-list {
+        padding: 0;
+    }
+
+    .inv-line-total {
+        width: 100%;
+        min-width: 0;
+        text-align: left;
+    }
+}
+
+@media (max-width: 520px) {
+    .inv-table-body {
+        padding: 0.65rem;
+    }
+
+    .inv-row.inv-stock-grid,
+    .inv-row.inv-receipt-grid {
+        border-radius: 0.95rem;
+    }
+
+    .inv-row.inv-stock-grid {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "sku"
+            "product"
+            "stock"
+            "value"
+            "date"
+            "actions";
+    }
+
+    .inv-row.inv-receipt-grid {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "code"
+            "supplier"
+            "status"
+            "count"
+            "value"
+            "actions";
+    }
+
+    .inv-row.inv-stock-grid > *,
+    .inv-row.inv-receipt-grid > * {
+        padding: 0.78rem 0.85rem;
+    }
+
+    .inv-row.inv-stock-grid .inv-stock-cell,
+    .inv-row.inv-stock-grid .inv-value-cell,
+    .inv-row.inv-stock-grid .inv-date-cell,
+    .inv-row.inv-receipt-grid .inv-status-cell,
+    .inv-row.inv-receipt-grid .inv-count-cell,
+    .inv-row.inv-receipt-grid .inv-value-cell {
+        border-top: 0;
+        border-bottom: 1px solid #eef4f5;
+    }
+
+    .inv-row.inv-stock-grid .inv-actions,
+    .inv-row.inv-receipt-grid .inv-actions {
+        grid-template-columns: 1fr;
     }
 }

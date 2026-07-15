@@ -11,7 +11,7 @@
 }
 
 @* ── Header ── *@
-<main class="surface-page">
+<main class="surface-page attr-page">
     <div class="surface-hero attr-anim surface-anim" style="animation-delay:0.04s">
         <div>
             <div class="flex items-center gap-2 mb-1">
@@ -147,7 +147,7 @@
         {
             <div class="attr-table-scroll">
                 @* Header *@
-                <div class="surface-table-head px-6 py-3.5
+                <div class="surface-table-head attr-table-head attr-index-grid px-6 py-3.5
                     grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider w-32">Code</span>
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tên thuộc tính</span>
@@ -163,21 +163,24 @@
                     }
                     @foreach (var attr in Model.Attributes)
                     {
-                        <div class="surface-row attr-row grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center px-6 py-3.5 attr-anim"
+                        <div class="surface-row attr-row attr-index-grid grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center px-6 py-3.5 attr-anim"
                              style="animation-delay:@(0.16 + animIdx++ * 0.025)s">
 
                             @* Code *@
-                            <div class="w-32">
+                            <div class="attr-code-cell w-32">
+                                <span class="attr-card-label">Code</span>
                                 <span class="attr-code-badge">@attr.Code</span>
                             </div>
 
                             @* Name *@
-                            <div class="min-w-0">
+                            <div class="attr-name-cell min-w-0">
+                                <span class="attr-card-label">Tên thuộc tính</span>
                                 <p class="font-semibold text-slate-800 text-sm truncate">@attr.Name</p>
                             </div>
 
                             @* Option count *@
-                            <div class="w-24 text-center">
+                            <div class="attr-option-count-cell w-24 text-center">
+                                <span class="attr-card-label">Giá trị</span>
                                 <span
                                     class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
                                     @(attr.OptionCount > 0 ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-400")">
@@ -187,7 +190,8 @@
                             </div>
 
                             @* Category usage *@
-                            <div class="w-24 text-center">
+                            <div class="attr-category-count-cell w-24 text-center">
+                                <span class="attr-card-label">Danh mục</span>
                                 <span
                                     class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
                                     @(attr.CategoryCount > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400")">
@@ -197,7 +201,8 @@
                             </div>
 
                             @* Variant usage *@
-                            <div class="w-24 text-center">
+                            <div class="attr-variant-count-cell w-24 text-center">
+                                <span class="attr-card-label">Biến thể</span>
                                 <span
                                     class="inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1
                                     @(attr.VariantUsageCount > 0 ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-400")">
@@ -207,7 +212,8 @@
                             </div>
 
                             @* Actions *@
-                            <div class="w-36 index-actions">
+                            <div class="attr-actions-cell w-36 index-actions">
+                                <span class="attr-card-label">Thao tác</span>
                                 <a asp-action="Edit" asp-route-id="@attr.Id" title="Chỉnh sửa & quản lý options"
                                    class="index-action-btn index-action-edit">
                                     <i data-lucide="pencil" class="w-4 h-4 shrink-0"></i>

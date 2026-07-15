@@ -9,14 +9,14 @@
     <link rel="stylesheet" href="~/css/identity-admin.css" asp-append-version="true" />
 }
 
-<main class="surface-page identity-page">
+<section class="surface-page identity-page identity-staff-page identity-staff-form-page" aria-labelledby="staffCreateTitle">
     <div class="surface-form-hero product-anim surface-anim" style="animation-delay:0.04s">
-        <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+        <nav class="identity-breadcrumb flex items-center gap-2 text-xs text-slate-400 mb-2" aria-label="Đường dẫn trang">
             <a asp-action="Index" class="hover:text-teal-600 transition-colors">Nhân sự quản trị</a>
             <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
             <span class="text-slate-600 font-medium">Thêm mới</span>
         </nav>
-        <h1>Thêm nhân sự</h1>
+        <h1 id="staffCreateTitle">Thêm nhân sự</h1>
         <p>Tạo tài khoản staff đăng nhập trang quản trị và gán vai trò phù hợp.</p>
     </div>
 
@@ -24,4 +24,4 @@
         @Html.AntiForgeryToken()
         <partial name="_Form" model="Model" />
     </form>
-</main>
+</section>

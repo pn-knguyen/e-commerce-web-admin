@@ -12,7 +12,7 @@
     bindToastDismiss();
 
     function bindSpecificationFormValidation() {
-        const form = document.querySelector('.surface-form-grid')?.closest('form');
+        const form = document.querySelector('.spec-form-shell, .surface-form-grid')?.closest('form');
         if (!form) {
             return;
         }

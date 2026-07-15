@@ -35,7 +35,7 @@ function showBanner(message, type = 'success') {
 /* ── Toast dismiss ───────────────────────────────────────────────────────── */
 
 function bindAttributeFormValidation() {
-    const form = document.querySelector('.surface-form-grid')?.closest('form');
+    const form = document.querySelector('.attr-form-shell, .surface-form-grid')?.closest('form');
     if (!form) {
         return;
     }

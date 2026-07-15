@@ -1,0 +1,428 @@
+.roles-page,
+.role-edit-page,
+.role-edit-page > form,
+.roles-page .surface-console,
+.role-edit-page .surface-console,
+.role-edit-page .surface-form-card {
+    min-width: 0;
+}
+
+.roles-page .surface-hero > *,
+.role-edit-page .surface-form-hero > *,
+.roles-page .product-toolbar,
+.roles-page .identity-create-grid {
+    min-width: 0;
+}
+
+.role-edit-page .identity-permission-toggle .role-permission-name {
+    display: none;
+    width: auto;
+    height: auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+    transform: none;
+    transition: none;
+}
+
+.role-edit-page .identity-permission-toggle .role-permission-name::before {
+    display: none;
+    content: none;
+}
+
+.role-edit-page .identity-permission-toggle:hover .role-permission-name {
+    transform: none;
+}
+
+@media (max-width: 1180px) {
+    .roles-page .surface-table-card,
+    .roles-page .roles-table-scroll,
+    .role-edit-page .role-permission-card,
+    .role-edit-page .role-permission-scroll {
+        overflow: visible;
+    }
+
+    .roles-page .roles-table-scroll > .surface-table-head,
+    .role-edit-page .role-permission-scroll > .surface-table-head {
+        display: none;
+    }
+
+    .roles-list,
+    .role-permission-list {
+        display: grid;
+        gap: 0.9rem;
+        padding: 0.9rem;
+        border-top: 1px solid var(--surface-border-soft, #e2ecee);
+        background:
+            radial-gradient(circle at top left, rgba(20, 184, 166, 0.07), transparent 24rem),
+            #f8fbfb;
+    }
+
+    .roles-page .role-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(8.5rem, 0.34fr) minmax(8.5rem, 0.34fr) !important;
+        grid-template-areas:
+            "role permissions staff"
+            "actions actions actions" !important;
+        gap: 0;
+        min-width: 0 !important;
+        overflow: hidden;
+        border: 1px solid var(--surface-border, #dbe8ea);
+        border-bottom: 1px solid var(--surface-border, #dbe8ea) !important;
+        border-radius: 1.05rem;
+        background: #ffffff;
+        padding: 0 !important;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .roles-page .role-card::before {
+        display: none;
+    }
+
+    .roles-page .role-card:hover {
+        background: #ffffff;
+        transform: none;
+    }
+
+    .roles-page .role-card > .identity-role-cell {
+        grid-area: role;
+        padding: 0.95rem;
+    }
+
+    .roles-page .role-card > .identity-role-stat {
+        display: grid;
+        align-content: center;
+        justify-items: start;
+        gap: 0.4rem;
+        border-left: 1px solid #eef4f5;
+        padding: 0.85rem 0.95rem;
+        text-align: left;
+    }
+
+    .roles-page .role-card > .identity-role-stat::before {
+        color: #94a3b8;
+        content: attr(data-label);
+        font-size: 0.66rem;
+        font-weight: 900;
+        letter-spacing: 0.055em;
+        line-height: 1;
+        text-transform: uppercase;
+    }
+
+    .roles-page .role-card > .identity-role-stat:nth-child(2) {
+        grid-area: permissions;
+    }
+
+    .roles-page .role-card > .identity-role-stat:nth-child(3) {
+        grid-area: staff;
+    }
+
+    .roles-page .role-card > .identity-actions {
+        display: grid;
+        grid-area: actions;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        width: 100%;
+        border-top: 1px solid #eef4f5;
+        background: #fbfefd;
+        padding: 0.75rem 0.95rem;
+    }
+
+    .roles-page .role-card > .identity-actions form,
+    .roles-page .role-card > .identity-actions .product-action-btn {
+        width: 100%;
+    }
+
+    .roles-page .role-card > .identity-actions .product-action-btn {
+        min-height: 2.55rem;
+        justify-content: center;
+    }
+
+    .role-edit-page .identity-permission-toolbar {
+        padding: 1rem;
+    }
+
+    .role-edit-page .role-permission-module {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 0;
+        min-width: 0 !important;
+        overflow: hidden;
+        border: 1px solid var(--surface-border, #dbe8ea);
+        border-bottom: 1px solid var(--surface-border, #dbe8ea) !important;
+        border-radius: 1.05rem;
+        background: #ffffff;
+        padding: 0 !important;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.055);
+    }
+
+    .role-edit-page .role-permission-module::before {
+        display: none;
+    }
+
+    .role-edit-page .role-permission-module:hover {
+        background: #ffffff;
+        transform: none;
+    }
+
+    .role-edit-page .role-permission-module > .identity-role-cell {
+        grid-column: 1 / -1;
+        border-bottom: 1px solid #eef4f5;
+        background: #fbfefd;
+        padding: 0.85rem 0.95rem;
+    }
+
+    .role-edit-page .identity-permission-toggle {
+        display: grid;
+        width: auto;
+        min-width: 0;
+        min-height: 4.8rem;
+        align-content: center;
+        justify-items: center;
+        gap: 0.45rem;
+        border-right: 1px solid #eef4f5;
+        background: #ffffff;
+        padding: 0.65rem 0.4rem;
+        transition:
+            background 180ms ease,
+            color 180ms ease;
+    }
+
+    .role-edit-page .identity-permission-toggle:last-child {
+        border-right: 0;
+    }
+
+    .role-edit-page .identity-permission-toggle:has(input:checked) {
+        background: #f0fdfa;
+    }
+
+    .role-edit-page .identity-permission-toggle .role-permission-name {
+        display: block;
+        order: 1;
+        overflow-wrap: anywhere;
+    }
+
+    .role-edit-page .identity-permission-toggle .role-permission-check {
+        order: 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .roles-page .surface-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .roles-page .surface-metrics > article {
+        gap: 0.65rem;
+        padding: 0.85rem;
+    }
+
+    .roles-page .surface-metrics > article:nth-child(2),
+    .roles-page .surface-metrics > article:nth-child(4) {
+        border-left: 1px solid var(--surface-border-soft, #e2ecee) !important;
+    }
+
+    .roles-page .surface-metrics > article:nth-child(3) {
+        border-left: 0 !important;
+    }
+
+    .roles-page .surface-metrics > article:nth-child(n + 3) {
+        border-top: 1px solid var(--surface-border-soft, #e2ecee);
+    }
+
+    .roles-page .surface-metrics > article > span:first-child {
+        width: 2.35rem;
+        height: 2.35rem;
+        border-radius: 0.8rem;
+    }
+
+    .roles-page .surface-metrics p:first-child {
+        font-size: clamp(1.05rem, 5vw, 1.3rem);
+    }
+
+    .roles-page .product-toolbar {
+        padding: 0.8rem;
+    }
+
+    .roles-list,
+    .role-permission-list {
+        gap: 0.75rem;
+        padding: 0.65rem;
+    }
+
+    .roles-page .role-card {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-areas:
+            "role"
+            "permissions"
+            "staff"
+            "actions" !important;
+        border-radius: 0.95rem;
+    }
+
+    .roles-page .role-card > .identity-role-cell {
+        border-bottom: 1px solid #eef4f5;
+        padding: 0.85rem;
+    }
+
+    .roles-page .role-card > .identity-role-stat {
+        border-left: 0;
+        border-bottom: 1px solid #eef4f5;
+        padding: 0.72rem 0.85rem;
+    }
+
+    .roles-page .role-card > .identity-actions {
+        padding: 0.7rem 0.85rem;
+    }
+
+    .role-edit-page .identity-permission-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 0.9rem;
+    }
+
+    .role-edit-page .identity-permission-toolbar .identity-role-pill {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .role-edit-page .role-permission-module {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        border-radius: 0.95rem;
+    }
+
+    .role-edit-page .role-permission-module > .identity-role-cell {
+        padding: 0.8rem;
+    }
+
+    .role-edit-page .identity-permission-toggle {
+        min-height: 4.55rem;
+        border-right: 0;
+        border-bottom: 1px solid #eef4f5;
+        padding: 0.62rem 0.45rem;
+    }
+
+    .role-edit-page .identity-permission-toggle:nth-child(even):not(:last-child) {
+        border-right: 1px solid #eef4f5;
+    }
+
+    .role-edit-page .identity-permission-toggle:last-child {
+        grid-column: 1 / -1;
+        border-bottom: 0;
+    }
+
+    .role-edit-page .surface-submit-card {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+    }
+
+    .role-edit-page .surface-submit-card button,
+    .role-edit-page .surface-submit-card .surface-cancel-link {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 374px) {
+    .roles-page .surface-metrics {
+        grid-template-columns: 1fr !important;
+    }
+
+    .roles-page .surface-metrics > article {
+        border-left: 0 !important;
+    }
+
+    .roles-page .surface-metrics > article + article {
+        border-top: 1px solid var(--surface-border-soft, #e2ecee);
+    }
+
+    .roles-page .role-card > .identity-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .role-edit-page .role-permission-module {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .role-edit-page .identity-permission-toggle,
+    .role-edit-page .identity-permission-toggle:nth-child(even):not(:last-child) {
+        border-right: 0;
+    }
+
+    .role-edit-page .identity-permission-toggle:last-child {
+        grid-column: auto;
+    }
+}
+
+/* Keep the entire role editor as one continuous form surface. */
+.role-edit-page .role-config-form {
+    overflow: hidden;
+}
+
+.role-edit-page .role-config-form .product-form-body {
+    padding-bottom: 1.25rem;
+}
+
+.role-edit-page .role-config-form .role-permission-card {
+    min-width: 0;
+    border-top: 1px solid var(--surface-border-soft, #e2ecee);
+    background: #ffffff;
+}
+
+.role-edit-page .role-config-form .role-permission-module .identity-cell-title {
+    margin: 0;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: var(--surface-text, #0f172a);
+    font-size: 0.9rem;
+    line-height: 1.25;
+}
+
+.role-edit-page .role-config-form .identity-permission-toolbar {
+    background: #fbfefd;
+}
+
+.role-edit-page .role-config-form .role-config-actions {
+    margin-top: 0;
+    border-top: 1px solid var(--surface-border-soft, #e2ecee);
+    background: #fbfefd;
+}
+
+@media (max-width: 1180px) {
+    .role-edit-page .role-config-form .role-permission-list {
+        display: block;
+        padding: 0;
+        border-top: 0;
+        background: #ffffff;
+    }
+
+    .role-edit-page .role-config-form .role-permission-module {
+        margin: 0;
+        border: 0;
+        border-bottom: 1px solid var(--surface-border-soft, #e2ecee);
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .role-edit-page .role-config-form .role-permission-module:last-child {
+        border-bottom: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .role-edit-page .role-config-form .product-form-body {
+        padding-bottom: 0.95rem;
+    }
+
+    .role-edit-page .role-config-form .identity-permission-toolbar .identity-role-pill {
+        width: auto;
+        justify-content: flex-start;
+    }
+}

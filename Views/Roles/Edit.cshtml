@@ -8,9 +8,10 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/identity-admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/roles.css" asp-append-version="true" />
 }
 
-<main class="surface-page identity-page">
+<main class="surface-page identity-page role-edit-page">
     <div class="surface-form-hero product-anim surface-anim" style="animation-delay:0.04s">
         <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
             <a asp-action="Index" class="hover:text-teal-600 transition-colors">Vai trò</a>
@@ -25,7 +26,7 @@
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
 
-        <section class="surface-form-card product-form-unified identity-form-card bg-white rounded-2xl border border-slate-200">
+        <section class="surface-form-card product-form-unified identity-form-card role-config-form bg-white rounded-2xl border border-slate-200">
             <div class="product-form-card-head">
                 <span class="product-form-head-icon">
                     <i data-lucide="shield-check" class="w-5 h-5"></i>
@@ -66,9 +67,8 @@
                     </div>
                 </section>
             </div>
-        </section>
 
-        <section class="surface-console surface-table-card product-anim surface-anim identity-submit-bar" style="animation-delay:0.14s">
+        <div class="role-permission-card">
             <div class="identity-permission-toolbar">
                 <div>
                     <h2>Ma trận quyền</h2>
@@ -80,7 +80,7 @@
                 </span>
             </div>
 
-            <div class="surface-table-scroll">
+            <div class="surface-table-scroll role-permission-scroll">
                 <div class="surface-table-head identity-permission-grid px-6 py-3.5">
                     <span>Module</span>
                     @foreach (var permission in Model.PermissionActions)
@@ -89,10 +89,10 @@
                     }
                 </div>
 
-                <div>
+                <div class="role-permission-list">
                     @foreach (var module in Model.Modules)
                     {
-                        <article class="surface-row identity-permission-grid identity-permission-row px-6 py-3.5">
+                        <article class="surface-row identity-permission-grid identity-permission-row role-permission-module px-6 py-3.5">
                             <div class="identity-role-cell">
                                 <span class="identity-role-icon is-muted">
                                     <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
@@ -111,21 +111,23 @@
                                            name="SelectedPermissions"
                                            value="@value"
                                            checked="@Model.SelectedPermissions.Contains(value)" />
-                                    <span aria-hidden="true"></span>
+                                    <span class="role-permission-check" aria-hidden="true"></span>
+                                    <span class="role-permission-name">@permission</span>
                                 </label>
                             }
                         </article>
                     }
                 </div>
             </div>
-        </section>
+        </div>
 
-        <div class="surface-submit-card product-submit-bar identity-submit-bar">
+        <div class="surface-submit-card product-submit-bar identity-submit-bar role-config-actions">
             <button type="submit">
                 <i data-lucide="save" class="w-4 h-4"></i>
                 Lưu quyền
             </button>
             <a asp-action="Index" class="surface-cancel-link">Hủy bỏ</a>
         </div>
+        </section>
     </form>
 </main>

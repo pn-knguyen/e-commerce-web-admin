@@ -34,8 +34,16 @@
 
     .surface-page {
         display: grid;
-        gap: 1rem;
+        width: 100%;
+        max-width: 96rem;
+        margin-inline: auto;
+        gap: clamp(0.875rem, 1.4vw, 1.25rem);
         color: #172033;
+    }
+
+    .surface-page,
+    .surface-page * {
+        min-width: 0;
     }
 
     .surface-dashboard-card {
@@ -101,25 +109,243 @@
         transform: translateY(-1px);
     }
 
+    .dashboard-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .dashboard-card-header h2 {
+        line-height: 1.3;
+        text-wrap: balance;
+    }
+
+    .dashboard-card-legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.5rem 0.875rem;
+        color: #475569;
+    }
+
+    .dashboard-table-wrap {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .dashboard-table td,
+    .dashboard-table th,
+    .kpi-value {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .dashboard-toolbar select,
+    .dashboard-toolbar button {
+        min-height: 2.625rem;
+    }
+
+    .surface-page a:focus-visible,
+    .surface-page button:focus-visible,
+    .surface-page select:focus-visible {
+        outline: 3px solid rgba(13, 148, 136, 0.22);
+        outline-offset: 2px;
+    }
+
     @@media (max-width: 900px) {
         .surface-hero {
             align-items: flex-start;
             flex-direction: column;
+            gap: 1rem;
+        }
+
+        .dashboard-toolbar {
+            width: 100%;
+        }
+
+        .dashboard-toolbar select {
+            flex: 1 1 auto;
+        }
+    }
+
+    @@media (max-width: 639px) {
+        .surface-page {
+            gap: 0.875rem;
+        }
+
+        .surface-dashboard-card {
+            border-radius: 1rem;
+            padding: 1rem;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.065);
+        }
+
+        .surface-dashboard-card:hover {
+            transform: none;
+        }
+
+        .surface-hero h1 {
+            font-size: 1.375rem;
+        }
+
+        .surface-hero p {
+            font-size: 0.75rem;
+        }
+
+        .dashboard-toolbar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .dashboard-toolbar button {
+            padding-inline: 0.875rem;
+        }
+
+        .dashboard-card-header {
+            display: grid;
+        }
+
+        .dashboard-card-legend {
+            justify-content: flex-start;
+        }
+
+        .dashboard-chart-revenue {
+            height: 14rem;
+        }
+
+        .dashboard-chart-traffic {
+            height: 13rem;
+        }
+
+        .dashboard-table-wrap {
+            margin-inline: 0;
+            padding-inline: 0;
+            overflow: visible;
+        }
+
+        .dashboard-table {
+            min-width: 0;
+        }
+
+        .dashboard-table thead {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        .dashboard-table tbody {
+            display: grid;
+            gap: 0.625rem;
+        }
+
+        .dashboard-table tr:not(.dashboard-loading-row) {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.45rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.875rem;
+            padding: 0.875rem;
+            background: #f8fafc;
+        }
+
+        .dashboard-table tr:not(.dashboard-loading-row):hover {
+            background: #f8fafc;
+        }
+
+        .dashboard-table tr:not(.dashboard-loading-row) td {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0;
+            text-align: right;
+        }
+
+        .dashboard-table tr:not(.dashboard-loading-row) td::before {
+            content: attr(data-label);
+            color: #94a3b8;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-align: left;
+            text-transform: uppercase;
+        }
+
+        .dashboard-table tr:not(.dashboard-loading-row) td:nth-child(1),
+        .dashboard-table tr:not(.dashboard-loading-row) td:nth-child(2) {
+            grid-column: 1 / -1;
+        }
+
+        .dashboard-table tr:not(.dashboard-loading-row) td:nth-child(1) {
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .dashboard-table .dashboard-empty-cell {
+            grid-column: 1 / -1;
+            justify-content: center !important;
+            padding-block: 1.5rem !important;
+            text-align: center !important;
+        }
+
+        .dashboard-table .dashboard-empty-cell::before {
+            content: none !important;
+        }
+
+        .top-product-item {
+            align-items: flex-start;
+        }
+
+        .top-product-meta {
+            white-space: normal;
+        }
+    }
+
+    @@media (max-width: 374px) {
+        .dashboard-toolbar {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-toolbar button {
+            justify-content: center;
+        }
+
+        .dashboard-table tr:not(.dashboard-loading-row) {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-table tr:not(.dashboard-loading-row) td {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .db-anim-up,
+        .db-anim-down {
+            animation: none;
+        }
+
+        .surface-dashboard-card {
+            transition: none;
         }
     }
 </style>
 
 @* Page header *@
-<main class="surface-page">
+<section class="surface-page" aria-labelledby="dashboardTitle">
 <div class="surface-hero db-anim-down surface-anim"
      style="animation-delay: 0.05s">
     <div>
-        <h1 class="text-2xl font-bold text-slate-800">Tổng quan hệ thống</h1>
+        <h1 id="dashboardTitle" class="text-2xl font-bold text-slate-800">Tổng quan hệ thống</h1>
         <p class="text-slate-500 text-sm mt-0.5">
             Cập nhật lần cuối: <span id="lastUpdated" class="font-medium text-slate-600">--</span>
         </p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="dashboard-toolbar flex items-center gap-2">
+        <label for="periodSelect" class="sr-only">Khoảng thời gian thống kê</label>
         <select id="periodSelect"
                 class="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer">
             <option value="today">Hôm nay</option>
@@ -127,7 +353,8 @@
             <option value="month" selected>30 ngày qua</option>
             <option value="year">Năm nay</option>
         </select>
-        <button id="refreshBtn" onclick="window.dashboardRefresh && window.dashboardRefresh()"
+        <button id="refreshBtn" type="button" data-dashboard-refresh onclick="window.dashboardRefresh && window.dashboardRefresh()"
+                aria-label="Làm mới dữ liệu bảng điều khiển"
                 class="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
             Làm mới
@@ -207,12 +434,12 @@
 
     @* Biểu đồ doanh thu (2/3) *@
     <div class="surface-dashboard-card lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
-        <div class="flex items-center justify-between mb-4">
+        <div class="dashboard-card-header">
             <div>
                 <h2 class="font-bold text-slate-800">Doanh thu theo tháng</h2>
                 <p class="text-slate-400 text-xs mt-0.5">So sánh năm nay vs. năm ngoái</p>
             </div>
-            <div class="flex items-center gap-3 text-xs">
+            <div class="dashboard-card-legend text-xs" aria-label="Chú thích biểu đồ doanh thu">
                 <span class="flex items-center gap-1.5">
                     <span class="w-3 h-1 rounded-full bg-brand-500 inline-block"></span>
                     Năm nay
@@ -223,7 +450,7 @@
                 </span>
             </div>
         </div>
-        <div class="chart-container h-56 sm:h-64">
+        <div class="chart-container dashboard-chart-revenue h-56 sm:h-64">
             <canvas id="revenueChart"></canvas>
         </div>
     </div>
@@ -248,18 +475,18 @@
 
     @* Biểu đồ hoạt động hệ thống (2/3) *@
     <div class="surface-dashboard-card lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
-        <div class="flex items-center justify-between mb-4">
+        <div class="dashboard-card-header">
             <div>
                 <h2 class="font-bold text-slate-800">Hoạt động hệ thống</h2>
                 <p class="text-slate-400 text-xs mt-0.5">7 ngày gần nhất</p>
             </div>
-            <div class="flex items-center gap-3 text-xs flex-wrap">
+            <div class="dashboard-card-legend text-xs" aria-label="Chú thích biểu đồ hoạt động">
                 <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-brand-500 inline-block"></span>Đơn hàng</span>
                 <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-violet-400 inline-block"></span>Doanh thu</span>
                 <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded-full bg-amber-400 inline-block"></span>Khách mới</span>
             </div>
         </div>
-        <div class="chart-container h-48 sm:h-56">
+        <div class="chart-container dashboard-chart-traffic h-48 sm:h-56">
             <canvas id="trafficChart"></canvas>
         </div>
     </div>
@@ -288,7 +515,7 @@
 
     @* Top 5 sản phẩm (2/5) *@
     <div class="surface-dashboard-card xl:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
-        <div class="flex items-center justify-between mb-4">
+        <div class="dashboard-card-header">
             <div>
                 <h2 class="font-bold text-slate-800">Top sản phẩm bán chạy</h2>
                 <p class="text-slate-400 text-xs mt-0.5">Theo doanh thu trong kỳ</p>
@@ -306,15 +533,15 @@
 
     @* Đơn hàng gần đây (3/5) *@
     <div class="surface-dashboard-card xl:col-span-3 bg-white rounded-2xl border border-slate-200 p-5">
-        <div class="flex items-center justify-between mb-4">
+        <div class="dashboard-card-header">
             <div>
                 <h2 class="font-bold text-slate-800">Đơn hàng gần đây</h2>
                 <p class="text-slate-400 text-xs mt-0.5">Đơn hàng được cập nhật mới nhất</p>
             </div>
             <a href="/Orders" class="text-brand-600 hover:text-brand-700 text-xs font-medium">Xem tất cả →</a>
         </div>
-        <div class="overflow-x-auto -mx-5 px-5">
-            <table class="w-full text-sm min-w-[480px]">
+        <div class="dashboard-table-wrap overflow-x-auto -mx-5 px-5">
+            <table class="dashboard-table w-full text-sm min-w-[480px]">
                 <thead>
                     <tr class="border-b border-slate-100">
                         <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide pb-2 pr-4">Mã đơn</th>
@@ -325,7 +552,7 @@
                     </tr>
                 </thead>
                 <tbody id="recentOrdersBody">
-                    <tr>
+                    <tr class="dashboard-loading-row">
                         <td colspan="5" class="pt-4">
                             <div class="space-y-2">
                                 <div class="skeleton h-8 rounded-lg"></div>
@@ -342,7 +569,7 @@
     </div>
 
 </div>
-</main>
+</section>
 
 @section Scripts {
     <script src="~/js/dashboard.js" asp-append-version="true"></script>

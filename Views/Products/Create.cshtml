@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="~/css/products.css" asp-append-version="true" />
 }
 
+<main class="surface-page product-form-page">
 <div class="surface-form-hero product-anim surface-anim" style="animation-delay:0.04s">
     <nav class="flex items-center gap-2 text-xs text-slate-400 mb-2">
         <a asp-action="Index" class="hover:text-teal-600 transition-colors">Sản phẩm</a>
@@ -22,6 +23,7 @@
     @Html.AntiForgeryToken()
     <partial name="_Form" model="Model" />
 </form>
+</main>
 
 @section Scripts {
     <script src="~/js/products.js" asp-append-version="true"></script>
