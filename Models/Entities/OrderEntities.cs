@@ -52,10 +52,12 @@ public class OrderItem
     public long ProductVariantId { get; set; }
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    public decimal UnitCost { get; set; }
 
     public Order? Order { get; set; }
     public ProductVariant? ProductVariant { get; set; }
     public Rating? Rating { get; set; }
+    public ICollection<OrderItemCostAllocation> CostAllocations { get; set; } = new List<OrderItemCostAllocation>();
 }
 
 public class Rating

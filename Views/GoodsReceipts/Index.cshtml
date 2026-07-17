@@ -89,6 +89,13 @@
                 <span>Phiếu chờ duyệt</span>
             </div>
         </article>
+        <article class="inv-metric">
+            <span class="inv-metric-icon is-stock"><i data-lucide="coins" class="w-5 h-5"></i></span>
+            <div>
+                <p>@Money(Model.TotalInventoryCost)</p>
+                <span>Giá vốn tồn kho</span>
+            </div>
+        </article>
     </section>
 
     <section class="inv-console inv-anim" style="animation-delay:0.12s">
@@ -219,12 +226,17 @@
                                     @InventoryDisplay.GetStockLabel(row.Quantity)
                                 </span>
                                 <strong>@row.Quantity</strong>
+                                @if (row.ReservedQuantity > 0)
+                                {
+                                    <small>@row.ReservedQuantity đang giữ</small>
+                                }
                                 <small>@row.SoldCount đã bán</small>
                             </div>
 
                             <div class="inv-value-cell">
                                 <strong>@Money(row.StockValue)</strong>
-                                <span>@Money(row.Price) / sp</span>
+                                <span>Bán @Money(row.Price) / sp</span>
+                                <span>Giá vốn @Money(row.AverageCost) / sp</span>
                             </div>
 
                             <div class="inv-date-cell">@DateText(row.LastReceiptAt)</div>
@@ -348,6 +360,7 @@
 
                             <div class="inv-product-cell">
                                 <h3>@receipt.SupplierName</h3>
+                                <p>@receipt.FulfillmentLocationName</p>
                                 <p>Cập nhật @DateText(receipt.UpdatedAt)</p>
                             </div>
 

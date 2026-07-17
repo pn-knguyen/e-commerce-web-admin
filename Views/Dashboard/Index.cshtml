@@ -363,7 +363,7 @@
 </div>
 
 @* KPI Cards *@
-<div class="surface-dashboard-metrics grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 db-anim-up surface-anim"
+<div class="surface-dashboard-metrics grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 db-anim-up surface-anim"
      style="animation-delay: 0.15s">
 
     @* Doanh thu *@
@@ -382,6 +382,20 @@
     </div>
 
     @* Đơn hàng *@
+    <div class="surface-dashboard-card kpi-card rounded-2xl border border-slate-200 p-5" id="kpi-profit">
+        <div class="flex items-start justify-between mb-3">
+            <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+                <i data-lucide="badge-dollar-sign" class="w-5 h-5 text-teal-600"></i>
+            </div>
+            <span class="kpi-badge skeleton text-xs font-semibold px-2 py-0.5 rounded-full w-16 h-5 inline-block"></span>
+        </div>
+        <p class="text-slate-500 text-xs font-medium mb-1">Lãi gộp</p>
+        <p class="kpi-value skeleton text-2xl font-bold text-slate-800 w-32 h-7 mb-2 block"></p>
+        <div class="chart-container h-10">
+            <canvas class="kpi-spark sparkline" data-chart-id="spark-profit"></canvas>
+        </div>
+    </div>
+
     <div class="surface-dashboard-card kpi-card rounded-2xl border border-slate-200 p-5" id="kpi-orders">
         <div class="flex items-start justify-between mb-3">
             <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">

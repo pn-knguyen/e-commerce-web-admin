@@ -56,10 +56,18 @@ public class DashboardController : Controller
             .Where(IsSuccessfulOrder)
             .Sum(order => order.TotalAmount);
         var currentOrderCount = orderRows.Count;
+        var currentProfitRows = await SuccessfulOrderItems(range.StartUtc, range.EndUtc)
+            .Select(item => new ProfitMetricRow(
+                item.Order!.CreatedAt,
+                (item.UnitPrice - item.UnitCost) * item.Quantity))
+            .ToListAsync(ct);
+        var currentProfit = currentProfitRows.Sum(item => item.GrossProfit);
 
         var previousRevenue = await SuccessfulOrders()
             .Where(order => order.CreatedAt >= range.PreviousStartUtc && order.CreatedAt < range.PreviousEndUtc)
             .SumAsync(order => (decimal?)order.TotalAmount, ct) ?? 0m;
+        var previousProfit = await SuccessfulOrderItems(range.PreviousStartUtc, range.PreviousEndUtc)
+            .SumAsync(item => (decimal?)((item.UnitPrice - item.UnitCost) * item.Quantity), ct) ?? 0m;
         var previousOrderCount = await _db.Orders
             .AsNoTracking()
             .CountAsync(order => order.CreatedAt >= range.PreviousStartUtc && order.CreatedAt < range.PreviousEndUtc, ct);
@@ -88,6 +96,12 @@ public class DashboardController : Controller
             row => row.TotalAmount,
             range.StartUtc,
             range.EndUtc);
+        var profitSparkline = BuildSeries(
+            currentProfitRows,
+            row => row.CreatedAt,
+            row => row.GrossProfit,
+            range.StartUtc,
+            range.EndUtc);
         var orderSparkline = BuildSeries(
             orderRows,
             row => row.CreatedAt,
@@ -108,6 +122,7 @@ public class DashboardController : Controller
         return Ok(new
         {
             revenue = BuildKpi(currentRevenue, previousRevenue, revenueSparkline),
+            profit = BuildKpi(currentProfit, previousProfit, profitSparkline),
             orders = BuildKpi(currentOrderCount, previousOrderCount, orderSparkline),
             customers = BuildKpi(currentCustomerCount, previousCustomerCount, customerSparkline),
             products = BuildKpi(currentProductCount, previousProductCount, productSparkline),
@@ -190,6 +205,7 @@ public class DashboardController : Controller
             category = item.Category,
             sold = item.Sold,
             revenue = item.Revenue,
+            profit = item.Profit,
             growth = CalculateChange(item.Sold, previousSales.GetValueOrDefault(item.ProductId)),
         });
 
@@ -364,6 +380,7 @@ public class DashboardController : Controller
                 Category = group.Key.CategoryName,
                 Sold = group.Sum(item => item.Quantity),
                 Revenue = group.Sum(item => item.UnitPrice * item.Quantity),
+                Profit = group.Sum(item => (item.UnitPrice - item.UnitCost) * item.Quantity),
             });
 
     private DashboardRange GetPeriodRange(string? period)
@@ -495,6 +512,8 @@ public class DashboardController : Controller
 
     private sealed record RevenueRow(DateTime CreatedAt, decimal TotalAmount);
 
+    private sealed record ProfitMetricRow(DateTime CreatedAt, decimal GrossProfit);
+
     private sealed class ProductSalesRow
     {
         public long ProductId { get; init; }
@@ -502,6 +521,7 @@ public class DashboardController : Controller
         public string Category { get; init; } = string.Empty;
         public int Sold { get; init; }
         public decimal Revenue { get; init; }
+        public decimal Profit { get; init; }
     }
 
     private sealed class CategoryRevenueRow

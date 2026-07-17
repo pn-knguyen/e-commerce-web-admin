@@ -762,10 +762,10 @@
 .order-items-head,
 .order-item-row {
     display: grid;
-    grid-template-columns: minmax(16rem, 1fr) 4rem minmax(8rem, 0.4fr) minmax(8rem, 0.4fr);
+    grid-template-columns: minmax(16rem, 1fr) 4rem repeat(4, minmax(7.5rem, 0.4fr));
     gap: 1rem;
     align-items: center;
-    min-width: 720px;
+    min-width: 980px;
 }
 
 .order-items-head {
@@ -1791,6 +1791,22 @@ body.order-modal-open {
 
     .order-item-row > strong.text-right::before {
         content: "Thành tiền";
+    }
+
+    .order-item-row > span.order-unit-price.text-right::before {
+        content: "Đơn giá";
+    }
+
+    .order-item-row > span.order-unit-cost.text-right::before {
+        content: "Giá vốn";
+    }
+
+    .order-item-row > strong.order-line-total.text-right::before {
+        content: "Thành tiền";
+    }
+
+    .order-item-row > strong.order-line-profit.text-right::before {
+        content: "Lãi gộp";
     }
 
     .order-info-list div,

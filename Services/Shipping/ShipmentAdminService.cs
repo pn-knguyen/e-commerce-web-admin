@@ -10,7 +10,7 @@ using e_commerce_web_admin.ViewModels.Shipments;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using e_commerce_web_admin.Services.Orders;
+using e_commerce_web_admin.Services.Inventory;
 
 namespace e_commerce_web_admin.Services.Shipping;
 
@@ -73,15 +73,18 @@ public sealed class ShipmentAdminService : IShipmentAdminService
 
     private readonly ApplicationDbContext _db;
     private readonly IShippingProviderGateway _shippingProvider;
+    private readonly IInventoryLedgerService _inventoryLedger;
     private readonly GiaoHangNhanhOptions _options;
 
     public ShipmentAdminService(
         ApplicationDbContext db,
         IShippingProviderGateway shippingProvider,
+        IInventoryLedgerService inventoryLedger,
         IOptions<GiaoHangNhanhOptions> options)
     {
         _db = db;
         _shippingProvider = shippingProvider;
+        _inventoryLedger = inventoryLedger;
         _options = options.Value;
     }
 
@@ -505,7 +508,7 @@ public sealed class ShipmentAdminService : IShipmentAdminService
             .FirstOrDefaultAsync(item => item.Id == shipmentId && item.OrderId == orderId, ct);
         if (shipment?.Order is null)
         {
-            return ShipmentActionResult.NotFound("Khong tim thay van don.");
+            return ShipmentActionResult.NotFound("Không tìm thấy vận đơn.");
         }
 
         var result = await SyncTrackedShipmentStatusAsync(shipment, ct);
@@ -514,7 +517,7 @@ public sealed class ShipmentAdminService : IShipmentAdminService
             return result;
         }
 
-        return ShipmentActionResult.Success($"Da dong bo trang thai GHN: {ShipmentDisplay.GetStatusLabel(shipment.Status)}.");
+        return ShipmentActionResult.Success($"Đã đồng bộ trạng thái GHN: {ShipmentDisplay.GetStatusLabel(shipment.Status)}.");
     }
 
     public async Task<int> SyncActiveProviderStatusesAsync(CancellationToken ct = default)
@@ -596,12 +599,22 @@ public sealed class ShipmentAdminService : IShipmentAdminService
                 (beforePaymentStatus.HasValue && shipment.Order?.PaymentStatus != beforePaymentStatus.Value))
             {
                 changedCount++;
-                if (beforeOrderStatus.HasValue && beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
+                if (beforeOrderStatus.HasValue &&
+                    beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
+                    shipment.Order.OrderStatus == OrderStatus.Completed)
+                {
+                    await _inventoryLedger.ApplyOrderSaleAsync(shipment.Order, shipment.FulfillmentLocationId, ct);
+                }
+                else if (beforeOrderStatus.HasValue && beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
                     shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
                 {
                     await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
                         .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
-                    OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus.Value, shipment.Order.OrderStatus);
+                    await _inventoryLedger.ApplyOrderStatusChangeAsync(
+                        shipment.Order,
+                        beforeOrderStatus.Value,
+                        shipment.Order.OrderStatus,
+                        ct);
                 }
             }
         }
@@ -675,11 +688,20 @@ public sealed class ShipmentAdminService : IShipmentAdminService
         ShipmentStatusMapper.SyncOrderStatusFromShipment(shipment.Order, nextStatus, DateTime.UtcNow);
 
         if (beforeOrderStatus != shipment.Order.OrderStatus &&
+            shipment.Order.OrderStatus == OrderStatus.Completed)
+        {
+            await _inventoryLedger.ApplyOrderSaleAsync(shipment.Order, shipment.FulfillmentLocationId, ct);
+        }
+        else if (beforeOrderStatus != shipment.Order.OrderStatus &&
             shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
         {
             await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
                 .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
-            OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus, shipment.Order.OrderStatus);
+            await _inventoryLedger.ApplyOrderStatusChangeAsync(
+                shipment.Order,
+                beforeOrderStatus,
+                shipment.Order.OrderStatus,
+                ct);
         }
 
         if (ShipmentStatusMapper.IsPickupProgressStatus(nextStatus) && shipment.PickedUpAt is null)
@@ -725,18 +747,18 @@ public sealed class ShipmentAdminService : IShipmentAdminService
     {
         if (shipment.Provider != ShippingProvider.GiaoHangNhanh)
         {
-            return ShipmentActionResult.Failed("Van don nay khong thuoc GHN.");
+            return ShipmentActionResult.Failed("Vận đơn này không thuộc GHN.");
         }
 
         if (string.IsNullOrWhiteSpace(shipment.ProviderDeliveryId))
         {
-            return ShipmentActionResult.Failed("Van don chua co ma GHN.");
+            return ShipmentActionResult.Failed("Vận đơn chưa có mã GHN.");
         }
 
         var detail = await _shippingProvider.GetOrderDetailAsync(shipment.ProviderDeliveryId, ct);
         if (!detail.Succeeded)
         {
-            return ShipmentActionResult.Failed(detail.ErrorMessage ?? "Khong dong bo duoc trang thai GHN.");
+            return ShipmentActionResult.Failed(detail.ErrorMessage ?? "Không đồng bộ được trạng thái GHN.");
         }
 
         return await ApplyProviderStatusAsync(
@@ -763,7 +785,7 @@ public sealed class ShipmentAdminService : IShipmentAdminService
         providerStatus = NormalizeOptional(providerStatus) ?? shipment.ProviderStatus;
         if (string.IsNullOrWhiteSpace(providerStatus))
         {
-            return ShipmentActionResult.Failed("GHN khong tra ve trang thai van don.");
+            return ShipmentActionResult.Failed("GHN không trả về trạng thái vận đơn.");
         }
 
         var nextStatus = ShipmentStatusMapper.FromGiaoHangNhanhStatus(providerStatus);
@@ -778,12 +800,22 @@ public sealed class ShipmentAdminService : IShipmentAdminService
         shipment.UpdatedAt = now;
         ShipmentStatusMapper.SyncOrderStatusFromShipment(shipment.Order, nextStatus, now);
 
-        if (beforeOrderStatus.HasValue && beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
+        if (beforeOrderStatus.HasValue &&
+            beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
+            shipment.Order.OrderStatus == OrderStatus.Completed)
+        {
+            await _inventoryLedger.ApplyOrderSaleAsync(shipment.Order, shipment.FulfillmentLocationId, ct);
+        }
+        else if (beforeOrderStatus.HasValue && beforeOrderStatus.Value != shipment.Order!.OrderStatus &&
             shipment.Order.OrderStatus is OrderStatus.Returned or OrderStatus.Cancelled)
         {
             await _db.Entry(shipment.Order).Collection(o => o.OrderItems).Query()
                 .Include(i => i.ProductVariant).ThenInclude(v => v!.Product).LoadAsync(ct);
-            OrderInventoryHelper.ApplyInventoryChange(shipment.Order, beforeOrderStatus.Value, shipment.Order.OrderStatus);
+            await _inventoryLedger.ApplyOrderStatusChangeAsync(
+                shipment.Order,
+                beforeOrderStatus.Value,
+                shipment.Order.OrderStatus,
+                ct);
         }
 
         if (actualFee.HasValue)
@@ -841,7 +873,7 @@ public sealed class ShipmentAdminService : IShipmentAdminService
         }
 
         await _db.SaveChangesAsync(ct);
-        return ShipmentActionResult.Success("Da dong bo trang thai GHN.");
+        return ShipmentActionResult.Success("Đã đồng bộ trạng thái GHN.");
     }
 
     private Task<Shipment?> FindOpenShipmentAsync(long orderId, CancellationToken ct) =>

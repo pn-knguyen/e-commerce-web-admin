@@ -46,6 +46,7 @@ public static class PermissionModules
     public static readonly string[] All =
     [
         "Dashboard",
+        "ProfitReports",
         "Customers",
         "CustomerMessages",
         "Staff",
@@ -69,6 +70,7 @@ public static class PermissionModules
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         ["Dashboard"] = "Bảng điều khiển",
+        ["ProfitReports"] = "Báo cáo lãi",
         ["Customers"] = "Khách hàng",
         ["CustomerMessages"] = "Tin nhắn khách hàng",
         ["Staff"] = "Nhân sự quản trị",

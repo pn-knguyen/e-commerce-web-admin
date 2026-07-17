@@ -85,6 +85,26 @@
                         </label>
                         <span asp-validation-for="SupplierId" id="supplier-error" class="inv-field-error"></span>
                     </div>
+
+                    <div class="inv-field" data-inv-field>
+                        <label asp-for="FulfillmentLocationId" class="inv-label">
+                            <span>Điểm nhập kho</span>
+                        </label>
+                        <label class="inv-select-control">
+                            <select asp-for="FulfillmentLocationId"
+                                    data-inv-error-target="location-error"
+                                    disabled="@disabled">
+                                <option value="">Kho mặc định</option>
+                                @foreach (var location in Model.FulfillmentLocationOptions)
+                                {
+                                    <option value="@location.Id" selected="@(Model.FulfillmentLocationId == location.Id ? "selected" : null)">
+                                        @location.Text
+                                    </option>
+                                }
+                            </select>
+                        </label>
+                        <span asp-validation-for="FulfillmentLocationId" id="location-error" class="inv-field-error"></span>
+                    </div>
                 </div>
             </div>
         </section>

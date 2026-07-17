@@ -120,6 +120,18 @@ public enum GoodsReceiptStatus
     Cancelled = 3
 }
 
+public enum InventoryMovementType
+{
+    Receipt = 0,
+    Reserve = 1,
+    Release = 2,
+    Sale = 3,
+    Return = 4,
+    Adjustment = 5,
+    TransferIn = 6,
+    TransferOut = 7
+}
+
 public enum CustomerConversationStatus
 {
     Open = 0,

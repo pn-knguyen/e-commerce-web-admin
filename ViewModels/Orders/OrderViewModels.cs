@@ -93,6 +93,8 @@ public sealed class OrderDetailsViewModel
     public ShipmentPanelViewModel ShipmentPanel { get; set; } = new();
 
     public int TotalQuantity => Items.Sum(item => item.Quantity);
+    public decimal TotalCost => Items.Sum(item => item.CostTotal);
+    public decimal GrossProfit => Items.Sum(item => item.GrossProfit);
     public string ShippingAddress => string.Join(", ", new[]
     {
         ShippingDetail,
@@ -108,7 +110,10 @@ public sealed class OrderItemViewModel
     public string VariantCode { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    public decimal UnitCost { get; set; }
     public decimal LineTotal { get; set; }
+    public decimal CostTotal => UnitCost * Quantity;
+    public decimal GrossProfit => LineTotal - CostTotal;
 }
 
 public sealed class OrderStatusUpdateViewModel

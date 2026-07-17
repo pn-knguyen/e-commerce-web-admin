@@ -3,6 +3,7 @@ using e_commerce_web_admin.Data;
 using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Entities;
 using e_commerce_web_admin.Models.Enums;
+using e_commerce_web_admin.Services.Inventory;
 using e_commerce_web_admin.Services.Shipping;
 using e_commerce_web_admin.ViewModels.Orders;
 using e_commerce_web_admin.ViewModels.Shipments;
@@ -16,11 +17,16 @@ public sealed class OrderAdminService : IOrderAdminService
 
     private readonly ApplicationDbContext _db;
     private readonly IShipmentAdminService _shipmentService;
+    private readonly IInventoryLedgerService _inventoryLedger;
 
-    public OrderAdminService(ApplicationDbContext db, IShipmentAdminService shipmentService)
+    public OrderAdminService(
+        ApplicationDbContext db,
+        IShipmentAdminService shipmentService,
+        IInventoryLedgerService inventoryLedger)
     {
         _db = db;
         _shipmentService = shipmentService;
+        _inventoryLedger = inventoryLedger;
     }
 
     public async Task<OrderIndexViewModel> GetIndexAsync(
@@ -38,7 +44,6 @@ public sealed class OrderAdminService : IOrderAdminService
             .AsNoTracking()
             .Where(order => order.OrderStatus == OrderStatus.Completed && order.PaymentStatus == PaymentStatus.Paid)
             .SumAsync(order => (decimal?)order.TotalAmount, ct) ?? 0m;
-
         var rows = await dbQuery
             .OrderByDescending(order => order.CreatedAt)
             .ThenByDescending(order => order.Id)
@@ -125,6 +130,7 @@ public sealed class OrderAdminService : IOrderAdminService
                         VariantCode = item.ProductVariant != null ? item.ProductVariant.Code : "N/A",
                         Quantity = item.Quantity,
                         UnitPrice = item.UnitPrice,
+                        UnitCost = item.UnitCost,
                         LineTotal = item.UnitPrice * item.Quantity,
                     })
                     .ToList(),
@@ -200,7 +206,12 @@ public sealed class OrderAdminService : IOrderAdminService
             order.PaymentStatus = form.PaymentStatus;
             order.UpdatedAt = DateTime.UtcNow;
 
-            OrderInventoryHelper.ApplyInventoryChange(order, previousOrderStatus, form.OrderStatus);
+            if (form.OrderStatus == OrderStatus.Completed)
+            {
+                await _inventoryLedger.ApplyOrderSaleAsync(order, latestShipment?.FulfillmentLocationId, ct);
+            }
+
+            await _inventoryLedger.ApplyOrderStatusChangeAsync(order, previousOrderStatus, form.OrderStatus, ct);
 
             await _db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);

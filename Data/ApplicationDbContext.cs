@@ -54,6 +54,10 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<GoodsReceipt> GoodsReceipts => Set<GoodsReceipt>();
     public DbSet<GoodReceiptItem> GoodReceiptItems => Set<GoodReceiptItem>();
+    public DbSet<InventoryStockLot> InventoryStockLots => Set<InventoryStockLot>();
+    public DbSet<InventoryBalance> InventoryBalances => Set<InventoryBalance>();
+    public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
+    public DbSet<OrderItemCostAllocation> OrderItemCostAllocations => Set<OrderItemCostAllocation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -277,6 +281,7 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
             entity.HasIndex(variant => variant.Code).IsUnique();
             entity.Property(variant => variant.Code).HasMaxLength(80).IsRequired();
             entity.Property(variant => variant.Price).HasPrecision(18, 2);
+            entity.Property(variant => variant.AverageCost).HasPrecision(18, 2);
             entity.Property(variant => variant.ColorName).HasMaxLength(120);
             entity.Property(variant => variant.ColorHex).HasMaxLength(7).IsUnicode(false);
             entity.HasOne(variant => variant.Product)
@@ -417,12 +422,27 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
         {
             entity.ToTable("order_items");
             entity.Property(item => item.UnitPrice).HasPrecision(18, 2);
+            entity.Property(item => item.UnitCost).HasPrecision(18, 2);
             entity.HasOne(item => item.Order)
                 .WithMany(order => order.OrderItems)
                 .HasForeignKey(item => item.OrderId);
             entity.HasOne(item => item.ProductVariant)
                 .WithMany(variant => variant.OrderItems)
                 .HasForeignKey(item => item.ProductVariantId);
+        });
+
+        modelBuilder.Entity<OrderItemCostAllocation>(entity =>
+        {
+            entity.ToTable("order_item_cost_allocations");
+            entity.HasIndex(allocation => allocation.OrderItemId);
+            entity.HasIndex(allocation => allocation.StockLotId);
+            entity.Property(allocation => allocation.UnitCost).HasPrecision(18, 2);
+            entity.HasOne(allocation => allocation.OrderItem)
+                .WithMany(item => item.CostAllocations)
+                .HasForeignKey(allocation => allocation.OrderItemId);
+            entity.HasOne(allocation => allocation.StockLot)
+                .WithMany(lot => lot.OrderItemCostAllocations)
+                .HasForeignKey(allocation => allocation.StockLotId);
         });
 
         modelBuilder.Entity<Rating>(entity =>
@@ -684,6 +704,9 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
             entity.HasOne(receipt => receipt.Supplier)
                 .WithMany(supplier => supplier.GoodsReceipts)
                 .HasForeignKey(receipt => receipt.SupplierId);
+            entity.HasOne(receipt => receipt.FulfillmentLocation)
+                .WithMany()
+                .HasForeignKey(receipt => receipt.FulfillmentLocationId);
             entity.HasOne(receipt => receipt.CreatedByStaff)
                 .WithMany(staff => staff.CreatedGoodsReceipts)
                 .HasForeignKey(receipt => receipt.CreatedBy);
@@ -702,6 +725,68 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
             entity.HasOne(item => item.ProductVariant)
                 .WithMany(variant => variant.GoodReceiptItems)
                 .HasForeignKey(item => item.ProductVariantId);
+        });
+
+        modelBuilder.Entity<InventoryStockLot>(entity =>
+        {
+            entity.ToTable("inventory_stock_lots");
+            entity.HasIndex(lot => lot.ProductVariantId);
+            entity.HasIndex(lot => lot.FulfillmentLocationId);
+            entity.HasIndex(lot => lot.GoodReceiptItemId)
+                .IsUnique()
+                .HasFilter("[GoodReceiptItemId] IS NOT NULL");
+            entity.HasIndex(lot => lot.LotCode).IsUnique();
+            entity.Property(lot => lot.LotCode).HasMaxLength(80).IsRequired();
+            entity.Property(lot => lot.UnitCost).HasPrecision(18, 2);
+            entity.HasOne(lot => lot.ProductVariant)
+                .WithMany(variant => variant.InventoryStockLots)
+                .HasForeignKey(lot => lot.ProductVariantId);
+            entity.HasOne(lot => lot.FulfillmentLocation)
+                .WithMany()
+                .HasForeignKey(lot => lot.FulfillmentLocationId);
+            entity.HasOne(lot => lot.GoodReceiptItem)
+                .WithMany(item => item.InventoryStockLots)
+                .HasForeignKey(lot => lot.GoodReceiptItemId);
+        });
+
+        modelBuilder.Entity<InventoryBalance>(entity =>
+        {
+            entity.ToTable("inventory_balances");
+            entity.HasIndex(balance => new { balance.ProductVariantId, balance.FulfillmentLocationId })
+                .IsUnique()
+                .HasFilter(null);
+            entity.Property(balance => balance.AverageCost).HasPrecision(18, 2);
+            entity.Property(balance => balance.RowVersion).IsRowVersion();
+            entity.Ignore(balance => balance.AvailableQuantity);
+            entity.HasOne(balance => balance.ProductVariant)
+                .WithMany(variant => variant.InventoryBalances)
+                .HasForeignKey(balance => balance.ProductVariantId);
+            entity.HasOne(balance => balance.FulfillmentLocation)
+                .WithMany()
+                .HasForeignKey(balance => balance.FulfillmentLocationId);
+        });
+
+        modelBuilder.Entity<InventoryMovement>(entity =>
+        {
+            entity.ToTable("inventory_movements");
+            entity.HasIndex(movement => new { movement.ProductVariantId, movement.OccurredAt });
+            entity.HasIndex(movement => movement.FulfillmentLocationId);
+            entity.HasIndex(movement => movement.StockLotId);
+            entity.HasIndex(movement => new { movement.ReferenceType, movement.ReferenceId });
+            entity.Property(movement => movement.Type).HasConversion<string>().HasMaxLength(30);
+            entity.Property(movement => movement.UnitCost).HasPrecision(18, 2);
+            entity.Property(movement => movement.TotalCost).HasPrecision(18, 2);
+            entity.Property(movement => movement.ReferenceType).HasMaxLength(80).IsRequired();
+            entity.Property(movement => movement.Note).HasMaxLength(500);
+            entity.HasOne(movement => movement.ProductVariant)
+                .WithMany(variant => variant.InventoryMovements)
+                .HasForeignKey(movement => movement.ProductVariantId);
+            entity.HasOne(movement => movement.FulfillmentLocation)
+                .WithMany()
+                .HasForeignKey(movement => movement.FulfillmentLocationId);
+            entity.HasOne(movement => movement.StockLot)
+                .WithMany(lot => lot.InventoryMovements)
+                .HasForeignKey(movement => movement.StockLotId);
         });
     }
 

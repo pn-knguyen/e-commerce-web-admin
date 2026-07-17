@@ -504,6 +504,7 @@ const Renderer = {
     renderKpis(data) {
         const cards = [
             { id: 'kpi-revenue',   key: 'revenue',   format: Helpers.formatVND },
+            { id: 'kpi-profit',    key: 'profit',    format: Helpers.formatVND },
             { id: 'kpi-orders',    key: 'orders',    format: Helpers.formatNumber },
             { id: 'kpi-customers', key: 'customers', format: Helpers.formatNumber },
             { id: 'kpi-products',  key: 'products',  format: Helpers.formatNumber },
@@ -558,6 +559,7 @@ const Renderer = {
                 </div>
                 <div class="text-right shrink-0">
                     <p class="text-sm font-bold text-slate-800">${Helpers.formatVND(p.revenue)}</p>
+                    <p class="text-[11px] font-medium text-slate-500">Lãi ${Helpers.formatVND(p.profit || 0)}</p>
                     <p class="text-xs font-medium ${growthClass}">${growthSign}${p.growth}%</p>
                 </div>
             </div>`;

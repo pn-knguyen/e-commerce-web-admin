@@ -17,11 +17,16 @@ public sealed class InventoryAdminService : IInventoryAdminService
 
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IInventoryLedgerService _inventoryLedger;
 
-    public InventoryAdminService(ApplicationDbContext db, IHttpContextAccessor httpContextAccessor)
+    public InventoryAdminService(
+        ApplicationDbContext db,
+        IHttpContextAccessor httpContextAccessor,
+        IInventoryLedgerService inventoryLedger)
     {
         _db = db;
         _httpContextAccessor = httpContextAccessor;
+        _inventoryLedger = inventoryLedger;
     }
 
     private sealed record ReceiptItemCandidate(int Index, GoodsReceiptItemInputViewModel Item);
@@ -44,6 +49,8 @@ public sealed class InventoryAdminService : IInventoryAdminService
             variant => variant.Quantity > 0 && variant.Quantity <= InventoryDisplay.LowStockThreshold,
             ct);
         var outOfStockCount = await allVariants.CountAsync(variant => variant.Quantity <= 0, ct);
+        var totalInventoryCost = await allVariants
+            .SumAsync(variant => (decimal?)(variant.Quantity * variant.AverageCost), ct) ?? 0m;
         var pendingReceiptCount = await _db.GoodsReceipts
             .AsNoTracking()
             .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Pending, ct);
@@ -69,7 +76,9 @@ public sealed class InventoryAdminService : IInventoryAdminService
                     ? variant.Product.Category.Name
                     : "Không rõ danh mục",
                 Price = variant.Price,
+                AverageCost = variant.AverageCost,
                 Quantity = variant.Quantity,
+                ReservedQuantity = variant.InventoryBalances.Sum(balance => (int?)balance.ReservedQuantity) ?? 0,
                 SoldCount = variant.SoldCount,
                 IsActive = variant.IsActive,
                 LastReceiptAt = variant.GoodReceiptItems
@@ -89,6 +98,9 @@ public sealed class InventoryAdminService : IInventoryAdminService
                 Id = receipt.Id,
                 ReceiptCode = receipt.ReceiptCode,
                 SupplierName = receipt.Supplier != null ? receipt.Supplier.Name : "Không rõ nhà cung cấp",
+                FulfillmentLocationName = receipt.FulfillmentLocation != null
+                    ? receipt.FulfillmentLocation.Name
+                    : "Kho mặc định",
                 Status = receipt.Status,
                 ItemCount = receipt.GoodReceiptItems.Count,
                 TotalQuantity = receipt.GoodReceiptItems.Sum(item => item.Quantity),
@@ -122,6 +134,7 @@ public sealed class InventoryAdminService : IInventoryAdminService
             LowStockCount = lowStockCount,
             OutOfStockCount = outOfStockCount,
             PendingReceiptCount = pendingReceiptCount,
+            TotalInventoryCost = totalInventoryCost,
         };
     }
 
@@ -139,6 +152,9 @@ public sealed class InventoryAdminService : IInventoryAdminService
                 SupplierName = receipt.Supplier != null ? receipt.Supplier.Name : "Không rõ nhà cung cấp",
                 SupplierPhone = receipt.Supplier != null ? receipt.Supplier.Phone : null,
                 SupplierEmail = receipt.Supplier != null ? receipt.Supplier.Email : null,
+                FulfillmentLocationName = receipt.FulfillmentLocation != null
+                    ? receipt.FulfillmentLocation.Name
+                    : "Kho mặc định",
                 Status = receipt.Status,
                 TotalAmount = receipt.TotalAmount,
                 CreatedByName = receipt.CreatedByStaff != null ? receipt.CreatedByStaff.FullName : "Không rõ",
@@ -181,6 +197,7 @@ public sealed class InventoryAdminService : IInventoryAdminService
         var form = new GoodsReceiptFormViewModel
         {
             ReceiptCode = await GenerateReceiptCodeAsync(ct),
+            FulfillmentLocationId = await _inventoryLedger.ResolveDefaultLocationIdAsync(ct),
             Status = GoodsReceiptStatus.Draft,
             Items =
             [
@@ -214,6 +231,7 @@ public sealed class InventoryAdminService : IInventoryAdminService
         {
             Id = receipt.Id,
             SupplierId = receipt.SupplierId,
+            FulfillmentLocationId = receipt.FulfillmentLocationId,
             ReceiptCode = receipt.ReceiptCode,
             Status = receipt.Status,
             Items = receipt.GoodReceiptItems
@@ -236,6 +254,8 @@ public sealed class InventoryAdminService : IInventoryAdminService
         CancellationToken ct = default)
     {
         form.SupplierOptions = await BuildSupplierOptionsAsync(form.SupplierId, ct);
+        form.FulfillmentLocationId ??= await _inventoryLedger.ResolveDefaultLocationIdAsync(ct);
+        form.FulfillmentLocationOptions = await BuildFulfillmentLocationOptionsAsync(form.FulfillmentLocationId, ct);
         form.ProductVariantOptions = await BuildProductVariantOptionsAsync(
             form.Items
                 .Where(item => item.ProductVariantId.HasValue)
@@ -281,6 +301,7 @@ public sealed class InventoryAdminService : IInventoryAdminService
         var entity = new GoodsReceipt
         {
             SupplierId = form.SupplierId!.Value,
+            FulfillmentLocationId = form.FulfillmentLocationId,
             ReceiptCode = form.ReceiptCode,
             Status = GoodsReceiptStatus.Draft,
             CreatedBy = operatorStaffId.Value,
@@ -350,6 +371,7 @@ public sealed class InventoryAdminService : IInventoryAdminService
             .ToList();
 
         entity.SupplierId = form.SupplierId!.Value;
+        entity.FulfillmentLocationId = form.FulfillmentLocationId;
         entity.ReceiptCode = form.ReceiptCode;
         entity.TotalAmount = CalculateTotal(selectedItems);
         entity.UpdatedAt = DateTime.UtcNow;
@@ -438,12 +460,11 @@ public sealed class InventoryAdminService : IInventoryAdminService
 
             var now = DateTime.UtcNow;
 
-            foreach (var group in receipt.GoodReceiptItems.GroupBy(item => item.ProductVariantId))
-            {
-                var variant = group.First().ProductVariant!;
-                variant.Quantity += group.Sum(item => item.Quantity);
-                variant.UpdatedAt = now;
-            }
+            await _inventoryLedger.ApplyReceiptApprovalAsync(
+                receipt,
+                receipt.FulfillmentLocationId,
+                now,
+                ct);
 
             receipt.Status = GoodsReceiptStatus.Approved;
             receipt.ApprovedBy = operatorStaffId.Value;
@@ -635,6 +656,25 @@ public sealed class InventoryAdminService : IInventoryAdminService
             .ToListAsync(ct);
     }
 
+    private async Task<List<InventorySelectOption>> BuildFulfillmentLocationOptionsAsync(
+        long? selectedId,
+        CancellationToken ct)
+    {
+        return await _db.FulfillmentLocations
+            .AsNoTracking()
+            .Where(location => location.IsActive || (selectedId.HasValue && location.Id == selectedId.Value))
+            .OrderByDescending(location => location.IsDefault)
+            .ThenByDescending(location => location.IsActive)
+            .ThenBy(location => location.Name)
+            .Select(location => new InventorySelectOption
+            {
+                Id = location.Id,
+                Text = location.IsDefault ? location.Name + " (mặc định)" : location.Name,
+                IsActive = location.IsActive,
+            })
+            .ToListAsync(ct);
+    }
+
     private async Task<List<InventoryProductVariantOptionViewModel>> BuildProductVariantOptionsAsync(
         IReadOnlyCollection<long> selectedIds,
         CancellationToken ct)
@@ -711,6 +751,28 @@ public sealed class InventoryAdminService : IInventoryAdminService
             else if (!supplier.IsActive)
             {
                 errors.Add(new InventoryValidationError(nameof(form.SupplierId), "Nhà cung cấp đang tạm ngưng."));
+            }
+        }
+
+        if (form.FulfillmentLocationId.HasValue)
+        {
+            var location = await _db.FulfillmentLocations
+                .AsNoTracking()
+                .Where(item => item.Id == form.FulfillmentLocationId.Value)
+                .Select(item => new { item.IsActive })
+                .FirstOrDefaultAsync(ct);
+
+            if (location is null)
+            {
+                errors.Add(new InventoryValidationError(
+                    nameof(form.FulfillmentLocationId),
+                    "Điểm nhập kho không tồn tại."));
+            }
+            else if (!location.IsActive)
+            {
+                errors.Add(new InventoryValidationError(
+                    nameof(form.FulfillmentLocationId),
+                    "Điểm nhập kho đang tạm ngưng."));
             }
         }
 

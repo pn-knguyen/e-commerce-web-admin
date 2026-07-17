@@ -66,6 +66,7 @@ public class ProductVariant
     // Ma SKU/ma bien the thuc te, vi du: IP15PM-256-BLK, NIKE-AF1-42-WHT.
     public string Code { get; set; } = string.Empty;
     public decimal Price { get; set; }
+    public decimal AverageCost { get; set; }
     public int SoldCount { get; set; }
     public int Quantity { get; set; }
     public string? ColorName { get; set; }
@@ -81,6 +82,9 @@ public class ProductVariant
     public ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     public ICollection<GoodReceiptItem> GoodReceiptItems { get; set; } = new List<GoodReceiptItem>();
+    public ICollection<InventoryStockLot> InventoryStockLots { get; set; } = new List<InventoryStockLot>();
+    public ICollection<InventoryBalance> InventoryBalances { get; set; } = new List<InventoryBalance>();
+    public ICollection<InventoryMovement> InventoryMovements { get; set; } = new List<InventoryMovement>();
     public ICollection<PromotionRule> GiftPromotionRules { get; set; } = new List<PromotionRule>();
     public ICollection<ProductVariantImage> ProductVariantImages { get; set; } = new List<ProductVariantImage>();
 }

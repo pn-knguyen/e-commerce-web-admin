@@ -114,6 +114,10 @@
                         <dd>@Model.CreatedByName</dd>
                     </div>
                     <div>
+                        <dt>Điểm nhập kho</dt>
+                        <dd>@Model.FulfillmentLocationName</dd>
+                    </div>
+                    <div>
                         <dt>Người duyệt</dt>
                         <dd>@(string.IsNullOrWhiteSpace(Model.ApprovedByName) ? "Chưa duyệt" : Model.ApprovedByName)</dd>
                     </div>

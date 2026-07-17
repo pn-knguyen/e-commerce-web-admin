@@ -40,6 +40,7 @@ public sealed class InventoryIndexViewModel
     public int LowStockCount { get; set; }
     public int OutOfStockCount { get; set; }
     public int PendingReceiptCount { get; set; }
+    public decimal TotalInventoryCost { get; set; }
 
     public int StockTotalPages => StockPageSize <= 0
         ? 0
@@ -70,12 +71,15 @@ public sealed class InventoryStockRowViewModel
     public string BrandName { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
     public decimal Price { get; set; }
+    public decimal AverageCost { get; set; }
     public int Quantity { get; set; }
+    public int ReservedQuantity { get; set; }
     public int SoldCount { get; set; }
     public bool IsActive { get; set; }
     public DateTime? LastReceiptAt { get; set; }
 
     public decimal StockValue => Price * Quantity;
+    public decimal InventoryCostValue => AverageCost * Quantity;
 }
 
 public sealed class GoodsReceiptRowViewModel
@@ -83,6 +87,7 @@ public sealed class GoodsReceiptRowViewModel
     public long Id { get; set; }
     public string ReceiptCode { get; set; } = string.Empty;
     public string SupplierName { get; set; } = string.Empty;
+    public string FulfillmentLocationName { get; set; } = string.Empty;
     public GoodsReceiptStatus Status { get; set; }
     public int ItemCount { get; set; }
     public int TotalQuantity { get; set; }
@@ -99,6 +104,7 @@ public sealed class GoodsReceiptDetailsViewModel
     public string SupplierName { get; set; } = string.Empty;
     public string? SupplierPhone { get; set; }
     public string? SupplierEmail { get; set; }
+    public string FulfillmentLocationName { get; set; } = string.Empty;
     public GoodsReceiptStatus Status { get; set; }
     public decimal TotalAmount { get; set; }
     public string CreatedByName { get; set; } = string.Empty;
@@ -132,6 +138,7 @@ public sealed class GoodsReceiptItemViewModel
 public sealed class GoodsReceiptFormViewModel
 {
     public long Id { get; set; }
+    public long? FulfillmentLocationId { get; set; }
 
     [Required(ErrorMessage = "Vui lòng chọn nhà cung cấp.")]
     [Range(1, long.MaxValue, ErrorMessage = "Vui lòng chọn nhà cung cấp.")]
@@ -145,6 +152,7 @@ public sealed class GoodsReceiptFormViewModel
 
     public GoodsReceiptStatus Status { get; set; } = GoodsReceiptStatus.Draft;
     public List<InventorySelectOption> SupplierOptions { get; set; } = [];
+    public List<InventorySelectOption> FulfillmentLocationOptions { get; set; } = [];
     public List<InventoryProductVariantOptionViewModel> ProductVariantOptions { get; set; } = [];
     public List<GoodsReceiptItemInputViewModel> Items { get; set; } = [];
 

@@ -29,7 +29,7 @@ public sealed class CustomerMessagePersistenceController(
     {
         if (input is null)
         {
-            return BadRequest(CustomerRealtimeActionResult.Failed("Du lieu tin nhan khong hop le."));
+            return BadRequest(CustomerRealtimeActionResult.Failed("Dữ liệu tin nhắn không hợp lệ."));
         }
 
         var customerId = await GetAuthorizedCustomerIdAsync(ct);
@@ -37,7 +37,7 @@ public sealed class CustomerMessagePersistenceController(
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                CustomerRealtimeActionResult.Forbidden("Khach hang khong hop le."));
+                CustomerRealtimeActionResult.Forbidden("Khách hàng không hợp lệ."));
         }
 
         if (!await customerMessageRateLimiter.TryAcquireCustomerSendAsync(customerId.Value, ct))
@@ -74,7 +74,7 @@ public sealed class CustomerMessagePersistenceController(
     {
         if (input is null)
         {
-            return BadRequest(CustomerRealtimeActionResult.Failed("Du lieu trao doi AI khong hop le."));
+            return BadRequest(CustomerRealtimeActionResult.Failed("Dữ liệu trao đổi AI không hợp lệ."));
         }
 
         var customerId = await GetAuthorizedCustomerIdAsync(ct);
@@ -82,7 +82,7 @@ public sealed class CustomerMessagePersistenceController(
         {
             return StatusCode(
                 StatusCodes.Status403Forbidden,
-                CustomerRealtimeActionResult.Forbidden("Khach hang khong hop le."));
+                CustomerRealtimeActionResult.Forbidden("Khách hàng không hợp lệ."));
         }
 
         if (!await customerMessageRateLimiter.TryAcquireCustomerSendAsync(customerId.Value, ct))

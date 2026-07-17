@@ -5,6 +5,9 @@ namespace e_commerce_web_admin.Services.Shipping;
 
 public sealed class ShipmentStatusSyncWorker : BackgroundService
 {
+    private const int MinStatusSyncIntervalSeconds = 1;
+    private const int MaxStatusSyncIntervalSeconds = 3600;
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOptionsMonitor<GiaoHangNhanhOptions> _options;
     private readonly ILogger<ShipmentStatusSyncWorker> _logger;
@@ -56,7 +59,10 @@ public sealed class ShipmentStatusSyncWorker : BackgroundService
 
     private static TimeSpan GetInterval(GiaoHangNhanhOptions options)
     {
-        var seconds = Math.Clamp(options.StatusSyncIntervalSeconds, 30, 3600);
+        var seconds = Math.Clamp(
+            options.StatusSyncIntervalSeconds,
+            MinStatusSyncIntervalSeconds,
+            MaxStatusSyncIntervalSeconds);
         return TimeSpan.FromSeconds(seconds);
     }
 }
