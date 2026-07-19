@@ -8,6 +8,8 @@ public sealed class OrderIndexQuery
 {
     public string? Search { get; set; }
     public string? DateRange { get; set; }
+    public DateTime? CreatedFrom { get; set; }
+    public DateTime? CreatedTo { get; set; }
     public string? OrderStatus { get; set; }
     public string? PaymentStatus { get; set; }
     public long? PaymentMethodId { get; set; }
@@ -24,6 +26,8 @@ public sealed class OrderIndexViewModel
 
     public string? Search { get; set; }
     public string? DateRange { get; set; }
+    public DateTime? CreatedFrom { get; set; }
+    public DateTime? CreatedTo { get; set; }
     public string? OrderStatus { get; set; }
     public string? PaymentStatus { get; set; }
     public long? PaymentMethodId { get; set; }
@@ -42,6 +46,8 @@ public sealed class OrderIndexViewModel
     public bool HasFilters =>
         !string.IsNullOrWhiteSpace(Search) ||
         !string.IsNullOrWhiteSpace(DateRange) ||
+        CreatedFrom.HasValue ||
+        CreatedTo.HasValue ||
         !string.IsNullOrWhiteSpace(OrderStatus) ||
         !string.IsNullOrWhiteSpace(PaymentStatus) ||
         PaymentMethodId.HasValue;

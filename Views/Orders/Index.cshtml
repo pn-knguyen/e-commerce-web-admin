@@ -7,11 +7,36 @@
 
     var vi = CultureInfo.GetCultureInfo("vi-VN");
     string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
+    string CompactMoney(decimal value)
+    {
+        var abs = Math.Abs(value);
+        if (abs >= 1_000_000_000_000m)
+        {
+            return string.Concat((value / 1_000_000_000_000m).ToString("N2", vi), " nghìn tỷ đ");
+        }
+
+        if (abs >= 1_000_000_000m)
+        {
+            return string.Concat((value / 1_000_000_000m).ToString("N1", vi), " tỷ đ");
+        }
+
+        if (abs >= 1_000_000m)
+        {
+            return string.Concat((value / 1_000_000m).ToString("N1", vi), " triệu đ");
+        }
+
+        return Money(value);
+    }
     string DateText(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", vi);
+    string DateTimeInput(DateTime? value) => value.HasValue
+        ? value.Value.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture)
+        : string.Empty;
+    var isCustomDateRange = string.Equals(Model.DateRange, "custom", StringComparison.OrdinalIgnoreCase);
+    var dateFilterInputType = isCustomDateRange ? "datetime-local" : "date";
     var activeFilterCount = new[]
     {
         !string.IsNullOrWhiteSpace(Model.Search),
-        !string.IsNullOrWhiteSpace(Model.DateRange),
+        !string.IsNullOrWhiteSpace(Model.DateRange) || Model.CreatedFrom.HasValue || Model.CreatedTo.HasValue,
         !string.IsNullOrWhiteSpace(Model.OrderStatus),
         !string.IsNullOrWhiteSpace(Model.PaymentStatus),
         Model.PaymentMethodId.HasValue,
@@ -88,30 +113,34 @@
                 <span>Đang giao</span>
             </div>
         </article>
-        <article class="order-metric">
+        <article class="order-metric order-metric-revenue">
             <span class="order-metric-icon is-revenue">
                 <i data-lucide="wallet-cards" class="w-5 h-5"></i>
             </span>
             <div>
-                <p>@Money(Model.CompletedRevenue)</p>
+                <p class="order-metric-money" title="@Money(Model.CompletedRevenue)">
+                    @CompactMoney(Model.CompletedRevenue)
+                </p>
                 <span>Doanh thu hoàn tất</span>
             </div>
         </article>
     </section>
 
     <section class="order-console order-anim" style="animation-delay:0.12s">
-        <form method="get" asp-action="Index" class="order-filter-grid">
+        <form method="get"
+              asp-action="Index"
+              class="order-filter-grid @(Model.HasFilters ? "has-clear-filter" : "has-no-clear-filter")">
             <label class="order-search-field">
                 <i data-lucide="search" class="w-4 h-4"></i>
                 <input type="text"
                        name="search"
                        value="@Model.Search"
-                       placeholder="Tìm mã đơn, khách hàng hoặc số điện thoại..." />
+                       placeholder="Tìm mã đơn, khách hàng, SĐT..." />
             </label>
 
-            <label class="order-select-field">
+            <label class="order-select-field order-date-range-field">
                 <span>Thời gian</span>
-                <select name="dateRange">
+                <select name="dateRange" data-order-date-range-select>
                     <option value="" selected="@(string.IsNullOrEmpty(Model.DateRange) ? "selected" : null)">Tất cả</option>
                     @foreach (var option in Model.DateRangeOptions)
                     {
@@ -120,7 +149,25 @@
                 </select>
             </label>
 
-            <label class="order-select-field">
+            <label class="order-select-field order-date-custom-field order-created-from-field" data-order-custom-date-field>
+                <span>Từ thời điểm</span>
+                <input type="@dateFilterInputType"
+                       name="createdFrom"
+                       value="@DateTimeInput(Model.CreatedFrom)"
+                       disabled="@(!isCustomDateRange)"
+                       data-order-created-from />
+            </label>
+
+            <label class="order-select-field order-date-custom-field order-created-to-field" data-order-custom-date-field>
+                <span>Đến thời điểm</span>
+                <input type="@dateFilterInputType"
+                       name="createdTo"
+                       value="@DateTimeInput(Model.CreatedTo)"
+                       disabled="@(!isCustomDateRange)"
+                       data-order-created-to />
+            </label>
+
+            <label class="order-select-field order-order-status-field">
                 <span>Đơn hàng</span>
                 <select name="orderStatus">
                     <option value="" selected="@(string.IsNullOrEmpty(Model.OrderStatus) ? "selected" : null)">Tất cả</option>
@@ -131,7 +178,7 @@
                 </select>
             </label>
 
-            <label class="order-select-field">
+            <label class="order-select-field order-payment-status-field">
                 <span>Thanh toán</span>
                 <select name="paymentStatus">
                     <option value="" selected="@(string.IsNullOrEmpty(Model.PaymentStatus) ? "selected" : null)">Tất cả</option>
@@ -142,7 +189,7 @@
                 </select>
             </label>
 
-            <label class="order-select-field">
+            <label class="order-select-field order-payment-method-field">
                 <span>Phương thức</span>
                 <select name="paymentMethodId">
                     <option value="" selected="@(Model.PaymentMethodId.HasValue ? null : "selected")">Tất cả</option>
@@ -273,6 +320,8 @@
                                asp-route-page="@(Model.Page - 1)"
                                asp-route-search="@Model.Search"
                                asp-route-dateRange="@Model.DateRange"
+                               asp-route-createdFrom="@DateTimeInput(Model.CreatedFrom)"
+                               asp-route-createdTo="@DateTimeInput(Model.CreatedTo)"
                                asp-route-orderStatus="@Model.OrderStatus"
                                asp-route-paymentStatus="@Model.PaymentStatus"
                                asp-route-paymentMethodId="@Model.PaymentMethodId"
@@ -287,6 +336,8 @@
                                asp-route-page="@p"
                                asp-route-search="@Model.Search"
                                asp-route-dateRange="@Model.DateRange"
+                               asp-route-createdFrom="@DateTimeInput(Model.CreatedFrom)"
+                               asp-route-createdTo="@DateTimeInput(Model.CreatedTo)"
                                asp-route-orderStatus="@Model.OrderStatus"
                                asp-route-paymentStatus="@Model.PaymentStatus"
                                asp-route-paymentMethodId="@Model.PaymentMethodId"
@@ -300,6 +351,8 @@
                                asp-route-page="@(Model.Page + 1)"
                                asp-route-search="@Model.Search"
                                asp-route-dateRange="@Model.DateRange"
+                               asp-route-createdFrom="@DateTimeInput(Model.CreatedFrom)"
+                               asp-route-createdTo="@DateTimeInput(Model.CreatedTo)"
                                asp-route-orderStatus="@Model.OrderStatus"
                                asp-route-paymentStatus="@Model.PaymentStatus"
                                asp-route-paymentMethodId="@Model.PaymentMethodId"

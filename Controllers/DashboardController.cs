@@ -38,91 +38,72 @@ public class DashboardController : Controller
     }
 
     [HttpGet("/api/dashboard/kpis")]
-    public async Task<IActionResult> GetKpis(string? period = "month", CancellationToken ct = default)
+    public async Task<IActionResult> GetKpis([FromQuery] DashboardQuery query, CancellationToken ct = default)
     {
-        var range = GetPeriodRange(period);
+        var range = GetPeriodRange(query);
 
-        var orderRows = await _db.Orders
-            .AsNoTracking()
-            .Where(order => order.CreatedAt >= range.StartUtc && order.CreatedAt < range.EndUtc)
-            .Select(order => new OrderMetricRow(
-                order.CreatedAt,
-                order.TotalAmount,
-                order.OrderStatus,
-                order.PaymentStatus))
-            .ToListAsync(ct);
-
-        var currentRevenue = orderRows
-            .Where(IsSuccessfulOrder)
-            .Sum(order => order.TotalAmount);
-        var currentOrderCount = orderRows.Count;
-        var currentProfitRows = await SuccessfulOrderItems(range.StartUtc, range.EndUtc)
-            .Select(item => new ProfitMetricRow(
-                item.Order!.CreatedAt,
-                (item.UnitPrice - item.UnitCost) * item.Quantity))
-            .ToListAsync(ct);
-        var currentProfit = currentProfitRows.Sum(item => item.GrossProfit);
-
-        var previousRevenue = await SuccessfulOrders()
-            .Where(order => order.CreatedAt >= range.PreviousStartUtc && order.CreatedAt < range.PreviousEndUtc)
-            .SumAsync(order => (decimal?)order.TotalAmount, ct) ?? 0m;
-        var previousProfit = await SuccessfulOrderItems(range.PreviousStartUtc, range.PreviousEndUtc)
-            .SumAsync(item => (decimal?)((item.UnitPrice - item.UnitCost) * item.Quantity), ct) ?? 0m;
-        var previousOrderCount = await _db.Orders
-            .AsNoTracking()
-            .CountAsync(order => order.CreatedAt >= range.PreviousStartUtc && order.CreatedAt < range.PreviousEndUtc, ct);
+        var currentSalesSummary = await BuildSalesSummaryAsync(query, range.StartUtc, range.EndUtc, ct);
+        var previousSalesSummary = await BuildSalesSummaryAsync(query, range.PreviousStartUtc, range.PreviousEndUtc, ct);
+        var currentOrderCount = await CountOrdersAsync(query, range.StartUtc, range.EndUtc, ct);
+        var previousOrderCount = await CountOrdersAsync(query, range.PreviousStartUtc, range.PreviousEndUtc, ct);
 
         var currentCustomerCount = await _db.Users.AsNoTracking()
             .CountAsync(user => user.CreatedAt < range.EndUtc, ct);
         var previousCustomerCount = await _db.Users.AsNoTracking()
             .CountAsync(user => user.CreatedAt < range.StartUtc, ct);
-        var newCustomerDates = await _db.Users.AsNoTracking()
-            .Where(user => user.CreatedAt >= range.StartUtc && user.CreatedAt < range.EndUtc)
-            .Select(user => user.CreatedAt)
-            .ToListAsync(ct);
 
         var currentProductCount = await _db.Products.AsNoTracking()
             .CountAsync(product => product.CreatedAt < range.EndUtc, ct);
         var previousProductCount = await _db.Products.AsNoTracking()
             .CountAsync(product => product.CreatedAt < range.StartUtc, ct);
-        var newProductDates = await _db.Products.AsNoTracking()
-            .Where(product => product.CreatedAt >= range.StartUtc && product.CreatedAt < range.EndUtc)
-            .Select(product => product.CreatedAt)
-            .ToListAsync(ct);
 
-        var revenueSparkline = BuildSeries(
-            orderRows.Where(IsSuccessfulOrder),
-            row => row.CreatedAt,
-            row => row.TotalAmount,
+        var revenueSparkline = await BuildSeriesAsync(
+            RevenueSeriesSource(query, range.StartUtc, range.EndUtc),
             range.StartUtc,
-            range.EndUtc);
-        var profitSparkline = BuildSeries(
-            currentProfitRows,
-            row => row.CreatedAt,
-            row => row.GrossProfit,
+            range.EndUtc,
+            ct);
+        var orderSparkline = await BuildSeriesAsync(
+            FilterOrders(query, range.StartUtc, range.EndUtc)
+                .Select(order => new SeriesSourceRow
+                {
+                    CreatedAt = order.CreatedAt,
+                    Value = 1m,
+                }),
             range.StartUtc,
-            range.EndUtc);
-        var orderSparkline = BuildSeries(
-            orderRows,
-            row => row.CreatedAt,
-            _ => 1m,
-            range.StartUtc,
-            range.EndUtc);
+            range.EndUtc,
+            ct);
         var customerSparkline = BuildCumulativeCountSeries(
-            newCustomerDates,
-            previousCustomerCount,
-            range.StartUtc,
-            range.EndUtc);
+            await BuildSeriesAsync(
+                _db.Users
+                    .AsNoTracking()
+                    .Where(user => user.CreatedAt >= range.StartUtc && user.CreatedAt < range.EndUtc)
+                    .Select(user => new SeriesSourceRow
+                    {
+                        CreatedAt = user.CreatedAt,
+                        Value = 1m,
+                    }),
+                range.StartUtc,
+                range.EndUtc,
+                ct),
+            previousCustomerCount);
         var productSparkline = BuildCumulativeCountSeries(
-            newProductDates,
-            previousProductCount,
-            range.StartUtc,
-            range.EndUtc);
+            await BuildSeriesAsync(
+                _db.Products
+                    .AsNoTracking()
+                    .Where(product => product.CreatedAt >= range.StartUtc && product.CreatedAt < range.EndUtc)
+                    .Select(product => new SeriesSourceRow
+                    {
+                        CreatedAt = product.CreatedAt,
+                        Value = 1m,
+                    }),
+                range.StartUtc,
+                range.EndUtc,
+                ct),
+            previousProductCount);
 
         return Ok(new
         {
-            revenue = BuildKpi(currentRevenue, previousRevenue, revenueSparkline),
-            profit = BuildKpi(currentProfit, previousProfit, profitSparkline),
+            revenue = BuildKpi(currentSalesSummary.Revenue, previousSalesSummary.Revenue, revenueSparkline),
             orders = BuildKpi(currentOrderCount, previousOrderCount, orderSparkline),
             customers = BuildKpi(currentCustomerCount, previousCustomerCount, customerSparkline),
             products = BuildKpi(currentProductCount, previousProductCount, productSparkline),
@@ -130,45 +111,34 @@ public class DashboardController : Controller
     }
 
     [HttpGet("/api/dashboard/revenue-chart")]
-    public async Task<IActionResult> GetRevenueChart(CancellationToken ct = default)
+    public async Task<IActionResult> GetRevenueChart([FromQuery] DashboardQuery query, CancellationToken ct = default)
     {
-        var localNow = GetVietnamNow();
-        var nextYearStart = ToUtc(new DateTime(localNow.Year + 1, 1, 1));
-        var previousYearStart = ToUtc(new DateTime(localNow.Year - 1, 1, 1));
-
-        var rows = await SuccessfulOrders()
-            .Where(order => order.CreatedAt >= previousYearStart && order.CreatedAt < nextYearStart)
-            .Select(order => new RevenueRow(order.CreatedAt, order.TotalAmount))
-            .ToListAsync(ct);
-
-        var currentYear = new decimal[12];
-        var previousYear = new decimal[12];
-
-        foreach (var row in rows)
-        {
-            var localDate = FromUtc(row.CreatedAt);
-            var target = localDate.Year == localNow.Year ? currentYear : previousYear;
-            target[localDate.Month - 1] += row.TotalAmount / 1_000_000m;
-        }
+        var range = GetPeriodRange(query);
+        var buckets = GetBucketDefinition(range.StartUtc, range.EndUtc);
+        var current = await BuildSalesSeriesAsync(query, range.StartUtc, range.EndUtc, buckets, ct);
+        var previous = await BuildSalesSeriesAsync(query, range.PreviousStartUtc, range.PreviousEndUtc, buckets, ct);
 
         return Ok(new
         {
-            labels = Enumerable.Range(1, 12).Select(month => $"T{month}").ToArray(),
-            currentYear,
-            previousYear,
+            labels = buckets.Labels,
+            revenue = current.Revenue,
+            previousRevenue = previous.Revenue,
         });
     }
 
     [HttpGet("/api/dashboard/order-status")]
-    public async Task<IActionResult> GetOrderStatus(string? period = "month", CancellationToken ct = default)
+    public async Task<IActionResult> GetOrderStatus([FromQuery] DashboardQuery query, CancellationToken ct = default)
     {
-        var range = GetPeriodRange(period);
-        var counts = await _db.Orders
-            .AsNoTracking()
-            .Where(order => order.CreatedAt >= range.StartUtc && order.CreatedAt < range.EndUtc)
-            .GroupBy(order => order.OrderStatus)
-            .Select(group => new { Status = group.Key, Count = group.Count() })
-            .ToDictionaryAsync(item => item.Status, item => item.Count, ct);
+        var range = GetPeriodRange(query);
+        var counts = query.CategoryId.HasValue
+            ? await FilterOrderItems(query, range.StartUtc, range.EndUtc, successfulOnly: false)
+                .GroupBy(item => item.Order!.OrderStatus)
+                .Select(group => new { Status = group.Key, Count = group.Select(item => item.OrderId).Distinct().Count() })
+                .ToDictionaryAsync(item => item.Status, item => item.Count, ct)
+            : await FilterOrders(query, range.StartUtc, range.EndUtc)
+                .GroupBy(order => order.OrderStatus)
+                .Select(group => new { Status = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(item => item.Status, item => item.Count, ct);
 
         return Ok(new
         {
@@ -179,10 +149,10 @@ public class DashboardController : Controller
     }
 
     [HttpGet("/api/dashboard/top-products")]
-    public async Task<IActionResult> GetTopProducts(string? period = "month", CancellationToken ct = default)
+    public async Task<IActionResult> GetTopProducts([FromQuery] DashboardQuery query, CancellationToken ct = default)
     {
-        var range = GetPeriodRange(period);
-        var currentSales = await QueryProductSales(range.StartUtc, range.EndUtc)
+        var range = GetPeriodRange(query);
+        var currentSales = await QueryProductSales(query, range.StartUtc, range.EndUtc)
             .OrderByDescending(item => item.Revenue)
             .ThenByDescending(item => item.Sold)
             .Take(5)
@@ -194,7 +164,7 @@ public class DashboardController : Controller
         }
 
         var productIds = currentSales.Select(item => item.ProductId).ToArray();
-        var previousSales = await QueryProductSales(range.PreviousStartUtc, range.PreviousEndUtc)
+        var previousSales = await QueryProductSales(query, range.PreviousStartUtc, range.PreviousEndUtc)
             .Where(item => productIds.Contains(item.ProductId))
             .ToDictionaryAsync(item => item.ProductId, item => item.Sold, ct);
 
@@ -205,7 +175,6 @@ public class DashboardController : Controller
             category = item.Category,
             sold = item.Sold,
             revenue = item.Revenue,
-            profit = item.Profit,
             growth = CalculateChange(item.Sold, previousSales.GetValueOrDefault(item.ProductId)),
         });
 
@@ -213,10 +182,10 @@ public class DashboardController : Controller
     }
 
     [HttpGet("/api/dashboard/recent-orders")]
-    public async Task<IActionResult> GetRecentOrders(CancellationToken ct = default)
+    public async Task<IActionResult> GetRecentOrders([FromQuery] DashboardQuery query, CancellationToken ct = default)
     {
-        var orders = await _db.Orders
-            .AsNoTracking()
+        var range = GetPeriodRange(query);
+        var orders = await FilterOrders(query, range.StartUtc, range.EndUtc)
             .OrderByDescending(order => order.CreatedAt)
             .ThenByDescending(order => order.Id)
             .Take(10)
@@ -248,14 +217,22 @@ public class DashboardController : Controller
     }
 
     [HttpGet("/api/dashboard/category-revenue")]
-    public async Task<IActionResult> GetCategoryRevenue(string? period = "month", CancellationToken ct = default)
+    public async Task<IActionResult> GetCategoryRevenue([FromQuery] DashboardQuery query, CancellationToken ct = default)
     {
-        var range = GetPeriodRange(period);
-        var rows = await SuccessfulOrderItems(range.StartUtc, range.EndUtc)
+        var range = GetPeriodRange(query);
+        var drillDown = query.CategoryId.HasValue;
+        var rows = await SuccessfulOrderItems(query, range.StartUtc, range.EndUtc)
             .GroupBy(item => new
             {
-                item.ProductVariant!.Product!.CategoryId,
-                CategoryName = item.ProductVariant.Product.Category!.Name,
+                CategoryId = drillDown
+                    ? item.ProductVariant!.Product!.CategoryId
+                    : item.ProductVariant!.Product!.Category!.ParentId ??
+                        item.ProductVariant.Product.CategoryId,
+                CategoryName = drillDown
+                    ? item.ProductVariant!.Product!.Category!.Name
+                    : item.ProductVariant!.Product!.Category!.Parent != null
+                    ? item.ProductVariant.Product.Category.Parent.Name
+                    : item.ProductVariant.Product.Category.Name,
             })
             .Select(group => new CategoryRevenueRow
             {
@@ -268,7 +245,12 @@ public class DashboardController : Controller
 
         if (rows.Count == 0)
         {
-            return Ok(new { labels = Array.Empty<string>(), values = Array.Empty<double>() });
+            return Ok(new
+            {
+                labels = Array.Empty<string>(),
+                values = Array.Empty<double>(),
+                revenues = Array.Empty<decimal>(),
+            });
         }
 
         var totalRevenue = rows.Sum(item => item.Revenue);
@@ -287,91 +269,200 @@ public class DashboardController : Controller
         {
             labels = displayed.Select(item => item.Name).ToArray(),
             values = displayed.Select(item => Math.Round((double)(item.Revenue / totalRevenue * 100m), 1)).ToArray(),
+            revenues = displayed.Select(item => item.Revenue).ToArray(),
         });
     }
 
     [HttpGet("/api/dashboard/traffic")]
-    public async Task<IActionResult> GetTraffic(CancellationToken ct = default)
+    public async Task<IActionResult> GetTraffic([FromQuery] DashboardQuery query, CancellationToken ct = default)
     {
-        var localNow = GetVietnamNow();
-        var localStart = localNow.Date.AddDays(-6);
-        var startUtc = ToUtc(localStart);
-        var endUtc = ToUtc(localNow);
-
-        var orders = await _db.Orders
-            .AsNoTracking()
-            .Where(order => order.CreatedAt >= startUtc && order.CreatedAt < endUtc)
-            .Select(order => new OrderMetricRow(
-                order.CreatedAt,
-                order.TotalAmount,
-                order.OrderStatus,
-                order.PaymentStatus))
-            .ToListAsync(ct);
-        var customers = await _db.Users
-            .AsNoTracking()
-            .Where(user => user.CreatedAt >= startUtc && user.CreatedAt < endUtc)
-            .Select(user => user.CreatedAt)
-            .ToListAsync(ct);
-
-        var dates = Enumerable.Range(0, 7).Select(offset => localStart.AddDays(offset)).ToArray();
-        var orderCounts = new int[7];
-        var revenues = new decimal[7];
-        var newCustomers = new int[7];
-
-        foreach (var order in orders)
-        {
-            var index = (FromUtc(order.CreatedAt).Date - localStart).Days;
-            if (index is < 0 or > 6)
-            {
-                continue;
-            }
-
-            orderCounts[index]++;
-            if (IsSuccessfulOrder(order))
-            {
-                revenues[index] += order.TotalAmount / 1_000_000m;
-            }
-        }
-
-        foreach (var createdAt in customers)
-        {
-            var index = (FromUtc(createdAt).Date - localStart).Days;
-            if (index is >= 0 and <= 6)
-            {
-                newCustomers[index]++;
-            }
-        }
+        var range = GetPeriodRange(query);
+        var buckets = GetBucketDefinition(range.StartUtc, range.EndUtc);
+        var orderCounts = await BuildOrderCountSeriesAsync(query, range.StartUtc, range.EndUtc, buckets, ct);
+        var sales = await BuildSalesSeriesAsync(query, range.StartUtc, range.EndUtc, buckets, ct);
+        var newCustomers = await BuildCustomerSeriesAsync(range.StartUtc, range.EndUtc, buckets, ct);
 
         return Ok(new
         {
-            labels = dates.Select(date => date.ToString("dd/MM")).ToArray(),
+            labels = buckets.Labels,
             orders = orderCounts,
-            revenue = revenues,
+            revenue = sales.Revenue,
             newCustomers,
         });
     }
 
-    private IQueryable<Models.Entities.Order> SuccessfulOrders()
-        => _db.Orders
+    [HttpGet("/api/dashboard/filter-options")]
+    public async Task<IActionResult> GetFilterOptions(CancellationToken ct = default)
+    {
+        var categories = await _db.Categories
             .AsNoTracking()
-            .Where(order => order.OrderStatus == OrderStatus.Completed && order.PaymentStatus == PaymentStatus.Paid);
+            .Where(category => category.IsActive)
+            .Select(category => new DashboardCategoryOption
+            {
+                Id = category.Id,
+                Name = category.Name,
+                ParentId = category.ParentId,
+                ParentName = category.Parent != null ? category.Parent.Name : null,
+                Position = category.Position,
+                HasChildren = category.Children.Any(),
+            })
+            .OrderBy(category => category.ParentName)
+            .ThenBy(category => category.Position)
+            .ThenBy(category => category.Name)
+            .ToListAsync(ct);
 
-    private IQueryable<Models.Entities.OrderItem> SuccessfulOrderItems(DateTime startUtc, DateTime endUtc)
-        => _db.OrderItems
+        var categoryOptions = categories
+            .Where(category => category.ParentId == null || !category.HasChildren)
+            .Select(category => new
+            {
+                id = category.Id,
+                label = category.ParentName == null
+                    ? category.Name
+                    : $"{category.ParentName} / {category.Name}",
+            })
+            .ToArray();
+
+        return Ok(new
+        {
+            categories = categoryOptions,
+            statuses = OrderDisplays.Select(item => new
+            {
+                value = item.Status.ToString(),
+                label = item.Label,
+            }).ToArray(),
+        });
+    }
+
+    private IQueryable<Models.Entities.Order> FilterOrders(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc)
+    {
+        var orders = _db.Orders
             .AsNoTracking()
-            .Where(item =>
-                item.Order!.CreatedAt >= startUtc &&
-                item.Order.CreatedAt < endUtc &&
-                item.Order.OrderStatus == OrderStatus.Completed &&
+            .Where(order => order.CreatedAt >= startUtc && order.CreatedAt < endUtc);
+
+        var status = ParseOrderStatus(query.OrderStatus);
+        if (status.HasValue)
+        {
+            orders = orders.Where(order => order.OrderStatus == status.Value);
+        }
+
+        if (query.CategoryId.HasValue)
+        {
+            var orderIds = FilterOrderItems(query, startUtc, endUtc, successfulOnly: false)
+                .Select(item => item.OrderId)
+                .Distinct();
+            orders = orders.Where(order => orderIds.Contains(order.Id));
+        }
+
+        return orders;
+    }
+
+    private IQueryable<Models.Entities.OrderItem> SuccessfulOrderItems(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc)
+        => FilterOrderItems(query, startUtc, endUtc, successfulOnly: true);
+
+    private IQueryable<Models.Entities.Order> SuccessfulOrders(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc)
+    {
+        var orders = _db.Orders
+            .AsNoTracking()
+            .Where(order =>
+                order.CreatedAt >= startUtc &&
+                order.CreatedAt < endUtc &&
+                order.OrderStatus == OrderStatus.Completed &&
+                order.PaymentStatus == PaymentStatus.Paid);
+
+        var status = ParseOrderStatus(query.OrderStatus);
+        if (status.HasValue)
+        {
+            orders = orders.Where(order => order.OrderStatus == status.Value);
+        }
+
+        return orders;
+    }
+
+    private IQueryable<SeriesSourceRow> RevenueSeriesSource(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc)
+    {
+        if (query.CategoryId.HasValue)
+        {
+            return SuccessfulOrderItems(query, startUtc, endUtc)
+                .Select(item => new SeriesSourceRow
+                {
+                    CreatedAt = item.Order!.CreatedAt,
+                    Value = item.UnitPrice * item.Quantity,
+                });
+        }
+
+        return SuccessfulOrders(query, startUtc, endUtc)
+            .Select(order => new SeriesSourceRow
+            {
+                CreatedAt = order.CreatedAt,
+                Value = order.TotalAmount,
+            });
+    }
+
+    private IQueryable<Models.Entities.OrderItem> FilterOrderItems(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc,
+        bool successfulOnly)
+    {
+        var items = _db.OrderItems
+            .AsNoTracking()
+            .Where(item => item.Order!.CreatedAt >= startUtc && item.Order.CreatedAt < endUtc);
+
+        var status = ParseOrderStatus(query.OrderStatus);
+        if (successfulOnly)
+        {
+            items = items.Where(item =>
+                item.Order!.OrderStatus == OrderStatus.Completed &&
                 item.Order.PaymentStatus == PaymentStatus.Paid);
+        }
+        else if (status.HasValue)
+        {
+            items = items.Where(item => item.Order!.OrderStatus == status.Value);
+        }
 
-    private IQueryable<ProductSalesRow> QueryProductSales(DateTime startUtc, DateTime endUtc)
-        => SuccessfulOrderItems(startUtc, endUtc)
+        if (successfulOnly && status.HasValue)
+        {
+            items = items.Where(item => item.Order!.OrderStatus == status.Value);
+        }
+
+        if (query.CategoryId.HasValue)
+        {
+            var categoryId = query.CategoryId.Value;
+            items = items.Where(item =>
+                item.ProductVariant != null &&
+                item.ProductVariant.Product != null &&
+                item.ProductVariant.Product.Category != null &&
+                (item.ProductVariant.Product.CategoryId == categoryId ||
+                    item.ProductVariant.Product.Category.ParentId == categoryId));
+        }
+
+        return items;
+    }
+
+    private IQueryable<ProductSalesRow> QueryProductSales(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc)
+        => SuccessfulOrderItems(query, startUtc, endUtc)
             .GroupBy(item => new
             {
                 ProductId = item.ProductVariant!.ProductId,
                 ProductName = item.ProductVariant.Product!.Name,
-                CategoryName = item.ProductVariant.Product.Category!.Name,
+                CategoryName = item.ProductVariant.Product.Category!.Parent != null
+                    ? item.ProductVariant.Product.Category.Parent.Name
+                    : item.ProductVariant.Product.Category.Name,
             })
             .Select(group => new ProductSalesRow
             {
@@ -380,40 +471,271 @@ public class DashboardController : Controller
                 Category = group.Key.CategoryName,
                 Sold = group.Sum(item => item.Quantity),
                 Revenue = group.Sum(item => item.UnitPrice * item.Quantity),
-                Profit = group.Sum(item => (item.UnitPrice - item.UnitCost) * item.Quantity),
             });
 
-    private DashboardRange GetPeriodRange(string? period)
+    private DashboardRange GetPeriodRange(DashboardQuery query)
     {
         var localNow = GetVietnamNow();
-        var localStart = period?.ToLowerInvariant() switch
+        var period = NormalizeDashboardPeriod(query.Period);
+        var today = localNow.Date;
+        var thisMonthStart = new DateTime(today.Year, today.Month, 1);
+        var localStart = period switch
         {
-            "today" => localNow.Date,
-            "week" => localNow.Date.AddDays(-6),
-            "year" => new DateTime(localNow.Year, 1, 1),
-            _ => localNow.Date.AddDays(-29),
+            "today" => today,
+            "yesterday" => today.AddDays(-1),
+            "last7days" => today.AddDays(-6),
+            "last30days" => today.AddDays(-29),
+            "thismonth" => thisMonthStart,
+            "lastmonth" => thisMonthStart.AddMonths(-1),
+            "thisquarter" => GetQuarterStart(today),
+            "thisyear" => new DateTime(today.Year, 1, 1),
+            _ => today.AddDays(-29),
+        };
+        var localEnd = period switch
+        {
+            "yesterday" => today,
+            "lastmonth" => thisMonthStart,
+            _ => localNow,
         };
 
-        DateTime previousLocalStart;
-        DateTime previousLocalEnd;
-        if (string.Equals(period, "year", StringComparison.OrdinalIgnoreCase))
+        if (period == "custom" || query.StartDate.HasValue || query.EndDate.HasValue)
         {
-            previousLocalStart = localStart.AddYears(-1);
-            previousLocalEnd = localNow.AddYears(-1);
+            localStart = (query.StartDate ?? localStart).Date;
+            localEnd = (query.EndDate ?? localNow).Date.AddDays(1).AddTicks(-1);
+            if (localEnd < localStart)
+            {
+                (localStart, localEnd) = (localEnd.Date, localStart.Date.AddDays(1).AddTicks(-1));
+            }
         }
-        else
-        {
-            var duration = localNow - localStart;
-            previousLocalEnd = localStart;
-            previousLocalStart = localStart - duration;
-        }
+
+        var (previousLocalStart, previousLocalEnd) = GetPreviousPeriodRange(period, localStart, localEnd);
 
         return new DashboardRange(
             ToUtc(localStart),
-            ToUtc(localNow),
+            ToUtc(localEnd),
             ToUtc(previousLocalStart),
             ToUtc(previousLocalEnd));
     }
+
+    private static string NormalizeDashboardPeriod(string? period)
+        => period?.Trim().ToLowerInvariant() switch
+        {
+            "today" => "today",
+            "yesterday" => "yesterday",
+            "week" or "last7days" => "last7days",
+            "month" or "last30days" => "last30days",
+            "thismonth" => "thismonth",
+            "lastmonth" => "lastmonth",
+            "quarter" or "thisquarter" => "thisquarter",
+            "year" or "thisyear" => "thisyear",
+            "custom" => "custom",
+            _ => "last30days",
+        };
+
+    private static DateTime GetQuarterStart(DateTime date)
+    {
+        var quarterStartMonth = ((date.Month - 1) / 3 * 3) + 1;
+        return new DateTime(date.Year, quarterStartMonth, 1);
+    }
+
+    private static (DateTime Start, DateTime End) GetPreviousPeriodRange(
+        string period,
+        DateTime localStart,
+        DateTime localEnd)
+        => period switch
+        {
+            "today" or "yesterday" => (localStart.AddDays(-1), localEnd.AddDays(-1)),
+            "thismonth" or "lastmonth" => (localStart.AddMonths(-1), localEnd.AddMonths(-1)),
+            "thisquarter" => (localStart.AddMonths(-3), localEnd.AddMonths(-3)),
+            "thisyear" => (localStart.AddYears(-1), localEnd.AddYears(-1)),
+            _ => (localStart - (localEnd - localStart), localStart),
+        };
+
+    private async Task<DashboardSalesSummary> BuildSalesSummaryAsync(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc,
+        CancellationToken ct)
+    {
+        if (query.CategoryId.HasValue)
+        {
+            return await SuccessfulOrderItems(query, startUtc, endUtc)
+                .GroupBy(_ => 1)
+                .Select(group => new DashboardSalesSummary
+                {
+                    Revenue = group.Sum(item => item.UnitPrice * item.Quantity),
+                })
+                .FirstOrDefaultAsync(ct) ?? new DashboardSalesSummary();
+        }
+
+        return await SuccessfulOrders(query, startUtc, endUtc)
+            .GroupBy(_ => 1)
+            .Select(group => new DashboardSalesSummary
+            {
+                Revenue = group.Sum(order => order.TotalAmount),
+            })
+            .FirstOrDefaultAsync(ct) ?? new DashboardSalesSummary();
+    }
+
+    private async Task<int> CountOrdersAsync(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc,
+        CancellationToken ct)
+        => await FilterOrders(query, startUtc, endUtc).CountAsync(ct);
+
+    private DashboardBucketDefinition GetBucketDefinition(DateTime startUtc, DateTime endUtc)
+    {
+        var startLocal = FromUtc(startUtc).Date;
+        var endLocal = FromUtc(endUtc).Date;
+        var useMonthly = (endLocal - startLocal).TotalDays > 120;
+
+        if (useMonthly)
+        {
+            var startMonth = new DateTime(startLocal.Year, startLocal.Month, 1);
+            var endMonth = new DateTime(endLocal.Year, endLocal.Month, 1);
+            var monthCount = ((endMonth.Year - startMonth.Year) * 12) + endMonth.Month - startMonth.Month + 1;
+            var labels = Enumerable.Range(0, monthCount)
+                .Select(offset => startMonth.AddMonths(offset).ToString("MM/yyyy"))
+                .ToArray();
+
+            return new DashboardBucketDefinition(ToUtc(startMonth), monthCount, labels, UseMonthly: true);
+        }
+
+        var dayCount = Math.Max(1, (endLocal - startLocal).Days + 1);
+        var dayLabels = Enumerable.Range(0, dayCount)
+            .Select(offset => startLocal.AddDays(offset).ToString("dd/MM"))
+            .ToArray();
+
+        return new DashboardBucketDefinition(ToUtc(startLocal), dayCount, dayLabels, UseMonthly: false);
+    }
+
+    private async Task<DashboardSalesSeries> BuildSalesSeriesAsync(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc,
+        DashboardBucketDefinition buckets,
+        CancellationToken ct)
+    {
+        var source = RevenueSeriesSource(query, startUtc, endUtc);
+        var rows = buckets.UseMonthly
+            ? await source
+                .GroupBy(item => EF.Functions.DateDiffMonth(buckets.StartUtc, item.CreatedAt))
+                .Select(group => new DashboardSalesBucket
+                {
+                    Bucket = group.Key,
+                    Revenue = group.Sum(item => item.Value),
+                })
+                .ToListAsync(ct)
+            : await source
+                .GroupBy(item => EF.Functions.DateDiffDay(buckets.StartUtc, item.CreatedAt))
+                .Select(group => new DashboardSalesBucket
+                {
+                    Bucket = group.Key,
+                    Revenue = group.Sum(item => item.Value),
+                })
+                .ToListAsync(ct);
+
+        var revenue = new decimal[buckets.Count];
+        foreach (var row in rows)
+        {
+            if (row.Bucket is < 0 || row.Bucket >= buckets.Count)
+            {
+                continue;
+            }
+
+            revenue[row.Bucket] = row.Revenue / 1_000_000m;
+        }
+
+        return new DashboardSalesSeries(revenue);
+    }
+
+    private async Task<int[]> BuildOrderCountSeriesAsync(
+        DashboardQuery query,
+        DateTime startUtc,
+        DateTime endUtc,
+        DashboardBucketDefinition buckets,
+        CancellationToken ct)
+    {
+        if (query.CategoryId.HasValue)
+        {
+            var itemSource = FilterOrderItems(query, startUtc, endUtc, successfulOnly: false);
+            var itemRows = buckets.UseMonthly
+                ? await itemSource
+                    .GroupBy(item => EF.Functions.DateDiffMonth(buckets.StartUtc, item.Order!.CreatedAt))
+                    .Select(group => new DashboardCountBucket
+                    {
+                        Bucket = group.Key,
+                        Count = group.Select(item => item.OrderId).Distinct().Count(),
+                    })
+                    .ToListAsync(ct)
+                : await itemSource
+                    .GroupBy(item => EF.Functions.DateDiffDay(buckets.StartUtc, item.Order!.CreatedAt))
+                    .Select(group => new DashboardCountBucket
+                    {
+                        Bucket = group.Key,
+                        Count = group.Select(item => item.OrderId).Distinct().Count(),
+                    })
+                    .ToListAsync(ct);
+
+            return MaterializeCountSeries(itemRows, buckets.Count);
+        }
+
+        var orderSource = FilterOrders(query, startUtc, endUtc);
+        var orderRows = buckets.UseMonthly
+            ? await orderSource
+                .GroupBy(order => EF.Functions.DateDiffMonth(buckets.StartUtc, order.CreatedAt))
+                .Select(group => new DashboardCountBucket { Bucket = group.Key, Count = group.Count() })
+                .ToListAsync(ct)
+            : await orderSource
+                .GroupBy(order => EF.Functions.DateDiffDay(buckets.StartUtc, order.CreatedAt))
+                .Select(group => new DashboardCountBucket { Bucket = group.Key, Count = group.Count() })
+                .ToListAsync(ct);
+
+        return MaterializeCountSeries(orderRows, buckets.Count);
+    }
+
+    private async Task<int[]> BuildCustomerSeriesAsync(
+        DateTime startUtc,
+        DateTime endUtc,
+        DashboardBucketDefinition buckets,
+        CancellationToken ct)
+    {
+        var source = _db.Users
+            .AsNoTracking()
+            .Where(user => user.CreatedAt >= startUtc && user.CreatedAt < endUtc);
+
+        var rows = buckets.UseMonthly
+            ? await source
+                .GroupBy(user => EF.Functions.DateDiffMonth(buckets.StartUtc, user.CreatedAt))
+                .Select(group => new DashboardCountBucket { Bucket = group.Key, Count = group.Count() })
+                .ToListAsync(ct)
+            : await source
+                .GroupBy(user => EF.Functions.DateDiffDay(buckets.StartUtc, user.CreatedAt))
+                .Select(group => new DashboardCountBucket { Bucket = group.Key, Count = group.Count() })
+                .ToListAsync(ct);
+
+        return MaterializeCountSeries(rows, buckets.Count);
+    }
+
+    private static int[] MaterializeCountSeries(IEnumerable<DashboardCountBucket> rows, int count)
+    {
+        var values = new int[count];
+        foreach (var row in rows)
+        {
+            if (row.Bucket is >= 0 && row.Bucket < count)
+            {
+                values[row.Bucket] = row.Count;
+            }
+        }
+
+        return values;
+    }
+
+    private static OrderStatus? ParseOrderStatus(string? status)
+        => Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var value)
+            ? value
+            : null;
 
     private DateTime GetVietnamNow()
         => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _vietnamTimeZone);
@@ -454,6 +776,61 @@ public class DashboardController : Controller
         }
 
         return Math.Round((double)((current - previous) / previous * 100m), 1);
+    }
+
+    private async Task<decimal[]> BuildSeriesAsync(
+        IQueryable<SeriesSourceRow> source,
+        DateTime startUtc,
+        DateTime endUtc,
+        CancellationToken ct)
+    {
+        var totalSeconds = GetRangeSeconds(startUtc, endUtc);
+        var rows = await source
+            .Where(row => row.CreatedAt >= startUtc && row.CreatedAt < endUtc)
+            .Select(row => new SeriesBucketRow
+            {
+                Bucket = EF.Functions.DateDiffSecond(startUtc, row.CreatedAt) * SparklinePointCount / totalSeconds,
+                Value = row.Value,
+            })
+            .GroupBy(row => row.Bucket)
+            .Select(group => new SeriesBucketRow
+            {
+                Bucket = group.Key,
+                Value = group.Sum(row => row.Value),
+            })
+            .ToListAsync(ct);
+
+        return MaterializeSeries(rows);
+    }
+
+    private static int GetRangeSeconds(DateTime startUtc, DateTime endUtc)
+        => (int)Math.Min(
+            int.MaxValue,
+            Math.Max(1d, Math.Ceiling((endUtc - startUtc).TotalSeconds)));
+
+    private static decimal[] MaterializeSeries(IEnumerable<SeriesBucketRow> rows)
+    {
+        var values = new decimal[SparklinePointCount];
+        foreach (var row in rows)
+        {
+            var index = Math.Clamp(row.Bucket, 0, SparklinePointCount - 1);
+            values[index] += row.Value;
+        }
+
+        return values;
+    }
+
+    private static decimal[] BuildCumulativeCountSeries(decimal[] increments, int baseline)
+    {
+        var result = new decimal[SparklinePointCount];
+        decimal runningTotal = baseline;
+        for (var index = 0; index < result.Length; index++)
+        {
+            runningTotal += index < increments.Length ? increments[index] : 0m;
+            result[index] = runningTotal;
+        }
+
+        return result;
     }
 
     private static decimal[] BuildSeries<T>(
@@ -504,6 +881,62 @@ public class DashboardController : Controller
         DateTime PreviousStartUtc,
         DateTime PreviousEndUtc);
 
+    public sealed class DashboardQuery
+    {
+        public string? Period { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public long? CategoryId { get; set; }
+        public string? OrderStatus { get; set; }
+    }
+
+    private sealed class DashboardSalesSummary
+    {
+        public decimal Revenue { get; init; }
+    }
+
+    private sealed class SeriesSourceRow
+    {
+        public DateTime CreatedAt { get; init; }
+        public decimal Value { get; init; }
+    }
+
+    private sealed record DashboardBucketDefinition(
+        DateTime StartUtc,
+        int Count,
+        string[] Labels,
+        bool UseMonthly);
+
+    private sealed record DashboardSalesSeries(decimal[] Revenue);
+
+    private sealed class DashboardSalesBucket
+    {
+        public int Bucket { get; init; }
+        public decimal Revenue { get; init; }
+    }
+
+    private sealed class DashboardCountBucket
+    {
+        public int Bucket { get; init; }
+        public int Count { get; init; }
+    }
+
+    private sealed class DashboardCategoryOption
+    {
+        public long Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public long? ParentId { get; init; }
+        public string? ParentName { get; init; }
+        public int Position { get; init; }
+        public bool HasChildren { get; init; }
+    }
+
+    private sealed class SeriesBucketRow
+    {
+        public int Bucket { get; init; }
+        public decimal Value { get; init; }
+    }
+
     private sealed record OrderMetricRow(
         DateTime CreatedAt,
         decimal TotalAmount,
@@ -512,8 +945,6 @@ public class DashboardController : Controller
 
     private sealed record RevenueRow(DateTime CreatedAt, decimal TotalAmount);
 
-    private sealed record ProfitMetricRow(DateTime CreatedAt, decimal GrossProfit);
-
     private sealed class ProductSalesRow
     {
         public long ProductId { get; init; }
@@ -521,7 +952,6 @@ public class DashboardController : Controller
         public string Category { get; init; } = string.Empty;
         public int Sold { get; init; }
         public decimal Revenue { get; init; }
-        public decimal Profit { get; init; }
     }
 
     private sealed class CategoryRevenueRow

@@ -12,6 +12,13 @@ public sealed class SpecificationAdminService : ISpecificationAdminService
 
     public SpecificationAdminService(ApplicationDbContext db) => _db = db;
 
+    private sealed class SpecificationIndexSummary
+    {
+        public int TotalCount { get; init; }
+        public int TotalCategoryUsageCount { get; init; }
+        public int TotalProductUsageCount { get; init; }
+    }
+
     // ── Index ──────────────────────────────────────────────────────────────
 
     public async Task<SpecificationIndexViewModel> GetIndexAsync(
@@ -19,10 +26,7 @@ public sealed class SpecificationAdminService : ISpecificationAdminService
     {
         var page = Math.Max(1, query.Page);
 
-        var dbQuery = _db.Specifications
-            .Include(s => s.CategorySpecifications)
-            .Include(s => s.ProductSpecifications)
-            .AsNoTracking();
+        var dbQuery = _db.Specifications.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -30,19 +34,36 @@ public sealed class SpecificationAdminService : ISpecificationAdminService
             dbQuery = dbQuery.Where(s => s.Key.Contains(term) || s.Name.Contains(term));
         }
 
-        var all = await dbQuery.OrderBy(s => s.Name).ToListAsync(ct);
-        var pageItems = all.Skip((page - 1) * DefaultPageSize).Take(DefaultPageSize).ToList();
+        var summary = await dbQuery
+            .Select(s => new
+            {
+                CategoryCount = s.CategorySpecifications.Count,
+                ProductCount = s.ProductSpecifications.Count,
+            })
+            .GroupBy(_ => 1)
+            .Select(group => new SpecificationIndexSummary
+            {
+                TotalCount = group.Count(),
+                TotalCategoryUsageCount = group.Sum(s => s.CategoryCount),
+                TotalProductUsageCount = group.Sum(s => s.ProductCount),
+            })
+            .FirstOrDefaultAsync(ct) ?? new SpecificationIndexSummary();
 
-        var rows = pageItems.Select(s => new SpecificationRowViewModel
-        {
-            Id = s.Id,
-            Key = s.Key,
-            Name = s.Name,
-            Unit = s.Unit,
-            Icon = s.Icon,
-            CategoryCount = s.CategorySpecifications.Count,
-            ProductCount = s.ProductSpecifications.Count,
-        }).ToList();
+        var rows = await dbQuery
+            .OrderBy(s => s.Name)
+            .Skip((page - 1) * DefaultPageSize)
+            .Take(DefaultPageSize)
+            .Select(s => new SpecificationRowViewModel
+            {
+                Id = s.Id,
+                Key = s.Key,
+                Name = s.Name,
+                Unit = s.Unit,
+                Icon = s.Icon,
+                CategoryCount = s.CategorySpecifications.Count,
+                ProductCount = s.ProductSpecifications.Count,
+            })
+            .ToListAsync(ct);
 
         return new SpecificationIndexViewModel
         {
@@ -50,9 +71,9 @@ public sealed class SpecificationAdminService : ISpecificationAdminService
             Search = query.Search,
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = all.Count,
-            TotalCategoryUsageCount = all.Sum(s => s.CategorySpecifications.Count),
-            TotalProductUsageCount = all.Sum(s => s.ProductSpecifications.Count),
+            TotalCount = summary.TotalCount,
+            TotalCategoryUsageCount = summary.TotalCategoryUsageCount,
+            TotalProductUsageCount = summary.TotalProductUsageCount,
         };
     }
 

@@ -34,6 +34,14 @@ public sealed class BrandAdminService : IBrandAdminService
         public DateTime CreatedAt { get; init; }
     }
 
+    private sealed class BrandIndexSummary
+    {
+        public int TotalCount { get; init; }
+        public int ActiveCount { get; init; }
+        public int InactiveCount { get; init; }
+        public int TotalProductCount { get; init; }
+    }
+
     // ── Index ──────────────────────────────────────────────────────────────
 
     public async Task<BrandIndexViewModel> GetIndexAsync(BrandIndexQuery query, CancellationToken ct = default)
@@ -53,8 +61,26 @@ public sealed class BrandAdminService : IBrandAdminService
             dbQuery = dbQuery.Where(b => b.Name.Contains(term) || b.Slug.Contains(term));
         }
 
-        var all = await dbQuery
+        var summary = await dbQuery
+            .Select(b => new
+            {
+                b.IsActive,
+                ProductCount = b.Products.Count,
+            })
+            .GroupBy(_ => 1)
+            .Select(group => new BrandIndexSummary
+            {
+                TotalCount = group.Count(),
+                ActiveCount = group.Count(b => b.IsActive),
+                InactiveCount = group.Count(b => !b.IsActive),
+                TotalProductCount = group.Sum(b => b.ProductCount),
+            })
+            .FirstOrDefaultAsync(ct) ?? new BrandIndexSummary();
+
+        var pageItems = await dbQuery
             .OrderBy(b => b.Name)
+            .Skip((page - 1) * DefaultPageSize)
+            .Take(DefaultPageSize)
             .Select(b => new BrandIndexItem
             {
                 Id = b.Id,
@@ -66,9 +92,6 @@ public sealed class BrandAdminService : IBrandAdminService
                 CreatedAt = b.CreatedAt,
             })
             .ToListAsync(ct);
-
-        var totalCount = all.Count;
-        var pageItems = all.Skip((page - 1) * DefaultPageSize).Take(DefaultPageSize).ToList();
 
         var rows = pageItems.Select(b => new BrandRowViewModel
         {
@@ -88,10 +111,10 @@ public sealed class BrandAdminService : IBrandAdminService
             Status = query.Status,
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = totalCount,
-            ActiveCount = all.Count(b => b.IsActive),
-            InactiveCount = all.Count(b => !b.IsActive),
-            TotalProductCount = all.Sum(b => b.ProductCount),
+            TotalCount = summary.TotalCount,
+            ActiveCount = summary.ActiveCount,
+            InactiveCount = summary.InactiveCount,
+            TotalProductCount = summary.TotalProductCount,
         };
     }
 

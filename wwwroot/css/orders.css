@@ -205,7 +205,7 @@
 
 .order-metrics {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(17rem, 1.25fr);
     overflow: hidden;
     border-radius: 1.25rem;
 }
@@ -217,6 +217,10 @@
     min-width: 0;
     padding: 1.1rem;
     background: linear-gradient(180deg, #ffffff, #fbfdfd);
+}
+
+.order-metric > div {
+    min-width: 0;
 }
 
 .order-metric + .order-metric {
@@ -261,7 +265,17 @@
     font-size: 1.35rem;
     font-weight: 800;
     line-height: 1;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+}
+
+.order-metric-money {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: clamp(1.05rem, 1.2vw, 1.35rem);
+    line-height: 1.12;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .order-metric > div > span {
@@ -287,9 +301,9 @@
 
 .order-filter-grid {
     display: grid;
-    grid-template-columns: minmax(17rem, 1.25fr) minmax(8.75rem, 0.48fr) minmax(8.75rem, 0.48fr) minmax(9.25rem, 0.5fr) minmax(10.5rem, 0.6fr) minmax(6.75rem, auto) auto;
+    grid-template-columns: minmax(0, 1.15fr) repeat(4, minmax(10.5rem, 0.85fr));
     column-gap: 0.85rem;
-    row-gap: 0.85rem;
+    row-gap: 1rem;
     align-items: end;
     padding: 1.15rem 1.35rem 1.35rem;
     border-bottom: 1px solid #dbe8ea;
@@ -305,6 +319,38 @@
 .order-search-field {
     position: relative;
     align-self: end;
+    grid-column: 1 / span 2;
+    grid-row: 1;
+}
+
+.order-order-status-field {
+    grid-column: 3;
+    grid-row: 1;
+}
+
+.order-payment-status-field {
+    grid-column: 4;
+    grid-row: 1;
+}
+
+.order-payment-method-field {
+    grid-column: 5;
+    grid-row: 1;
+}
+
+.order-date-range-field {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.order-created-from-field {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.order-created-to-field {
+    grid-column: 3;
+    grid-row: 2;
 }
 
 .order-search-field svg {
@@ -318,6 +364,7 @@
 
 .order-search-field input,
 .order-select-field select,
+.order-select-field input,
 .order-field select,
 .order-field input,
 .order-field textarea {
@@ -338,6 +385,7 @@
 }
 
 .order-select-field select,
+.order-select-field input,
 .order-field select,
 .order-field input {
     min-height: 3.25rem;
@@ -355,15 +403,31 @@
     color: #475467;
     font-size: 0.75rem;
     font-weight: 750;
+    white-space: nowrap;
 }
 
 .order-search-field input:focus,
 .order-select-field select:focus,
+.order-select-field input:focus,
 .order-field select:focus,
 .order-field input:focus,
 .order-field textarea:focus {
     border-color: #0f766e;
     box-shadow: none;
+}
+
+.order-date-custom-field {
+    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.order-date-custom-field.is-disabled {
+    opacity: 0.72;
+}
+
+.order-date-custom-field input:disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
 }
 
 .order-filter-clear {
@@ -377,6 +441,25 @@
     font-size: 0.875rem;
     font-weight: 700;
     text-decoration: none;
+}
+
+.order-filter-submit,
+.order-filter-clear {
+    width: 100%;
+}
+
+.order-filter-submit {
+    grid-column: 4;
+    grid-row: 2;
+}
+
+.order-filter-clear {
+    grid-column: 5;
+    grid-row: 2;
+}
+
+.order-filter-grid.has-no-clear-filter .order-filter-submit {
+    grid-column: 4 / span 2;
 }
 
 .order-filter-clear:hover {
@@ -1534,18 +1617,115 @@ body.order-modal-open {
 
 @media (max-width: 1280px) {
     .order-filter-grid {
-        grid-template-columns: minmax(18rem, 1fr) repeat(3, minmax(9.5rem, 0.5fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    .order-filter-submit,
+    .order-search-field {
+        grid-column: 1 / span 2;
+        grid-row: 1;
+    }
+
+    .order-order-status-field {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .order-payment-status-field {
+        grid-column: 4;
+        grid-row: 1;
+    }
+
+    .order-payment-method-field {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .order-date-range-field {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .order-created-from-field {
+        grid-column: 3;
+        grid-row: 2;
+    }
+
+    .order-created-to-field {
+        grid-column: 4;
+        grid-row: 2;
+    }
+
+    .order-filter-submit {
+        grid-column: 1 / span 2;
+        grid-row: 3;
+    }
+
     .order-filter-clear {
-        grid-column: auto;
+        grid-column: 3 / span 2;
+        grid-row: 3;
+    }
+
+    .order-filter-grid.has-no-clear-filter .order-filter-submit {
+        grid-column: 1 / -1;
     }
 }
 
 @media (max-width: 1100px) {
     .order-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .order-filter-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .order-search-field {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    .order-order-status-field {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .order-payment-status-field {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .order-payment-method-field {
+        grid-column: 3;
+        grid-row: 2;
+    }
+
+    .order-date-range-field {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    .order-created-from-field {
+        grid-column: 2;
+        grid-row: 3;
+    }
+
+    .order-created-to-field {
+        grid-column: 3;
+        grid-row: 3;
+    }
+
+    .order-filter-submit {
+        grid-column: 1 / span 2;
+        grid-row: 4;
+    }
+
+    .order-filter-clear {
+        grid-column: 3;
+        grid-row: 4;
+    }
+
+    .order-filter-grid.has-no-clear-filter .order-filter-submit {
+        grid-column: 1 / -1;
     }
 
     .order-metric:nth-child(3) {
@@ -1686,6 +1866,23 @@ body.order-modal-open {
 
     .order-filter-grid {
         grid-template-columns: 1fr;
+    }
+
+    .order-search-field,
+    .order-order-status-field,
+    .order-payment-status-field,
+    .order-payment-method-field,
+    .order-date-range-field,
+    .order-created-from-field,
+    .order-created-to-field,
+    .order-filter-submit,
+    .order-filter-clear {
+        grid-column: auto;
+        grid-row: auto;
+    }
+
+    .order-filter-grid.has-no-clear-filter .order-filter-submit {
+        grid-column: auto;
     }
 
     .order-form-unified {

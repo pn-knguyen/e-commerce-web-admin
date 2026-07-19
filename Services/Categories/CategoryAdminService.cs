@@ -16,6 +16,20 @@ public sealed class CategoryAdminService : ICategoryAdminService
     private readonly ApplicationDbContext _db;
     private readonly IImageUploadService _imageUploadService;
 
+    private sealed class CategoryIndexItem
+    {
+        public long Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string Slug { get; init; } = string.Empty;
+        public string? ImagePath { get; init; }
+        public long? ParentId { get; init; }
+        public string ParentName { get; init; } = string.Empty;
+        public int Position { get; init; }
+        public bool IsActive { get; init; }
+        public int ChildCount { get; init; }
+        public DateTime CreatedAt { get; init; }
+    }
+
     public CategoryAdminService(ApplicationDbContext db, IImageUploadService imageUploadService)
     {
         _db = db;
@@ -28,10 +42,6 @@ public sealed class CategoryAdminService : ICategoryAdminService
     {
         var page = Math.Max(1, query.Page);
         var allQuery = _db.Categories
-            .Include(category => category.Parent)
-            .Include(category => category.Children)
-            .Include(category => category.Products)
-            .AsSplitQuery()
             .AsNoTracking();
 
         if (query.Status == "active")
@@ -49,9 +59,24 @@ public sealed class CategoryAdminService : ICategoryAdminService
             allQuery = allQuery.Where(category => category.Name.Contains(search) || category.Slug.Contains(search));
         }
 
-        var allCategories = await allQuery.ToListAsync(cancellationToken);
+        var allCategories = await allQuery
+            .Select(category => new CategoryIndexItem
+            {
+                Id = category.Id,
+                Name = category.Name,
+                Slug = category.Slug,
+                ImagePath = category.ImagePath,
+                ParentId = category.ParentId,
+                ParentName = category.Parent != null ? category.Parent.Name : string.Empty,
+                Position = category.Position,
+                IsActive = category.IsActive,
+                ChildCount = category.Children.Count,
+                CreatedAt = category.CreatedAt,
+            })
+            .ToListAsync(cancellationToken);
+        var directProductCounts = await BuildDirectProductCountsAsync(allCategories, cancellationToken);
         var ordered = BuildTreeOrder(allCategories);
-        var productCountByCategoryId = BuildDescendantProductCounts(allCategories);
+        var productCountByCategoryId = BuildDescendantProductCounts(allCategories, directProductCounts);
         var totalCount = ordered.Count;
         var pageItems = ordered
             .Skip((page - 1) * DefaultPageSize)
@@ -65,11 +90,11 @@ public sealed class CategoryAdminService : ICategoryAdminService
             Slug = entry.Category.Slug,
             ImagePath = entry.Category.ImagePath,
             ParentId = entry.Category.ParentId,
-            ParentName = entry.Category.Parent?.Name ?? string.Empty,
+            ParentName = entry.Category.ParentName,
             Position = entry.Category.Position,
             IsActive = entry.Category.IsActive,
             ProductCount = productCountByCategoryId.GetValueOrDefault(entry.Category.Id),
-            ChildCount = entry.Category.Children.Count,
+            ChildCount = entry.Category.ChildCount,
             Depth = entry.Depth,
             CreatedAt = entry.Category.CreatedAt,
         }).ToList();
@@ -84,7 +109,7 @@ public sealed class CategoryAdminService : ICategoryAdminService
             TotalCount = totalCount,
             ActiveCount = ordered.Count(entry => entry.Category.IsActive),
             InactiveCount = ordered.Count(entry => !entry.Category.IsActive),
-            TotalProductCount = allCategories.Sum(category => category.Products.Count),
+            TotalProductCount = directProductCounts.Values.Sum(),
         };
     }
 
@@ -375,9 +400,31 @@ public sealed class CategoryAdminService : ICategoryAdminService
         return false;
     }
 
-    private static IReadOnlyList<(Category Category, int Depth)> BuildTreeOrder(List<Category> categories)
+    private async Task<Dictionary<long, int>> BuildDirectProductCountsAsync(
+        IReadOnlyCollection<CategoryIndexItem> categories,
+        CancellationToken cancellationToken)
     {
-        var result = new List<(Category Category, int Depth)>();
+        if (categories.Count == 0)
+        {
+            return [];
+        }
+
+        var categoryIds = categories.Select(category => category.Id).ToArray();
+        return await _db.Products
+            .AsNoTracking()
+            .Where(product => categoryIds.Contains(product.CategoryId))
+            .GroupBy(product => product.CategoryId)
+            .Select(group => new
+            {
+                CategoryId = group.Key,
+                Count = group.Count(),
+            })
+            .ToDictionaryAsync(item => item.CategoryId, item => item.Count, cancellationToken);
+    }
+
+    private static IReadOnlyList<(CategoryIndexItem Category, int Depth)> BuildTreeOrder(List<CategoryIndexItem> categories)
+    {
+        var result = new List<(CategoryIndexItem Category, int Depth)>();
         var categoryIds = categories.Select(category => category.Id).ToHashSet();
         var rootCategories = categories
             .Where(category => category.ParentId is null || !categoryIds.Contains(category.ParentId.Value))
@@ -393,10 +440,10 @@ public sealed class CategoryAdminService : ICategoryAdminService
     }
 
     private static void AppendTree(
-        Category category,
+        CategoryIndexItem category,
         int depth,
-        List<Category> all,
-        List<(Category Category, int Depth)> result)
+        List<CategoryIndexItem> all,
+        List<(CategoryIndexItem Category, int Depth)> result)
     {
         result.Add((category, depth));
 
@@ -411,7 +458,9 @@ public sealed class CategoryAdminService : ICategoryAdminService
         }
     }
 
-    private static Dictionary<long, int> BuildDescendantProductCounts(List<Category> categories)
+    private static Dictionary<long, int> BuildDescendantProductCounts(
+        List<CategoryIndexItem> categories,
+        IReadOnlyDictionary<long, int> directProductCounts)
     {
         var childrenByParentId = categories
             .Where(category => category.ParentId.HasValue)
@@ -422,15 +471,16 @@ public sealed class CategoryAdminService : ICategoryAdminService
 
         foreach (var category in categories)
         {
-            CountProducts(category, childrenByParentId, result);
+            CountProducts(category, childrenByParentId, directProductCounts, result);
         }
 
         return result;
     }
 
     private static int CountProducts(
-        Category category,
-        IReadOnlyDictionary<long, List<Category>> childrenByParentId,
+        CategoryIndexItem category,
+        IReadOnlyDictionary<long, List<CategoryIndexItem>> childrenByParentId,
+        IReadOnlyDictionary<long, int> directProductCounts,
         Dictionary<long, int> result)
     {
         if (result.TryGetValue(category.Id, out var cachedCount))
@@ -438,12 +488,12 @@ public sealed class CategoryAdminService : ICategoryAdminService
             return cachedCount;
         }
 
-        var count = category.Products.Count;
+        var count = directProductCounts.GetValueOrDefault(category.Id);
         if (childrenByParentId.TryGetValue(category.Id, out var children))
         {
             foreach (var child in children)
             {
-                count += CountProducts(child, childrenByParentId, result);
+                count += CountProducts(child, childrenByParentId, directProductCounts, result);
             }
         }
 

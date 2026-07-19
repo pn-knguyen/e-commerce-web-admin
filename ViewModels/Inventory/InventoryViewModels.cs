@@ -40,6 +40,11 @@ public sealed class InventoryIndexViewModel
     public int LowStockCount { get; set; }
     public int OutOfStockCount { get; set; }
     public int PendingReceiptCount { get; set; }
+    public int TotalReceiptCount { get; set; }
+    public int DraftReceiptCount { get; set; }
+    public int ApprovedReceiptCount { get; set; }
+    public int CancelledReceiptCount { get; set; }
+    public decimal TotalApprovedReceiptAmount { get; set; }
     public decimal TotalInventoryCost { get; set; }
 
     public int StockTotalPages => StockPageSize <= 0

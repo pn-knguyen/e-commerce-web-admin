@@ -32,6 +32,7 @@ const CONFIG = {
         recentOrders:   '/api/dashboard/recent-orders',
         categoryRevenue:'/api/dashboard/category-revenue',
         traffic:        '/api/dashboard/traffic',
+        filterOptions:  '/api/dashboard/filter-options',
     },
     colors: {
         brand:    '#14b8a6',
@@ -64,6 +65,8 @@ Chart.defaults.plugins.tooltip.boxPadding       = 4;
 
 // Registry để destroy chart cũ trước khi vẽ lại
 const chartRegistry = new Map();
+let activeLoadController = null;
+let latestLoadToken = 0;
 
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  API SERVICE — Tất cả giao tiếp với backend ở đây               ║
@@ -74,11 +77,12 @@ const ApiService = {
      * @param {string} url
      * @returns {Promise<any>}
      */
-    async get(url) {
+    async get(url, signal) {
         const response = await fetch(url, {
             method: 'GET',
             headers: { 'Accept': 'application/json' },
             cache: 'no-store',
+            signal,
         });
         if (!response.ok) {
             throw new Error(`API ${url} trả về ${response.status}`);
@@ -86,18 +90,40 @@ const ApiService = {
         return response.json();
     },
 
-    withPeriod(url) {
-        const period = document.getElementById('periodSelect')?.value || 'month';
-        return `${url}?period=${encodeURIComponent(period)}`;
+    collectFilters() {
+        const period = document.getElementById('periodSelect')?.value || 'last30days';
+        const startDate = document.getElementById('dashboardStartDate')?.value || '';
+        const endDate = document.getElementById('dashboardEndDate')?.value || '';
+        const categoryId = document.getElementById('categoryFilter')?.value || '';
+        const orderStatus = document.getElementById('orderStatusFilter')?.value || '';
+
+        return { period, startDate, endDate, categoryId, orderStatus };
     },
 
-    fetchKpis()           { return this.get(this.withPeriod(CONFIG.api.kpis)); },
-    fetchRevenueChart()   { return this.get(CONFIG.api.revenueChart); },
-    fetchOrderStatus()    { return this.get(this.withPeriod(CONFIG.api.orderStatus)); },
-    fetchTopProducts()    { return this.get(this.withPeriod(CONFIG.api.topProducts)); },
-    fetchRecentOrders()   { return this.get(CONFIG.api.recentOrders); },
-    fetchCategoryRevenue(){ return this.get(this.withPeriod(CONFIG.api.categoryRevenue)); },
-    fetchTraffic()        { return this.get(CONFIG.api.traffic); },
+    withFilters(url) {
+        const filters = this.collectFilters();
+        const params = new URLSearchParams();
+        params.set('period', filters.period);
+
+        if (filters.period === 'custom' || filters.startDate || filters.endDate) {
+            if (filters.startDate) params.set('startDate', filters.startDate);
+            if (filters.endDate) params.set('endDate', filters.endDate);
+        }
+
+        if (filters.categoryId) params.set('categoryId', filters.categoryId);
+        if (filters.orderStatus) params.set('orderStatus', filters.orderStatus);
+
+        return `${url}?${params.toString()}`;
+    },
+
+    fetchKpis(signal)           { return this.get(this.withFilters(CONFIG.api.kpis), signal); },
+    fetchRevenueChart(signal)   { return this.get(this.withFilters(CONFIG.api.revenueChart), signal); },
+    fetchOrderStatus(signal)    { return this.get(this.withFilters(CONFIG.api.orderStatus), signal); },
+    fetchTopProducts(signal)    { return this.get(this.withFilters(CONFIG.api.topProducts), signal); },
+    fetchRecentOrders(signal)   { return this.get(this.withFilters(CONFIG.api.recentOrders), signal); },
+    fetchCategoryRevenue(signal){ return this.get(this.withFilters(CONFIG.api.categoryRevenue), signal); },
+    fetchTraffic(signal)        { return this.get(this.withFilters(CONFIG.api.traffic), signal); },
+    fetchFilterOptions(signal)  { return this.get(CONFIG.api.filterOptions, signal); },
 };
 
 // ╔══════════════════════════════════════════════════════════════════╗
@@ -227,7 +253,7 @@ const ChartBuilder = {
     },
 
     /**
-     * Biểu đồ đường doanh thu theo tháng
+     * Biểu đồ doanh thu và doanh thu kỳ trước theo bộ lọc.
      * @param {object} data
      */
     buildRevenueChart(data) {
@@ -236,45 +262,35 @@ const ChartBuilder = {
 
         const ctx = canvas.getContext('2d');
 
-        const gradCurrent  = ctx.createLinearGradient(0, 0, 0, 300);
-        gradCurrent.addColorStop(0, 'rgba(20,184,166,0.2)');
-        gradCurrent.addColorStop(1, 'rgba(20,184,166,0)');
-
-        const gradPrevious = ctx.createLinearGradient(0, 0, 0, 300);
-        gradPrevious.addColorStop(0, 'rgba(148,163,184,0.15)');
-        gradPrevious.addColorStop(1, 'rgba(148,163,184,0)');
-
         if (chartRegistry.has('revenue')) chartRegistry.get('revenue').destroy();
 
         const chart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: data.labels,
                 datasets: [
                     {
-                        label:           'Năm nay',
-                        data:            data.currentYear,
+                        type:            'bar',
+                        label:           'Doanh thu',
+                        data:            data.revenue,
+                        backgroundColor: 'rgba(20,184,166,0.18)',
                         borderColor:     CONFIG.colors.brand,
-                        backgroundColor: gradCurrent,
-                        borderWidth:     2.5,
-                        tension:         0.4,
-                        fill:            true,
-                        pointRadius:     3,
-                        pointHoverRadius:6,
-                        pointBackgroundColor: CONFIG.colors.brand,
+                        borderWidth:     1.5,
+                        borderRadius:    7,
+                        order:           3,
                     },
                     {
-                        label:           'Năm ngoái',
-                        data:            data.previousYear,
+                        type:            'line',
+                        label:           'Kỳ trước',
+                        data:            data.previousRevenue,
                         borderColor:     CONFIG.colors.slate,
-                        backgroundColor: gradPrevious,
-                        borderWidth:     1.5,
-                        tension:         0.4,
-                        fill:            true,
-                        pointRadius:     2,
-                        pointHoverRadius:5,
+                        backgroundColor: 'transparent',
+                        borderWidth:     1.75,
+                        tension:         0.38,
+                        pointRadius:     0,
+                        pointHoverRadius:4,
                         borderDash:      [5, 4],
-                        pointBackgroundColor: CONFIG.colors.slate,
+                        order:           2,
                     },
                 ],
             },
@@ -504,7 +520,6 @@ const Renderer = {
     renderKpis(data) {
         const cards = [
             { id: 'kpi-revenue',   key: 'revenue',   format: Helpers.formatVND },
-            { id: 'kpi-profit',    key: 'profit',    format: Helpers.formatVND },
             { id: 'kpi-orders',    key: 'orders',    format: Helpers.formatNumber },
             { id: 'kpi-customers', key: 'customers', format: Helpers.formatNumber },
             { id: 'kpi-products',  key: 'products',  format: Helpers.formatNumber },
@@ -559,7 +574,6 @@ const Renderer = {
                 </div>
                 <div class="text-right shrink-0">
                     <p class="text-sm font-bold text-slate-800">${Helpers.formatVND(p.revenue)}</p>
-                    <p class="text-[11px] font-medium text-slate-500">Lãi ${Helpers.formatVND(p.profit || 0)}</p>
                     <p class="text-xs font-medium ${growthClass}">${growthSign}${p.growth}%</p>
                 </div>
             </div>`;
@@ -621,11 +635,17 @@ const Renderer = {
 
         container.innerHTML = data.labels.map((label, i) => {
             const pct = data.values[i];
+            const revenue = data.revenues?.[i] ?? 0;
             return `
             <div>
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-xs font-medium text-slate-700">${Helpers.escapeHtml(label)}</span>
-                    <span class="text-xs font-bold text-slate-800">${pct}%</span>
+                <div class="flex items-start justify-between gap-3 mb-1">
+                    <div class="min-w-0">
+                        <span class="text-xs font-medium text-slate-700 block truncate">${Helpers.escapeHtml(label)}</span>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="text-xs font-bold text-slate-800 block">${pct}%</span>
+                        <span class="text-[11px] text-slate-400">${Helpers.formatVND(revenue)}</span>
+                    </div>
                 </div>
                 <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div class="${colors[i]} h-full rounded-full transition-all duration-700"
@@ -660,12 +680,86 @@ const Renderer = {
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  DASHBOARD CONTROLLER — Điều phối tất cả                         ║
 // ╚══════════════════════════════════════════════════════════════════╝
+const Filters = {
+    elements() {
+        return {
+            period: document.getElementById('periodSelect'),
+            startDate: document.getElementById('dashboardStartDate'),
+            endDate: document.getElementById('dashboardEndDate'),
+            category: document.getElementById('categoryFilter'),
+            status: document.getElementById('orderStatusFilter'),
+            reset: document.getElementById('resetFiltersBtn'),
+        };
+    },
+
+    syncDateInputs() {
+        const { period, startDate, endDate } = this.elements();
+        const isCustom = period?.value === 'custom';
+        [startDate, endDate].forEach(input => {
+            if (!input) return;
+            input.disabled = !isCustom;
+            if (!isCustom) input.value = '';
+        });
+    },
+
+    async loadOptions() {
+        try {
+            const data = await ApiService.fetchFilterOptions();
+            const { category, status } = this.elements();
+
+            if (category && Array.isArray(data.categories)) {
+                category.innerHTML = '<option value="">Tất cả nhóm hàng</option>' +
+                    data.categories.map(item =>
+                        `<option value="${item.id}">${Helpers.escapeHtml(item.label)}</option>`)
+                        .join('');
+            }
+
+            if (status && Array.isArray(data.statuses)) {
+                status.innerHTML = '<option value="">Tất cả trạng thái</option>' +
+                    data.statuses.map(item =>
+                        `<option value="${Helpers.escapeHtml(item.value)}">${Helpers.escapeHtml(item.label)}</option>`)
+                        .join('');
+            }
+        } catch (err) {
+            console.warn('[Dashboard] Không tải được tùy chọn bộ lọc:', err);
+        }
+    },
+
+    reset() {
+        const { period, startDate, endDate, category, status } = this.elements();
+        if (period) period.value = 'last30days';
+        if (startDate) startDate.value = '';
+        if (endDate) endDate.value = '';
+        if (category) category.value = '';
+        if (status) status.value = '';
+        this.syncDateInputs();
+        Dashboard.loadAll();
+    },
+
+    bind() {
+        const { period, startDate, endDate, category, status, reset } = this.elements();
+        period?.addEventListener('change', () => {
+            this.syncDateInputs();
+            Dashboard.loadAll();
+        });
+        [startDate, endDate, category, status].forEach(input => {
+            input?.addEventListener('change', () => Dashboard.loadAll());
+        });
+        reset?.addEventListener('click', () => this.reset());
+        this.syncDateInputs();
+    },
+};
+
 const Dashboard = {
 
     /**
      * Tải và render tất cả widget song song
      */
     async loadAll() {
+        activeLoadController?.abort();
+        const loadController = new AbortController();
+        const loadToken = ++latestLoadToken;
+        activeLoadController = loadController;
         // Indicator loading trên nút refresh
         const refreshButtons = document.querySelectorAll('[data-dashboard-refresh]');
         refreshButtons.forEach(button => {
@@ -685,14 +779,18 @@ const Dashboard = {
                 categoryRevenue,
                 trafficData,
             ] = await Promise.allSettled([
-                ApiService.fetchKpis(),
-                ApiService.fetchRevenueChart(),
-                ApiService.fetchOrderStatus(),
-                ApiService.fetchTopProducts(),
-                ApiService.fetchRecentOrders(),
-                ApiService.fetchCategoryRevenue(),
-                ApiService.fetchTraffic(),
+                ApiService.fetchKpis(loadController.signal),
+                ApiService.fetchRevenueChart(loadController.signal),
+                ApiService.fetchOrderStatus(loadController.signal),
+                ApiService.fetchTopProducts(loadController.signal),
+                ApiService.fetchRecentOrders(loadController.signal),
+                ApiService.fetchCategoryRevenue(loadController.signal),
+                ApiService.fetchTraffic(loadController.signal),
             ]);
+
+            if (loadController.signal.aborted || loadToken !== latestLoadToken) {
+                return;
+            }
 
             // Render từng phần, bắt lỗi độc lập
             if (kpis.status === 'fulfilled')
@@ -722,13 +820,20 @@ const Dashboard = {
             if (window.lucide) lucide.createIcons();
 
         } catch (err) {
+            if (err?.name === 'AbortError') {
+                return;
+            }
+
             console.error('[Dashboard] Lỗi không mong đợi:', err);
         } finally {
-            refreshButtons.forEach(button => {
-                button.disabled = false;
-                button.removeAttribute('aria-busy');
-                button.querySelector('svg, i')?.classList.remove('animate-spin');
-            });
+            if (activeLoadController === loadController) {
+                activeLoadController = null;
+                refreshButtons.forEach(button => {
+                    button.disabled = false;
+                    button.removeAttribute('aria-busy');
+                    button.querySelector('svg, i')?.classList.remove('animate-spin');
+                });
+            }
         }
     },
 };
@@ -742,6 +847,6 @@ window.dashboardRefresh = () => Dashboard.loadAll();
 
 // Tải dữ liệu lần đầu khi DOM sẵn sàng
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('periodSelect')?.addEventListener('change', () => Dashboard.loadAll());
-    Dashboard.loadAll();
+    Filters.bind();
+    Filters.loadOptions().finally(() => Dashboard.loadAll());
 });

@@ -54,6 +54,22 @@ public sealed class InventoryAdminService : IInventoryAdminService
         var pendingReceiptCount = await _db.GoodsReceipts
             .AsNoTracking()
             .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Pending, ct);
+        var totalReceiptCount = await _db.GoodsReceipts
+            .AsNoTracking()
+            .CountAsync(ct);
+        var draftReceiptCount = await _db.GoodsReceipts
+            .AsNoTracking()
+            .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Draft, ct);
+        var approvedReceiptCount = await _db.GoodsReceipts
+            .AsNoTracking()
+            .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Approved, ct);
+        var cancelledReceiptCount = await _db.GoodsReceipts
+            .AsNoTracking()
+            .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Cancelled, ct);
+        var totalApprovedReceiptAmount = await _db.GoodsReceipts
+            .AsNoTracking()
+            .Where(receipt => receipt.Status == GoodsReceiptStatus.Approved)
+            .SumAsync(receipt => (decimal?)receipt.TotalAmount, ct) ?? 0m;
 
         var stockTotalCount = await stockQuery.CountAsync(ct);
         var receiptTotalCount = await receiptQuery.CountAsync(ct);
@@ -134,8 +150,34 @@ public sealed class InventoryAdminService : IInventoryAdminService
             LowStockCount = lowStockCount,
             OutOfStockCount = outOfStockCount,
             PendingReceiptCount = pendingReceiptCount,
+            TotalReceiptCount = totalReceiptCount,
+            DraftReceiptCount = draftReceiptCount,
+            ApprovedReceiptCount = approvedReceiptCount,
+            CancelledReceiptCount = cancelledReceiptCount,
+            TotalApprovedReceiptAmount = totalApprovedReceiptAmount,
             TotalInventoryCost = totalInventoryCost,
         };
+    }
+
+    public Task<InventoryIndexViewModel> GetInventoryIndexAsync(
+        InventoryIndexQuery query,
+        CancellationToken ct = default)
+    {
+        query.SupplierId = null;
+        query.ReceiptStatus = null;
+        query.ReceiptPage = 1;
+
+        return GetIndexAsync(query, ct);
+    }
+
+    public Task<InventoryIndexViewModel> GetGoodsReceiptIndexAsync(
+        InventoryIndexQuery query,
+        CancellationToken ct = default)
+    {
+        query.Stock = null;
+        query.StockPage = 1;
+
+        return GetIndexAsync(query, ct);
     }
 
     public async Task<GoodsReceiptDetailsViewModel?> GetDetailsAsync(
@@ -585,6 +627,15 @@ public sealed class InventoryAdminService : IInventoryAdminService
         if (filters.SupplierId is > 0)
         {
             query = query.Where(receipt => receipt.SupplierId == filters.SupplierId.Value);
+        }
+
+        if (filters.CategoryId is > 0)
+        {
+            query = query.Where(receipt =>
+                receipt.GoodReceiptItems.Any(item =>
+                    item.ProductVariant != null &&
+                    item.ProductVariant.Product != null &&
+                    item.ProductVariant.Product.CategoryId == filters.CategoryId.Value));
         }
 
         if (TryParseReceiptStatus(filters.ReceiptStatus, out var status))

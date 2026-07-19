@@ -8,6 +8,14 @@ public interface IInventoryAdminService
         InventoryIndexQuery query,
         CancellationToken ct = default);
 
+    Task<InventoryIndexViewModel> GetInventoryIndexAsync(
+        InventoryIndexQuery query,
+        CancellationToken ct = default);
+
+    Task<InventoryIndexViewModel> GetGoodsReceiptIndexAsync(
+        InventoryIndexQuery query,
+        CancellationToken ct = default);
+
     Task<GoodsReceiptDetailsViewModel?> GetDetailsAsync(
         long id,
         CancellationToken ct = default);

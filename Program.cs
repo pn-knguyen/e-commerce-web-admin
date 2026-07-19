@@ -28,8 +28,10 @@ using e_commerce_web_admin.Services.Vouchers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.IO.Compression;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -37,6 +39,23 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+    [
+        "application/json",
+        "application/javascript",
+        "text/css",
+        "image/svg+xml",
+    ]);
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.Fastest);
 builder.Services.AddSignalR(options =>
 {
     options.MaximumReceiveMessageSize = 64 * 1024;
@@ -243,7 +262,20 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.UseResponseCompression();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        if (app.Environment.IsDevelopment())
+        {
+            context.Context.Response.Headers["Cache-Control"] = "no-cache";
+            return;
+        }
+
+        context.Context.Response.Headers["Cache-Control"] = "public,max-age=31536000,immutable";
+    },
+});
 app.UseRouting();
 
 app.UseCors();

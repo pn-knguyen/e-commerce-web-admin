@@ -17,6 +17,8 @@ public sealed class OrdersController : Controller
     public async Task<IActionResult> Index(
         string? search,
         string? dateRange,
+        DateTime? createdFrom,
+        DateTime? createdTo,
         string? orderStatus,
         string? paymentStatus,
         long? paymentMethodId,
@@ -28,6 +30,8 @@ public sealed class OrdersController : Controller
             {
                 Search = search,
                 DateRange = dateRange,
+                CreatedFrom = createdFrom,
+                CreatedTo = createdTo,
                 OrderStatus = orderStatus,
                 PaymentStatus = paymentStatus,
                 PaymentMethodId = paymentMethodId,

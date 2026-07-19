@@ -105,6 +105,7 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
                 .ThenInclude(item => item.AttributeOption)
                     .ThenInclude(option => option!.Attribute)
             .Include(variant => variant.ProductVariantImages)
+            .AsSplitQuery()
             .OrderByDescending(variant => variant.CreatedAt)
             .ThenBy(variant => variant.Code)
             .Skip((page - 1) * DefaultPageSize)

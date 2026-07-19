@@ -16,23 +16,19 @@ public sealed class GoodsReceiptsController : Controller
 
     public async Task<IActionResult> Index(
         string? search,
-        string? stock,
         string? receiptStatus,
         long? supplierId,
         long? categoryId,
-        int stockPage = 1,
         int receiptPage = 1,
         CancellationToken ct = default)
     {
-        var viewModel = await _inventoryService.GetIndexAsync(
+        var viewModel = await _inventoryService.GetGoodsReceiptIndexAsync(
             new InventoryIndexQuery
             {
                 Search = search,
-                Stock = stock,
                 ReceiptStatus = receiptStatus,
                 SupplierId = supplierId,
                 CategoryId = categoryId,
-                StockPage = stockPage,
                 ReceiptPage = receiptPage,
             },
             ct);

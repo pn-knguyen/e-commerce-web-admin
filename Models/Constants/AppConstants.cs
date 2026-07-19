@@ -82,7 +82,7 @@ public static class PermissionModules
         ["Specifications"] = "Thông số kỹ thuật",
         ["Attributes"] = "Thuộc tính biến thể",
         ["Suppliers"] = "Nhà cung cấp",
-        ["GoodsReceipts"] = "Quản lý tồn kho",
+        ["GoodsReceipts"] = "Quản lý phiếu nhập",
         ["FulfillmentLocations"] = "Điểm lấy hàng",
         ["Orders"] = "Đơn hàng",
         ["PaymentMethods"] = "Phương thức thanh toán",

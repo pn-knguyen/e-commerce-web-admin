@@ -3,11 +3,13 @@ namespace e_commerce_web_admin.ViewModels.ProfitReports;
 public sealed class ProfitReportQuery
 {
     public string? Period { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
 }
 
 public sealed class ProfitReportViewModel
 {
-    public string Period { get; set; } = "30d";
+    public string Period { get; set; } = "last30days";
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public List<ProfitPeriodOption> PeriodOptions { get; set; } = [];

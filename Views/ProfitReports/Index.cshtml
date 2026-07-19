@@ -9,6 +9,8 @@
     string Money(decimal value) => string.Concat(value.ToString("N0", vi), " đ");
     string Percent(decimal value) => string.Concat(value.ToString("N2", vi), "%");
     string DateText(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy", vi);
+    string DateInput(DateTime value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    var isCustomPeriod = string.Equals(Model.Period, "custom", StringComparison.OrdinalIgnoreCase);
 
     var trendJson = JsonSerializer.Serialize(Model.Trend.Select(item => new
     {
@@ -37,11 +39,76 @@
             min-width: 0;
         }
 
+        .profit-report-header {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .profit-hero-copy {
+            flex: 1 1 18rem;
+        }
+
         .profit-period-tabs {
             display: flex;
             flex-wrap: wrap;
+            align-items: end;
+            justify-content: flex-end;
             gap: 0.5rem;
+            margin-left: auto;
             width: 100%;
+        }
+
+        .profit-period-tabs > label {
+            display: grid;
+            gap: 0.25rem;
+            min-width: min(100%, 10.5rem);
+        }
+
+        .profit-period-tabs > label:first-child {
+            min-width: min(100%, 14rem);
+        }
+
+        .profit-period-tabs span {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #64748b;
+        }
+
+        .profit-period-tabs select,
+        .profit-period-tabs input {
+            min-height: 2.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background: #fff;
+            padding: 0.45rem 0.7rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .profit-period-tabs input:disabled {
+            background: #f8fafc;
+            color: #94a3b8;
+        }
+
+        .profit-filter-button {
+            display: inline-flex;
+            min-height: 2.5rem;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            border-radius: 0.5rem;
+            background: #0f766e;
+            padding: 0.45rem 0.9rem;
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        .profit-filter-button span {
+            color: #fff;
         }
 
         .profit-period-tabs > a {
@@ -105,9 +172,8 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
-            .profit-period-tabs > a {
+            .profit-filter-button {
                 width: 100%;
-                white-space: normal;
             }
 
             .profit-kpi-card,
@@ -131,7 +197,14 @@
         }
 
         @@media (min-width: 1024px) {
+            .profit-report-header {
+                flex-direction: row;
+                align-items: end;
+                justify-content: space-between;
+            }
+
             .profit-period-tabs {
+                flex: 1 1 42rem;
                 justify-content: flex-end;
                 width: auto;
             }
@@ -178,36 +251,52 @@
 }
 
 <main class="profit-report-page space-y-5 md:space-y-6">
-    <section class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <section class="profit-report-header">
         <div class="profit-hero-copy">
-            <nav class="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                <a href="/Dashboard" class="hover:text-teal-600">Tổng quan</a>
-                <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
-                <span>Báo cáo lãi</span>
-            </nav>
             <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">Báo cáo lãi</h1>
             <p class="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                Lãi gộp hàng bán = doanh thu sản phẩm đã giao xong - giá vốn đã chốt theo tồn kho nhập.
+                Lãi gộp = doanh thu đơn đã giao và thanh toán - giá vốn đã chốt theo tồn kho nhập.
             </p>
         </div>
-
-        <div class="profit-period-tabs">
+        <form method="get" asp-action="Index" class="profit-period-tabs">
+            <label for="profitPeriodSelect">
+                <span>Thời gian</span>
+                <select id="profitPeriodSelect" name="period" data-profit-period-select>
             @foreach (var option in Model.PeriodOptions)
             {
-                <a asp-action="Index"
-                   asp-route-period="@option.Value"
-                   class="rounded-lg border px-3 py-2 text-sm font-semibold transition
-                          @(option.IsSelected ? "border-teal-600 bg-teal-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700")">
-                    @option.Text
-                </a>
+                    <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@option.Text</option>
             }
-        </div>
+                </select>
+            </label>
+            <label for="profitStartDate" data-profit-custom-date-field>
+                <span>Từ ngày</span>
+                <input id="profitStartDate"
+                       type="date"
+                       name="startDate"
+                       value="@DateInput(Model.StartDate)"
+                       disabled="@(!isCustomPeriod)"
+                       data-profit-start-date />
+            </label>
+            <label for="profitEndDate" data-profit-custom-date-field>
+                <span>Đến ngày</span>
+                <input id="profitEndDate"
+                       type="date"
+                       name="endDate"
+                       value="@DateInput(Model.EndDate)"
+                       disabled="@(!isCustomPeriod)"
+                       data-profit-end-date />
+            </label>
+            <button type="submit" class="profit-filter-button">
+                <i data-lucide="filter" class="h-4 w-4"></i>
+                <span>Lọc</span>
+            </button>
+        </form>
     </section>
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article class="profit-kpi-card border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
-                <span class="text-sm font-semibold text-slate-500">Doanh thu hàng bán</span>
+                <span class="text-sm font-semibold text-slate-500">Doanh thu đơn hàng</span>
                 <i data-lucide="receipt-text" class="h-5 w-5 text-teal-600"></i>
             </div>
             <p class="profit-kpi-value mt-3 font-bold text-slate-900">@Money(Model.Revenue)</p>
@@ -365,8 +454,8 @@
                 <h2 class="font-bold text-slate-900">Cách đọc nhanh</h2>
                 <dl class="mt-4 space-y-3 text-sm">
                     <div>
-                        <dt class="font-semibold text-slate-700">Doanh thu hàng bán</dt>
-                        <dd class="mt-1 text-slate-500">Tổng tiền sản phẩm trong đơn đã giao xong và đã thanh toán.</dd>
+                        <dt class="font-semibold text-slate-700">Doanh thu đơn hàng</dt>
+                        <dd class="mt-1 text-slate-500">Tổng tiền đơn đã giao xong và đã thanh toán, đã gồm phí vận chuyển và trừ voucher.</dd>
                     </div>
                     <div>
                         <dt class="font-semibold text-slate-700">Giá vốn hàng bán</dt>
@@ -374,7 +463,7 @@
                     </div>
                     <div>
                         <dt class="font-semibold text-slate-700">Lãi gộp</dt>
-                        <dd class="mt-1 text-slate-500">Chưa trừ phí vận chuyển, phí thanh toán, thuế và chi phí vận hành.</dd>
+                        <dd class="mt-1 text-slate-500">Chưa trừ chi phí vận chuyển thực trả, phí thanh toán, thuế và chi phí vận hành.</dd>
                     </div>
                 </dl>
             </article>
@@ -383,6 +472,7 @@
 </main>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script>
         (() => {
             const trend = @Html.Raw(trendJson);
@@ -392,6 +482,21 @@
                 currency: 'VND',
                 maximumFractionDigits: 0
             }).format(value || 0);
+            const periodSelect = document.querySelector('[data-profit-period-select]');
+            const customDateFields = Array.from(document.querySelectorAll('[data-profit-custom-date-field]'));
+            const customDateInputs = [
+                document.querySelector('[data-profit-start-date]'),
+                document.querySelector('[data-profit-end-date]')
+            ].filter(Boolean);
+            const syncDateInputs = () => {
+                const isCustom = periodSelect?.value === 'custom';
+                customDateFields.forEach(field => field.classList.toggle('opacity-60', !isCustom));
+                customDateInputs.forEach(input => {
+                    input.disabled = !isCustom;
+                });
+            };
+            periodSelect?.addEventListener('change', syncDateInputs);
+            syncDateInputs();
 
             if (!window.Chart) {
                 return;
@@ -405,7 +510,7 @@
                         labels: trend.map(item => item.label),
                         datasets: [
                             {
-                                label: 'Doanh thu hàng bán',
+                                label: 'Doanh thu đơn hàng',
                                 data: trend.map(item => item.revenue),
                                 borderColor: '#0f766e',
                                 backgroundColor: 'rgba(15, 118, 110, 0.12)',

@@ -56,14 +56,13 @@
     @* Google Fonts *@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet" />
 
     @* Lucide Icons *@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-
-    @* Chart.js *@
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
     <style>
         * {
@@ -519,10 +518,15 @@
                                 <i data-lucide="truck" class="w-4 h-4 shrink-0"></i>
                                 Quản lý nhà cung cấp
                             </a>
-                            <a href="/GoodsReceipts"
+                            <a href="/Inventory"
                                class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
                                 <i data-lucide="warehouse" class="w-4 h-4 shrink-0"></i>
                                 Quản lý tồn kho
+                            </a>
+                            <a href="/GoodsReceipts"
+                               class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-all">
+                                <i data-lucide="receipt-text" class="w-4 h-4 shrink-0"></i>
+                                Quản lý phiếu nhập
                             </a>
                         </div>
 

@@ -2,6 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     bindToastDismiss();
+    bindOrderDateRangeFilter();
     bindOrderStatusForm();
     bindShipmentHistoryToggle();
     bindShippingProviderSwitcher();
@@ -21,6 +22,109 @@ function bindToastDismiss() {
         document.getElementById('toastSuccess')?.remove();
         document.getElementById('toastError')?.remove();
     }, 5000);
+}
+
+function bindOrderDateRangeFilter() {
+    const select = document.querySelector('[data-order-date-range-select]');
+    const fields = Array.from(document.querySelectorAll('[data-order-custom-date-field]'));
+    const fromInput = document.querySelector('[data-order-created-from]');
+    const toInput = document.querySelector('[data-order-created-to]');
+    const inputs = [fromInput, toInput].filter(Boolean);
+
+    if (!select || inputs.length === 0) {
+        return;
+    }
+
+    const sync = () => {
+        const isCustom = select.value === 'custom';
+        fields.forEach(field => field.classList.toggle('is-disabled', !isCustom));
+
+        if (isCustom) {
+            setInputMode(fromInput, 'datetime-local', '00:00');
+            setInputMode(toInput, 'datetime-local', '23:59');
+            inputs.forEach(input => {
+                input.disabled = false;
+            });
+            return;
+        }
+
+        const presetRange = getOrderPresetDateRange(select.value);
+        setInputMode(fromInput, 'date');
+        setInputMode(toInput, 'date');
+        if (fromInput) {
+            fromInput.value = presetRange?.from || '';
+        }
+        if (toInput) {
+            toInput.value = presetRange?.to || '';
+        }
+        inputs.forEach(input => {
+            input.disabled = true;
+        });
+    };
+
+    select.addEventListener('change', sync);
+    sync();
+}
+
+function setInputMode(input, type, defaultTime = '00:00') {
+    if (!input) {
+        return;
+    }
+
+    const datePart = input.value ? input.value.slice(0, 10) : '';
+    input.type = type;
+    input.value = type === 'datetime-local' && datePart
+        ? `${datePart}T${defaultTime}`
+        : datePart;
+}
+
+function getOrderPresetDateRange(value) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const addDays = (date, days) => {
+        const next = new Date(date);
+        next.setDate(next.getDate() + days);
+        return next;
+    };
+
+    const toDateInputValue = date => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const sameDay = date => ({
+        from: toDateInputValue(date),
+        to: toDateInputValue(date),
+    });
+
+    switch (value) {
+        case 'today':
+            return sameDay(today);
+        case 'yesterday':
+            return sameDay(addDays(today, -1));
+        case 'last7days':
+            return { from: toDateInputValue(addDays(today, -6)), to: toDateInputValue(today) };
+        case 'last30days':
+            return { from: toDateInputValue(addDays(today, -29)), to: toDateInputValue(today) };
+        case 'thismonth':
+            return { from: toDateInputValue(new Date(today.getFullYear(), today.getMonth(), 1)), to: toDateInputValue(today) };
+        case 'lastmonth':
+            return {
+                from: toDateInputValue(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
+                to: toDateInputValue(new Date(today.getFullYear(), today.getMonth(), 0)),
+            };
+        case 'thisquarter': {
+            const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
+            return { from: toDateInputValue(new Date(today.getFullYear(), quarterStartMonth, 1)), to: toDateInputValue(today) };
+        }
+        case 'thisyear':
+            return { from: toDateInputValue(new Date(today.getFullYear(), 0, 1)), to: toDateInputValue(today) };
+        default:
+            return null;
+    }
 }
 
 function bindShipmentHistoryToggle() {

@@ -14,10 +14,19 @@ public sealed class ProfitReportsController : Controller
     public ProfitReportsController(IProfitReportService profitReportService)
         => _profitReportService = profitReportService;
 
-    public async Task<IActionResult> Index(string? period, CancellationToken ct = default)
+    public async Task<IActionResult> Index(
+        string? period,
+        DateTime? startDate,
+        DateTime? endDate,
+        CancellationToken ct = default)
     {
         var viewModel = await _profitReportService.GetReportAsync(
-            new ProfitReportQuery { Period = period },
+            new ProfitReportQuery
+            {
+                Period = period,
+                StartDate = startDate,
+                EndDate = endDate,
+            },
             ct);
 
         return View(viewModel);

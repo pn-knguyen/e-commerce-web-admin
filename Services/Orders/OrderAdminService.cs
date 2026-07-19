@@ -19,6 +19,16 @@ public sealed class OrderAdminService : IOrderAdminService
     private readonly IShipmentAdminService _shipmentService;
     private readonly IInventoryLedgerService _inventoryLedger;
 
+    private sealed class OrderIndexSummary
+    {
+        public int PendingCount { get; init; }
+        public int ShippingCount { get; init; }
+        public int CompletedCount { get; init; }
+        public decimal CompletedRevenue { get; init; }
+    }
+
+    private sealed record DateRangeFilter(DateTime? StartUtc, DateTime? EndUtc);
+
     public OrderAdminService(
         ApplicationDbContext db,
         IShipmentAdminService shipmentService,
@@ -37,13 +47,19 @@ public sealed class OrderAdminService : IOrderAdminService
         var dbQuery = ApplyFilters(_db.Orders.AsNoTracking(), query);
 
         var totalCount = await dbQuery.CountAsync(ct);
-        var pendingCount = await _db.Orders.AsNoTracking().CountAsync(order => order.OrderStatus == OrderStatus.Pending, ct);
-        var shippingCount = await _db.Orders.AsNoTracking().CountAsync(order => order.OrderStatus == OrderStatus.Shipping, ct);
-        var completedCount = await _db.Orders.AsNoTracking().CountAsync(order => order.OrderStatus == OrderStatus.Completed, ct);
-        var completedRevenue = await _db.Orders
-            .AsNoTracking()
-            .Where(order => order.OrderStatus == OrderStatus.Completed && order.PaymentStatus == PaymentStatus.Paid)
-            .SumAsync(order => (decimal?)order.TotalAmount, ct) ?? 0m;
+        var summary = await dbQuery
+            .GroupBy(_ => 1)
+            .Select(group => new OrderIndexSummary
+            {
+                PendingCount = group.Count(order => order.OrderStatus == OrderStatus.Pending),
+                ShippingCount = group.Count(order => order.OrderStatus == OrderStatus.Shipping),
+                CompletedCount = group.Count(order => order.OrderStatus == OrderStatus.Completed),
+                CompletedRevenue = group
+                    .Where(order => order.OrderStatus == OrderStatus.Completed &&
+                        order.PaymentStatus == PaymentStatus.Paid)
+                    .Sum(order => (decimal?)order.TotalAmount) ?? 0m,
+            })
+            .FirstOrDefaultAsync(ct) ?? new OrderIndexSummary();
         var rows = await dbQuery
             .OrderByDescending(order => order.CreatedAt)
             .ThenByDescending(order => order.Id)
@@ -69,18 +85,20 @@ public sealed class OrderAdminService : IOrderAdminService
         {
             Orders = rows,
             Search = query.Search,
-            DateRange = NormalizeDateRange(query.DateRange),
+            DateRange = NormalizeDateRange(query),
+            CreatedFrom = query.CreatedFrom,
+            CreatedTo = query.CreatedTo,
             OrderStatus = query.OrderStatus,
             PaymentStatus = query.PaymentStatus,
             PaymentMethodId = query.PaymentMethodId,
             Page = page,
             PageSize = DefaultPageSize,
             TotalCount = totalCount,
-            PendingCount = pendingCount,
-            ShippingCount = shippingCount,
-            CompletedCount = completedCount,
-            CompletedRevenue = completedRevenue,
-            DateRangeOptions = BuildDateRangeOptions(query.DateRange),
+            PendingCount = summary.PendingCount,
+            ShippingCount = summary.ShippingCount,
+            CompletedCount = summary.CompletedCount,
+            CompletedRevenue = summary.CompletedRevenue,
+            DateRangeOptions = BuildDateRangeOptions(query),
             OrderStatusOptions = BuildOrderStatusOptions(query.OrderStatus),
             PaymentStatusOptions = BuildPaymentStatusOptions(query.PaymentStatus),
             PaymentMethodOptions = await BuildPaymentMethodOptionsAsync(query.PaymentMethodId, ct),
@@ -234,11 +252,18 @@ public sealed class OrderAdminService : IOrderAdminService
                     (order.User.FullName.Contains(term) || order.User.Email.Contains(term))));
         }
 
-        var dateRange = GetDateRange(filters.DateRange);
+        var dateRange = GetDateRange(filters);
         if (dateRange is not null)
         {
-            query = query.Where(order => order.CreatedAt >= dateRange.Value.StartUtc &&
-                order.CreatedAt < dateRange.Value.EndUtc);
+            if (dateRange.StartUtc.HasValue)
+            {
+                query = query.Where(order => order.CreatedAt >= dateRange.StartUtc.Value);
+            }
+
+            if (dateRange.EndUtc.HasValue)
+            {
+                query = query.Where(order => order.CreatedAt < dateRange.EndUtc.Value);
+            }
         }
 
         if (TryParseOrderStatus(filters.OrderStatus, out var orderStatus))
@@ -353,9 +378,9 @@ public sealed class OrderAdminService : IOrderAdminService
     private static bool TryParsePaymentStatus(string? value, out PaymentStatus status) =>
         Enum.TryParse(value, ignoreCase: true, out status) && Enum.IsDefined(status);
 
-    private static List<OrderFilterOption> BuildDateRangeOptions(string? selectedValue)
+    private static List<OrderFilterOption> BuildDateRangeOptions(OrderIndexQuery query)
     {
-        var selected = NormalizeDateRange(selectedValue);
+        var selected = NormalizeDateRange(query);
         return
         [
             new OrderFilterOption
@@ -366,9 +391,51 @@ public sealed class OrderAdminService : IOrderAdminService
             },
             new OrderFilterOption
             {
+                Value = "yesterday",
+                Text = "Hôm qua",
+                Selected = selected == "yesterday",
+            },
+            new OrderFilterOption
+            {
                 Value = "last7days",
-                Text = "7 ngày qua",
+                Text = "7 ngày gần nhất",
                 Selected = selected == "last7days",
+            },
+            new OrderFilterOption
+            {
+                Value = "last30days",
+                Text = "30 ngày gần nhất",
+                Selected = selected == "last30days",
+            },
+            new OrderFilterOption
+            {
+                Value = "thismonth",
+                Text = "Tháng này",
+                Selected = selected == "thismonth",
+            },
+            new OrderFilterOption
+            {
+                Value = "lastmonth",
+                Text = "Tháng trước",
+                Selected = selected == "lastmonth",
+            },
+            new OrderFilterOption
+            {
+                Value = "thisquarter",
+                Text = "Quý này",
+                Selected = selected == "thisquarter",
+            },
+            new OrderFilterOption
+            {
+                Value = "thisyear",
+                Text = "Năm nay",
+                Selected = selected == "thisyear",
+            },
+            new OrderFilterOption
+            {
+                Value = "custom",
+                Text = "Tùy chọn khoảng thời gian",
+                Selected = selected == "custom",
             },
         ];
     }
@@ -393,9 +460,9 @@ public sealed class OrderAdminService : IOrderAdminService
             })
             .ToList();
 
-    private static (DateTime StartUtc, DateTime EndUtc)? GetDateRange(string? value)
+    private static DateRangeFilter? GetDateRange(OrderIndexQuery query)
     {
-        var normalizedValue = NormalizeDateRange(value);
+        var normalizedValue = NormalizeDateRange(query);
         if (normalizedValue is null)
         {
             return null;
@@ -403,27 +470,89 @@ public sealed class OrderAdminService : IOrderAdminService
 
         var timeZone = TimeZoneHelper.GetVietnamTimeZone();
         var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone).Date;
-        var localStart = normalizedValue == "last7days"
-            ? today.AddDays(-6)
-            : today;
-        var localEnd = today.AddDays(1);
+        var thisMonthStart = new DateTime(today.Year, today.Month, 1);
+        if (normalizedValue == "custom")
+        {
+            return GetCustomDateRange(query, timeZone);
+        }
 
-        return (
-            TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localStart, DateTimeKind.Unspecified), timeZone),
-            TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localEnd, DateTimeKind.Unspecified), timeZone));
+        var localStart = normalizedValue switch
+        {
+            "yesterday" => today.AddDays(-1),
+            "last7days" => today.AddDays(-6),
+            "last30days" => today.AddDays(-29),
+            "thismonth" => thisMonthStart,
+            "lastmonth" => thisMonthStart.AddMonths(-1),
+            "thisquarter" => GetQuarterStart(today),
+            "thisyear" => new DateTime(today.Year, 1, 1),
+            _ => today,
+        };
+        var localEnd = normalizedValue switch
+        {
+            "yesterday" => today,
+            "lastmonth" => thisMonthStart,
+            _ => today.AddDays(1),
+        };
+
+        return new DateRangeFilter(
+            ToUtc(localStart, timeZone),
+            ToUtc(localEnd, timeZone));
     }
 
-    private static string? NormalizeDateRange(string? value)
+    private static DateRangeFilter? GetCustomDateRange(OrderIndexQuery query, TimeZoneInfo timeZone)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        var localStart = query.CreatedFrom;
+        var localEnd = query.CreatedTo;
+
+        if (!localStart.HasValue && !localEnd.HasValue)
         {
             return null;
         }
 
-        return value.Trim().ToLowerInvariant() switch
+        if (localStart.HasValue && localEnd.HasValue && localEnd.Value < localStart.Value)
+        {
+            (localStart, localEnd) = (localEnd, localStart);
+        }
+
+        return new DateRangeFilter(
+            localStart.HasValue ? ToUtc(localStart.Value, timeZone) : null,
+            localEnd.HasValue ? ToUtc(localEnd.Value.AddMinutes(1), timeZone) : null);
+    }
+
+    private static DateTime ToUtc(DateTime localDateTime, TimeZoneInfo timeZone)
+        => TimeZoneInfo.ConvertTimeToUtc(
+            DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified),
+            timeZone);
+
+    private static DateTime GetQuarterStart(DateTime date)
+    {
+        var quarterStartMonth = ((date.Month - 1) / 3 * 3) + 1;
+        return new DateTime(date.Year, quarterStartMonth, 1);
+    }
+
+    private static string? NormalizeDateRange(OrderIndexQuery query)
+    {
+        if (query.CreatedFrom.HasValue || query.CreatedTo.HasValue)
+        {
+            return "custom";
+        }
+
+        if (string.IsNullOrWhiteSpace(query.DateRange))
+        {
+            return null;
+        }
+
+        return query.DateRange.Trim().ToLowerInvariant() switch
         {
             "today" => "today",
+            "yesterday" => "yesterday",
             "last7days" => "last7days",
+            "last30days" => "last30days",
+            "thismonth" => "thismonth",
+            "lastmonth" => "lastmonth",
+            "thisquarter" => "thisquarter",
+            "thisyear" => "thisyear",
+            "custom" => "custom",
             _ => null,
         };
     }

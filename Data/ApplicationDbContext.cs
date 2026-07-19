@@ -392,6 +392,12 @@ public class ApplicationDbContext : IdentityDbContext<Staff, IdentityRole<long>,
         {
             entity.ToTable("orders");
             entity.HasIndex(order => order.OrderCode).IsUnique();
+            entity.HasIndex(order => order.CreatedAt);
+            entity.HasIndex(order => new { order.OrderStatus, order.PaymentStatus, order.CreatedAt });
+            entity.HasIndex(order => order.PaymentMethodId);
+            entity.HasIndex(order => new { order.PaymentMethodId, order.CreatedAt });
+            entity.HasIndex(order => order.UserId);
+            entity.HasIndex(order => new { order.UserId, order.CreatedAt });
             entity.Property(order => order.OrderCode).HasMaxLength(50).IsRequired();
             entity.Property(order => order.ShippingContactName).HasMaxLength(255).IsRequired();
             entity.Property(order => order.ShippingPhone).HasMaxLength(30).IsRequired();
