@@ -325,7 +325,7 @@
                         <div class="pv-image-preview @(string.IsNullOrWhiteSpace(item.image.ImagePath) ? "is-empty" : "")" data-pv-image-preview>
                             @if (!string.IsNullOrWhiteSpace(item.image.ImagePath))
                             {
-                                <img src="@item.image.ImagePath" alt="@(string.IsNullOrWhiteSpace(item.image.AltText) ? "Ảnh biến thể" : item.image.AltText)" />
+                                <img src="@item.image.ImagePath" alt="@(string.IsNullOrWhiteSpace(item.image.AltText) ? "Ảnh biến thể" : item.image.AltText)" loading="lazy" decoding="async" />
                             }
                             else
                             {

@@ -6,22 +6,31 @@ using e_commerce_web_admin.Models.Entities;
 using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.ViewModels.Products;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace e_commerce_web_admin.Services.Products;
 
 public sealed class ProductAdminService : IProductAdminService
 {
     private const int DefaultPageSize = 30;
+    private static readonly MemoryCacheEntryOptions LookupCacheOptions = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(20),
+        Size = 1,
+    };
 
     private readonly ApplicationDbContext _db;
     private readonly ICategoryHierarchyService _categoryHierarchy;
+    private readonly IMemoryCache _cache;
 
     public ProductAdminService(
         ApplicationDbContext db,
-        ICategoryHierarchyService categoryHierarchy)
+        ICategoryHierarchyService categoryHierarchy,
+        IMemoryCache cache)
     {
         _db = db;
         _categoryHierarchy = categoryHierarchy;
+        _cache = cache;
     }
 
     private sealed class ProductIndexItem
@@ -91,13 +100,17 @@ public sealed class ProductAdminService : IProductAdminService
                 product.Category!.Name.Contains(term));
         }
 
-        var totalCount = await dbQuery.CountAsync(ct);
-        var activeCount = await dbQuery.CountAsync(product => product.IsActive, ct);
-        var inactiveCount = await dbQuery.CountAsync(product => !product.IsActive, ct);
-        var featuredCount = await dbQuery.CountAsync(product => product.IsFeatured, ct);
-        var totalVariantCount = totalCount == 0
-            ? 0
-            : await dbQuery.SumAsync(product => product.ProductVariants.Count, ct);
+        var summary = await dbQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                ActiveCount = group.Count(product => product.IsActive),
+                InactiveCount = group.Count(product => !product.IsActive),
+                FeaturedCount = group.Count(product => product.IsFeatured),
+                TotalVariantCount = group.Sum(product => product.ProductVariants.Count),
+            })
+            .FirstOrDefaultAsync(ct);
 
         var items = await dbQuery
             .OrderByDescending(product => product.CreatedAt)
@@ -134,11 +147,11 @@ public sealed class ProductAdminService : IProductAdminService
             CategoryId = query.CategoryId,
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = totalCount,
-            ActiveCount = activeCount,
-            InactiveCount = inactiveCount,
-            FeaturedCount = featuredCount,
-            TotalVariantCount = totalVariantCount,
+            TotalCount = summary?.TotalCount ?? 0,
+            ActiveCount = summary?.ActiveCount ?? 0,
+            InactiveCount = summary?.InactiveCount ?? 0,
+            FeaturedCount = summary?.FeaturedCount ?? 0,
+            TotalVariantCount = summary?.TotalVariantCount ?? 0,
         };
     }
 
@@ -535,6 +548,17 @@ public sealed class ProductAdminService : IProductAdminService
 
     private async Task<List<ProductSelectItem>> BuildBrandOptionsAsync(CancellationToken ct)
     {
+        return await _cache.GetOrCreateAsync(
+            "Products:BrandOptions:v1",
+            async entry =>
+            {
+                entry.SetOptions(LookupCacheOptions);
+                return await BuildBrandOptionsCoreAsync(ct);
+            }) ?? [];
+    }
+
+    private async Task<List<ProductSelectItem>> BuildBrandOptionsCoreAsync(CancellationToken ct)
+    {
         return await _db.Brands
             .AsNoTracking()
             .OrderBy(brand => brand.Name)
@@ -548,6 +572,17 @@ public sealed class ProductAdminService : IProductAdminService
     }
 
     private async Task<List<ProductCategorySelectItem>> BuildCategoryOptionsAsync(CancellationToken ct)
+    {
+        return await _cache.GetOrCreateAsync(
+            "Products:CategoryOptions:v1",
+            async entry =>
+            {
+                entry.SetOptions(LookupCacheOptions);
+                return await BuildCategoryOptionsCoreAsync(ct);
+            }) ?? [];
+    }
+
+    private async Task<List<ProductCategorySelectItem>> BuildCategoryOptionsCoreAsync(CancellationToken ct)
     {
         var categories = await _db.Categories
             .AsNoTracking()

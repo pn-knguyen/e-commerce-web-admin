@@ -37,12 +37,16 @@ public sealed class PaymentMethodAdminService : IPaymentMethodAdminService
                 (method.Description != null && method.Description.Contains(term)));
         }
 
-        var totalCount = await dbQuery.CountAsync(ct);
-        var activeCount = await dbQuery.CountAsync(method => method.IsActive, ct);
-        var inactiveCount = await dbQuery.CountAsync(method => !method.IsActive, ct);
-        var totalOrderUsageCount = totalCount == 0
-            ? 0
-            : await dbQuery.SumAsync(method => method.Orders.Count, ct);
+        var summary = await dbQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                ActiveCount = group.Count(method => method.IsActive),
+                InactiveCount = group.Count(method => !method.IsActive),
+                TotalOrderUsageCount = group.Sum(method => method.Orders.Count),
+            })
+            .FirstOrDefaultAsync(ct);
 
         var rows = await dbQuery
             .OrderBy(method => method.Name)
@@ -65,10 +69,10 @@ public sealed class PaymentMethodAdminService : IPaymentMethodAdminService
             Status = query.Status,
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = totalCount,
-            ActiveCount = activeCount,
-            InactiveCount = inactiveCount,
-            TotalOrderUsageCount = totalOrderUsageCount,
+            TotalCount = summary?.TotalCount ?? 0,
+            ActiveCount = summary?.ActiveCount ?? 0,
+            InactiveCount = summary?.InactiveCount ?? 0,
+            TotalOrderUsageCount = summary?.TotalOrderUsageCount ?? 0,
         };
     }
 

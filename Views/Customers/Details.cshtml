@@ -63,7 +63,7 @@
                 <span class="customer-detail-avatar @(Model.IsActive ? string.Empty : "is-muted")">
                     @if (!string.IsNullOrWhiteSpace(Model.AvatarImage))
                     {
-                        <img src="@Model.AvatarImage" alt="Ảnh đại diện của @Model.FullName" />
+                        <img src="@Model.AvatarImage" alt="Ảnh đại diện của @Model.FullName" decoding="async" />
                     }
                     else
                     {

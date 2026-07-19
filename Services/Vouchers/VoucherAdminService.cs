@@ -62,23 +62,25 @@ public sealed class VoucherAdminService : IVoucherAdminService
 
         var filteredQuery = ApplyStatusFilter(searchQuery, query.Status, now);
 
-        var totalCount = await filteredQuery.CountAsync(cancellationToken);
-        var activeCount = await filteredQuery.CountAsync(voucher => voucher.IsActive, cancellationToken);
-        var inactiveCount = await filteredQuery.CountAsync(voucher => !voucher.IsActive, cancellationToken);
-        var runningCount = await filteredQuery.CountAsync(voucher =>
-            voucher.IsActive &&
-            voucher.StartDate <= now &&
-            voucher.EndDate >= now &&
-            (!voucher.MaxUses.HasValue || voucher.UsedCount < voucher.MaxUses.Value),
-            cancellationToken);
-        var upcomingCount = await filteredQuery.CountAsync(
-            voucher => voucher.IsActive && voucher.StartDate > now,
-            cancellationToken);
-        var expiredCount = await filteredQuery.CountAsync(voucher => voucher.EndDate < now, cancellationToken);
-        var exhaustedCount = await filteredQuery.CountAsync(
-            voucher => voucher.MaxUses.HasValue && voucher.UsedCount >= voucher.MaxUses.Value,
-            cancellationToken);
-        var totalUsedCount = await filteredQuery.SumAsync(voucher => (int?)voucher.UsedCount, cancellationToken) ?? 0;
+        var summary = await filteredQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                ActiveCount = group.Count(voucher => voucher.IsActive),
+                InactiveCount = group.Count(voucher => !voucher.IsActive),
+                RunningCount = group.Count(voucher =>
+                    voucher.IsActive &&
+                    voucher.StartDate <= now &&
+                    voucher.EndDate >= now &&
+                    (!voucher.MaxUses.HasValue || voucher.UsedCount < voucher.MaxUses.Value)),
+                UpcomingCount = group.Count(voucher => voucher.IsActive && voucher.StartDate > now),
+                ExpiredCount = group.Count(voucher => voucher.EndDate < now),
+                ExhaustedCount = group.Count(voucher =>
+                    voucher.MaxUses.HasValue && voucher.UsedCount >= voucher.MaxUses.Value),
+                TotalUsedCount = group.Sum(voucher => (int?)voucher.UsedCount) ?? 0,
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
         var pageItems = await filteredQuery
             .OrderByDescending(voucher => voucher.IsActive)
@@ -143,14 +145,14 @@ public sealed class VoucherAdminService : IVoucherAdminService
             Status = query.Status,
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = totalCount,
-            ActiveCount = activeCount,
-            InactiveCount = inactiveCount,
-            RunningCount = runningCount,
-            UpcomingCount = upcomingCount,
-            ExpiredCount = expiredCount,
-            ExhaustedCount = exhaustedCount,
-            TotalUsedCount = totalUsedCount,
+            TotalCount = summary?.TotalCount ?? 0,
+            ActiveCount = summary?.ActiveCount ?? 0,
+            InactiveCount = summary?.InactiveCount ?? 0,
+            RunningCount = summary?.RunningCount ?? 0,
+            UpcomingCount = summary?.UpcomingCount ?? 0,
+            ExpiredCount = summary?.ExpiredCount ?? 0,
+            ExhaustedCount = summary?.ExhaustedCount ?? 0,
+            TotalUsedCount = summary?.TotalUsedCount ?? 0,
         };
     }
 

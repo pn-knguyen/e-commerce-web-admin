@@ -67,6 +67,7 @@ Chart.defaults.plugins.tooltip.boxPadding       = 4;
 const chartRegistry = new Map();
 let activeLoadController = null;
 let latestLoadToken = 0;
+let scheduledLoadTimer = 0;
 
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  API SERVICE — Tất cả giao tiếp với backend ở đây               ║
@@ -733,17 +734,17 @@ const Filters = {
         if (category) category.value = '';
         if (status) status.value = '';
         this.syncDateInputs();
-        Dashboard.loadAll();
+        Dashboard.scheduleLoad(0);
     },
 
     bind() {
         const { period, startDate, endDate, category, status, reset } = this.elements();
         period?.addEventListener('change', () => {
             this.syncDateInputs();
-            Dashboard.loadAll();
+            Dashboard.scheduleLoad();
         });
         [startDate, endDate, category, status].forEach(input => {
-            input?.addEventListener('change', () => Dashboard.loadAll());
+            input?.addEventListener('change', () => Dashboard.scheduleLoad());
         });
         reset?.addEventListener('click', () => this.reset());
         this.syncDateInputs();
@@ -751,11 +752,20 @@ const Filters = {
 };
 
 const Dashboard = {
+    scheduleLoad(delay = 150) {
+        window.clearTimeout(scheduledLoadTimer);
+        scheduledLoadTimer = window.setTimeout(() => {
+            scheduledLoadTimer = 0;
+            Dashboard.loadAll();
+        }, delay);
+    },
 
     /**
      * Tải và render tất cả widget song song
      */
     async loadAll() {
+        window.clearTimeout(scheduledLoadTimer);
+        scheduledLoadTimer = 0;
         activeLoadController?.abort();
         const loadController = new AbortController();
         const loadToken = ++latestLoadToken;

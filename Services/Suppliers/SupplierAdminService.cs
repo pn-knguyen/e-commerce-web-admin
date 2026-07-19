@@ -39,12 +39,16 @@ public sealed class SupplierAdminService : ISupplierAdminService
                 (supplier.Address != null && supplier.Address.Contains(term)));
         }
 
-        var totalCount = await dbQuery.CountAsync(ct);
-        var activeCount = await dbQuery.CountAsync(supplier => supplier.IsActive, ct);
-        var inactiveCount = await dbQuery.CountAsync(supplier => !supplier.IsActive, ct);
-        var totalGoodsReceiptCount = totalCount == 0
-            ? 0
-            : await dbQuery.SumAsync(supplier => supplier.GoodsReceipts.Count, ct);
+        var summary = await dbQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                ActiveCount = group.Count(supplier => supplier.IsActive),
+                InactiveCount = group.Count(supplier => !supplier.IsActive),
+                TotalGoodsReceiptCount = group.Sum(supplier => supplier.GoodsReceipts.Count),
+            })
+            .FirstOrDefaultAsync(ct);
 
         var rows = await dbQuery
             .OrderBy(supplier => supplier.Name)
@@ -70,10 +74,10 @@ public sealed class SupplierAdminService : ISupplierAdminService
             Status = query.Status,
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = totalCount,
-            ActiveCount = activeCount,
-            InactiveCount = inactiveCount,
-            TotalGoodsReceiptCount = totalGoodsReceiptCount,
+            TotalCount = summary?.TotalCount ?? 0,
+            ActiveCount = summary?.ActiveCount ?? 0,
+            InactiveCount = summary?.InactiveCount ?? 0,
+            TotalGoodsReceiptCount = summary?.TotalGoodsReceiptCount ?? 0,
         };
     }
 

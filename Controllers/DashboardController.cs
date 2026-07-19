@@ -4,6 +4,7 @@ using e_commerce_web_admin.Models.Constants;
 using e_commerce_web_admin.Models.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace e_commerce_web_admin.Controllers;
 
@@ -11,6 +12,11 @@ namespace e_commerce_web_admin.Controllers;
 public class DashboardController : Controller
 {
     private const int SparklinePointCount = 8;
+    private static readonly MemoryCacheEntryOptions FilterOptionsCacheOptions = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1),
+        Size = 1,
+    };
 
     private static readonly StatusDisplay[] OrderDisplays =
     [
@@ -24,11 +30,13 @@ public class DashboardController : Controller
     ];
 
     private readonly ApplicationDbContext _db;
+    private readonly IMemoryCache _cache;
     private readonly TimeZoneInfo _vietnamTimeZone = TimeZoneHelper.GetVietnamTimeZone();
 
-    public DashboardController(ApplicationDbContext db)
+    public DashboardController(ApplicationDbContext db, IMemoryCache cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     public IActionResult Index()
@@ -47,15 +55,28 @@ public class DashboardController : Controller
         var currentOrderCount = await CountOrdersAsync(query, range.StartUtc, range.EndUtc, ct);
         var previousOrderCount = await CountOrdersAsync(query, range.PreviousStartUtc, range.PreviousEndUtc, ct);
 
-        var currentCustomerCount = await _db.Users.AsNoTracking()
-            .CountAsync(user => user.CreatedAt < range.EndUtc, ct);
-        var previousCustomerCount = await _db.Users.AsNoTracking()
-            .CountAsync(user => user.CreatedAt < range.StartUtc, ct);
-
-        var currentProductCount = await _db.Products.AsNoTracking()
-            .CountAsync(product => product.CreatedAt < range.EndUtc, ct);
-        var previousProductCount = await _db.Products.AsNoTracking()
-            .CountAsync(product => product.CreatedAt < range.StartUtc, ct);
+        var customerCounts = await _db.Users
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                Current = group.Count(user => user.CreatedAt < range.EndUtc),
+                Previous = group.Count(user => user.CreatedAt < range.StartUtc),
+            })
+            .FirstOrDefaultAsync(ct);
+        var productCounts = await _db.Products
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                Current = group.Count(product => product.CreatedAt < range.EndUtc),
+                Previous = group.Count(product => product.CreatedAt < range.StartUtc),
+            })
+            .FirstOrDefaultAsync(ct);
+        var currentCustomerCount = customerCounts?.Current ?? 0;
+        var previousCustomerCount = customerCounts?.Previous ?? 0;
+        var currentProductCount = productCounts?.Current ?? 0;
+        var previousProductCount = productCounts?.Previous ?? 0;
 
         var revenueSparkline = await BuildSeriesAsync(
             RevenueSeriesSource(query, range.StartUtc, range.EndUtc),
@@ -294,43 +315,51 @@ public class DashboardController : Controller
     [HttpGet("/api/dashboard/filter-options")]
     public async Task<IActionResult> GetFilterOptions(CancellationToken ct = default)
     {
-        var categories = await _db.Categories
-            .AsNoTracking()
-            .Where(category => category.IsActive)
-            .Select(category => new DashboardCategoryOption
+        var response = await _cache.GetOrCreateAsync(
+            "Dashboard:FilterOptions:v1",
+            async entry =>
             {
-                Id = category.Id,
-                Name = category.Name,
-                ParentId = category.ParentId,
-                ParentName = category.Parent != null ? category.Parent.Name : null,
-                Position = category.Position,
-                HasChildren = category.Children.Any(),
-            })
-            .OrderBy(category => category.ParentName)
-            .ThenBy(category => category.Position)
-            .ThenBy(category => category.Name)
-            .ToListAsync(ct);
+                entry.SetOptions(FilterOptionsCacheOptions);
+                var categories = await _db.Categories
+                    .AsNoTracking()
+                    .Where(category => category.IsActive)
+                    .Select(category => new DashboardCategoryOption
+                    {
+                        Id = category.Id,
+                        Name = category.Name,
+                        ParentId = category.ParentId,
+                        ParentName = category.Parent != null ? category.Parent.Name : null,
+                        Position = category.Position,
+                        HasChildren = category.Children.Any(),
+                    })
+                    .OrderBy(category => category.ParentName)
+                    .ThenBy(category => category.Position)
+                    .ThenBy(category => category.Name)
+                    .ToListAsync(ct);
 
-        var categoryOptions = categories
-            .Where(category => category.ParentId == null || !category.HasChildren)
-            .Select(category => new
-            {
-                id = category.Id,
-                label = category.ParentName == null
-                    ? category.Name
-                    : $"{category.ParentName} / {category.Name}",
-            })
-            .ToArray();
+                var categoryOptions = categories
+                    .Where(category => category.ParentId == null || !category.HasChildren)
+                    .Select(category => new
+                    {
+                        id = category.Id,
+                        label = category.ParentName == null
+                            ? category.Name
+                            : $"{category.ParentName} / {category.Name}",
+                    })
+                    .ToArray();
 
-        return Ok(new
-        {
-            categories = categoryOptions,
-            statuses = OrderDisplays.Select(item => new
-            {
-                value = item.Status.ToString(),
-                label = item.Label,
-            }).ToArray(),
-        });
+                return new
+                {
+                    categories = categoryOptions,
+                    statuses = OrderDisplays.Select(item => new
+                    {
+                        value = item.Status.ToString(),
+                        label = item.Label,
+                    }).ToArray(),
+                };
+            });
+
+        return Ok(response);
     }
 
     private IQueryable<Models.Entities.Order> FilterOrders(

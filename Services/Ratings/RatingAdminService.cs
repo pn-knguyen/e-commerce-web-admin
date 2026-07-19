@@ -21,12 +21,16 @@ public sealed class RatingAdminService : IRatingAdminService
         var page = Math.Max(1, query.Page);
         var filteredQuery = ApplyFilters(_db.Ratings.AsNoTracking(), query);
 
-        var totalCount = await filteredQuery.CountAsync(ct);
-        var approvedCount = await filteredQuery.CountAsync(rating => rating.IsApproved, ct);
-        var pendingCount = await filteredQuery.CountAsync(rating => !rating.IsApproved, ct);
-        var averageStars = await filteredQuery.AnyAsync(ct)
-            ? await filteredQuery.AverageAsync(rating => (decimal)rating.Stars, ct)
-            : 0m;
+        var summary = await filteredQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                ApprovedCount = group.Count(rating => rating.IsApproved),
+                PendingCount = group.Count(rating => !rating.IsApproved),
+                AverageStars = group.Average(rating => (decimal)rating.Stars),
+            })
+            .FirstOrDefaultAsync(ct);
 
         var rows = await filteredQuery
             .OrderBy(rating => rating.IsApproved)
@@ -67,10 +71,10 @@ public sealed class RatingAdminService : IRatingAdminService
             Stars = NormalizeStars(query.Stars),
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = totalCount,
-            ApprovedCount = approvedCount,
-            PendingCount = pendingCount,
-            AverageStars = Math.Round(averageStars, 2),
+            TotalCount = summary?.TotalCount ?? 0,
+            ApprovedCount = summary?.ApprovedCount ?? 0,
+            PendingCount = summary?.PendingCount ?? 0,
+            AverageStars = Math.Round(summary?.AverageStars ?? 0m, 2),
         };
     }
 

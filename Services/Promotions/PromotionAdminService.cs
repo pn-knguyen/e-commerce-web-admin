@@ -56,23 +56,25 @@ public sealed class PromotionAdminService : IPromotionAdminService
 
         var filteredQuery = ApplyStatusFilter(searchQuery, query.Status, now);
 
-        var totalCount = await filteredQuery.CountAsync(ct);
-        var activeCount = await filteredQuery.CountAsync(promotion => promotion.IsActive, ct);
-        var inactiveCount = await filteredQuery.CountAsync(promotion => !promotion.IsActive, ct);
-        var runningCount = await filteredQuery.CountAsync(promotion =>
-            promotion.IsActive &&
-            promotion.StartDate <= now &&
-            promotion.EndDate >= now &&
-            (!promotion.UsageLimit.HasValue || promotion.UsedCount < promotion.UsageLimit.Value),
-            ct);
-        var upcomingCount = await filteredQuery.CountAsync(
-            promotion => promotion.IsActive && promotion.StartDate > now,
-            ct);
-        var expiredCount = await filteredQuery.CountAsync(promotion => promotion.EndDate < now, ct);
-        var exhaustedCount = await filteredQuery.CountAsync(
-            promotion => promotion.UsageLimit.HasValue && promotion.UsedCount >= promotion.UsageLimit.Value,
-            ct);
-        var totalUsedCount = await filteredQuery.SumAsync(promotion => (int?)promotion.UsedCount, ct) ?? 0;
+        var summary = await filteredQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                ActiveCount = group.Count(promotion => promotion.IsActive),
+                InactiveCount = group.Count(promotion => !promotion.IsActive),
+                RunningCount = group.Count(promotion =>
+                    promotion.IsActive &&
+                    promotion.StartDate <= now &&
+                    promotion.EndDate >= now &&
+                    (!promotion.UsageLimit.HasValue || promotion.UsedCount < promotion.UsageLimit.Value)),
+                UpcomingCount = group.Count(promotion => promotion.IsActive && promotion.StartDate > now),
+                ExpiredCount = group.Count(promotion => promotion.EndDate < now),
+                ExhaustedCount = group.Count(promotion =>
+                    promotion.UsageLimit.HasValue && promotion.UsedCount >= promotion.UsageLimit.Value),
+                TotalUsedCount = group.Sum(promotion => (int?)promotion.UsedCount) ?? 0,
+            })
+            .FirstOrDefaultAsync(ct);
 
         var pageItems = await filteredQuery
             .OrderByDescending(promotion => promotion.IsActive)
@@ -151,14 +153,14 @@ public sealed class PromotionAdminService : IPromotionAdminService
             Status = NormalizeStatus(query.Status),
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = totalCount,
-            ActiveCount = activeCount,
-            InactiveCount = inactiveCount,
-            RunningCount = runningCount,
-            UpcomingCount = upcomingCount,
-            ExpiredCount = expiredCount,
-            ExhaustedCount = exhaustedCount,
-            TotalUsedCount = totalUsedCount,
+            TotalCount = summary?.TotalCount ?? 0,
+            ActiveCount = summary?.ActiveCount ?? 0,
+            InactiveCount = summary?.InactiveCount ?? 0,
+            RunningCount = summary?.RunningCount ?? 0,
+            UpcomingCount = summary?.UpcomingCount ?? 0,
+            ExpiredCount = summary?.ExpiredCount ?? 0,
+            ExhaustedCount = summary?.ExhaustedCount ?? 0,
+            TotalUsedCount = summary?.TotalUsedCount ?? 0,
         };
     }
 

@@ -6,6 +6,7 @@ using e_commerce_web_admin.Services.Categories;
 using e_commerce_web_admin.Services.Uploads;
 using e_commerce_web_admin.ViewModels.ProductVariants;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace e_commerce_web_admin.Services.ProductVariants;
 
@@ -13,19 +14,27 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
 {
     private const int DefaultPageSize = 30;
     private const string ProductVariantImageFolder = "product-variants";
+    private static readonly MemoryCacheEntryOptions LookupCacheOptions = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(20),
+        Size = 1,
+    };
 
     private readonly ApplicationDbContext _db;
     private readonly ICategoryHierarchyService _categoryHierarchy;
     private readonly IImageUploadService _imageUploadService;
+    private readonly IMemoryCache _cache;
 
     public ProductVariantAdminService(
         ApplicationDbContext db,
         ICategoryHierarchyService categoryHierarchy,
-        IImageUploadService imageUploadService)
+        IImageUploadService imageUploadService,
+        IMemoryCache cache)
     {
         _db = db;
         _categoryHierarchy = categoryHierarchy;
         _imageUploadService = imageUploadService;
+        _cache = cache;
     }
 
     private sealed class ProductSnapshot
@@ -41,8 +50,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
         ProductVariantIndexQuery query,
         CancellationToken ct = default)
     {
-        await NormalizeDuplicateDefaultsAsync(ct);
-
         var page = Math.Max(1, query.Page);
         var dbQuery = _db.ProductVariants.AsNoTracking();
 
@@ -88,13 +95,17 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
                      (variant.Product.Category != null && variant.Product.Category.Name.Contains(term)))));
         }
 
-        var totalCount = await dbQuery.CountAsync(ct);
-        var activeCount = await dbQuery.CountAsync(variant => variant.IsActive, ct);
-        var inactiveCount = await dbQuery.CountAsync(variant => !variant.IsActive, ct);
-        var outOfStockCount = await dbQuery.CountAsync(variant => variant.Quantity <= 0, ct);
-        var totalImageCount = totalCount == 0
-            ? 0
-            : await dbQuery.SumAsync(variant => variant.ProductVariantImages.Count, ct);
+        var summary = await dbQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                ActiveCount = group.Count(variant => variant.IsActive),
+                InactiveCount = group.Count(variant => !variant.IsActive),
+                OutOfStockCount = group.Count(variant => variant.Quantity <= 0),
+                TotalImageCount = group.Sum(variant => variant.ProductVariantImages.Count),
+            })
+            .FirstOrDefaultAsync(ct);
 
         var entities = await dbQuery
             .Include(variant => variant.Product)
@@ -124,11 +135,11 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
             CategoryId = query.CategoryId,
             Page = page,
             PageSize = DefaultPageSize,
-            TotalCount = totalCount,
-            ActiveCount = activeCount,
-            InactiveCount = inactiveCount,
-            OutOfStockCount = outOfStockCount,
-            TotalImageCount = totalImageCount,
+            TotalCount = summary?.TotalCount ?? 0,
+            ActiveCount = summary?.ActiveCount ?? 0,
+            InactiveCount = summary?.InactiveCount ?? 0,
+            OutOfStockCount = summary?.OutOfStockCount ?? 0,
+            TotalImageCount = summary?.TotalImageCount ?? 0,
         };
     }
 
@@ -483,10 +494,19 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
 
     private async Task<List<ProductVariantProductOptionViewModel>> BuildProductOptionsAsync(CancellationToken ct)
     {
+        return await _cache.GetOrCreateAsync(
+            "ProductVariants:ProductOptions:v1",
+            async entry =>
+            {
+                entry.SetOptions(LookupCacheOptions);
+                return await BuildProductOptionsCoreAsync(ct);
+            }) ?? [];
+    }
+
+    private async Task<List<ProductVariantProductOptionViewModel>> BuildProductOptionsCoreAsync(CancellationToken ct)
+    {
         return await _db.Products
             .AsNoTracking()
-            .Include(product => product.Brand)
-            .Include(product => product.Category)
             .OrderBy(product => product.Name)
             .Select(product => new ProductVariantProductOptionViewModel
             {
@@ -504,6 +524,17 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
     }
 
     private async Task<List<ProductVariantCategoryOptionViewModel>> BuildCategoryOptionsAsync(CancellationToken ct)
+    {
+        return await _cache.GetOrCreateAsync(
+            "ProductVariants:CategoryOptions:v1",
+            async entry =>
+            {
+                entry.SetOptions(LookupCacheOptions);
+                return await BuildCategoryOptionsCoreAsync(ct);
+            }) ?? [];
+    }
+
+    private async Task<List<ProductVariantCategoryOptionViewModel>> BuildCategoryOptionsCoreAsync(CancellationToken ct)
     {
         return await _db.Categories
             .AsNoTracking()
@@ -1007,48 +1038,6 @@ public sealed class ProductVariantAdminService : IProductVariantAdminService
                 Position = selected.Position!.Value,
             });
         }
-    }
-
-    private async Task NormalizeDuplicateDefaultsAsync(CancellationToken ct)
-    {
-        var defaultVariants = await _db.ProductVariants
-            .Where(variant => variant.IsDefault)
-            .Include(variant => variant.VariantAttributes)
-                .ThenInclude(item => item.AttributeOption)
-                    .ThenInclude(option => option!.Attribute)
-            .ToListAsync(ct);
-
-        var changed = false;
-        var duplicateGroups = defaultVariants
-            .GroupBy(variant => BuildDefaultVersionKey(variant.ProductId, variant.VariantAttributes))
-            .Where(group => group.Count() > 1);
-
-        foreach (var group in duplicateGroups)
-        {
-            var keeper = group
-                .OrderByDescending(variant => variant.UpdatedAt ?? variant.CreatedAt)
-                .ThenByDescending(variant => variant.Id)
-                .First();
-
-            foreach (var duplicate in group.Where(variant => variant.Id != keeper.Id))
-            {
-                duplicate.IsDefault = false;
-                duplicate.UpdatedAt = DateTime.UtcNow;
-                changed = true;
-            }
-        }
-
-        if (changed)
-        {
-            await _db.SaveChangesAsync(ct);
-        }
-    }
-
-    private static string BuildDefaultVersionKey(
-        long productId,
-        IEnumerable<VariantAttribute> variantAttributes)
-    {
-        return $"{productId}:{string.Join(',', GetVersionAttributeOptionIds(variantAttributes))}";
     }
 
     private async Task ClearSiblingDefaultsAsync(

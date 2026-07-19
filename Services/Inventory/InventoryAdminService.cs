@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 using System.Security.Claims;
 using e_commerce_web_admin.Data;
 using e_commerce_web_admin.Models.Constants;
@@ -6,6 +7,7 @@ using e_commerce_web_admin.Models.Entities;
 using e_commerce_web_admin.Models.Enums;
 using e_commerce_web_admin.ViewModels.Inventory;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace e_commerce_web_admin.Services.Inventory;
 
@@ -14,19 +16,27 @@ public sealed class InventoryAdminService : IInventoryAdminService
     private const int StockPageSize = 20;
     private const int ReceiptPageSize = 12;
     private const decimal MaxReceiptAmount = 9999999999999999m;
+    private static readonly MemoryCacheEntryOptions FilterOptionCacheOptions = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(20),
+        Size = 1,
+    };
 
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IInventoryLedgerService _inventoryLedger;
+    private readonly IMemoryCache _cache;
 
     public InventoryAdminService(
         ApplicationDbContext db,
         IHttpContextAccessor httpContextAccessor,
-        IInventoryLedgerService inventoryLedger)
+        IInventoryLedgerService inventoryLedger,
+        IMemoryCache cache)
     {
         _db = db;
         _httpContextAccessor = httpContextAccessor;
         _inventoryLedger = inventoryLedger;
+        _cache = cache;
     }
 
     private sealed record ReceiptItemCandidate(int Index, GoodsReceiptItemInputViewModel Item);
@@ -43,33 +53,33 @@ public sealed class InventoryAdminService : IInventoryAdminService
         var receiptQuery = ApplyReceiptFilters(_db.GoodsReceipts.AsNoTracking(), query);
         var normalizedReceiptStatus = NormalizeReceiptStatus(query.ReceiptStatus);
 
-        var totalVariantCount = await allVariants.CountAsync(ct);
-        var totalStockQuantity = await allVariants.SumAsync(variant => (int?)variant.Quantity, ct) ?? 0;
-        var lowStockCount = await allVariants.CountAsync(
-            variant => variant.Quantity > 0 && variant.Quantity <= InventoryDisplay.LowStockThreshold,
-            ct);
-        var outOfStockCount = await allVariants.CountAsync(variant => variant.Quantity <= 0, ct);
-        var totalInventoryCost = await allVariants
-            .SumAsync(variant => (decimal?)(variant.Quantity * variant.AverageCost), ct) ?? 0m;
-        var pendingReceiptCount = await _db.GoodsReceipts
+        var stockSummary = await allVariants
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalVariantCount = group.Count(),
+                TotalStockQuantity = group.Sum(variant => (int?)variant.Quantity) ?? 0,
+                LowStockCount = group.Count(variant =>
+                    variant.Quantity > 0 && variant.Quantity <= InventoryDisplay.LowStockThreshold),
+                OutOfStockCount = group.Count(variant => variant.Quantity <= 0),
+                TotalInventoryCost = group.Sum(variant => (decimal?)(variant.Quantity * variant.AverageCost)) ?? 0m,
+            })
+            .FirstOrDefaultAsync(ct);
+        var receiptSummary = await _db.GoodsReceipts
             .AsNoTracking()
-            .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Pending, ct);
-        var totalReceiptCount = await _db.GoodsReceipts
-            .AsNoTracking()
-            .CountAsync(ct);
-        var draftReceiptCount = await _db.GoodsReceipts
-            .AsNoTracking()
-            .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Draft, ct);
-        var approvedReceiptCount = await _db.GoodsReceipts
-            .AsNoTracking()
-            .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Approved, ct);
-        var cancelledReceiptCount = await _db.GoodsReceipts
-            .AsNoTracking()
-            .CountAsync(receipt => receipt.Status == GoodsReceiptStatus.Cancelled, ct);
-        var totalApprovedReceiptAmount = await _db.GoodsReceipts
-            .AsNoTracking()
-            .Where(receipt => receipt.Status == GoodsReceiptStatus.Approved)
-            .SumAsync(receipt => (decimal?)receipt.TotalAmount, ct) ?? 0m;
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                PendingReceiptCount = group.Count(receipt => receipt.Status == GoodsReceiptStatus.Pending),
+                TotalReceiptCount = group.Count(),
+                DraftReceiptCount = group.Count(receipt => receipt.Status == GoodsReceiptStatus.Draft),
+                ApprovedReceiptCount = group.Count(receipt => receipt.Status == GoodsReceiptStatus.Approved),
+                CancelledReceiptCount = group.Count(receipt => receipt.Status == GoodsReceiptStatus.Cancelled),
+                TotalApprovedReceiptAmount = group
+                    .Where(receipt => receipt.Status == GoodsReceiptStatus.Approved)
+                    .Sum(receipt => (decimal?)receipt.TotalAmount) ?? 0m,
+            })
+            .FirstOrDefaultAsync(ct);
 
         var stockTotalCount = await stockQuery.CountAsync(ct);
         var receiptTotalCount = await receiptQuery.CountAsync(ct);
@@ -145,17 +155,17 @@ public sealed class InventoryAdminService : IInventoryAdminService
             ReceiptPage = receiptPage,
             ReceiptPageSize = ReceiptPageSize,
             ReceiptTotalCount = receiptTotalCount,
-            TotalVariantCount = totalVariantCount,
-            TotalStockQuantity = totalStockQuantity,
-            LowStockCount = lowStockCount,
-            OutOfStockCount = outOfStockCount,
-            PendingReceiptCount = pendingReceiptCount,
-            TotalReceiptCount = totalReceiptCount,
-            DraftReceiptCount = draftReceiptCount,
-            ApprovedReceiptCount = approvedReceiptCount,
-            CancelledReceiptCount = cancelledReceiptCount,
-            TotalApprovedReceiptAmount = totalApprovedReceiptAmount,
-            TotalInventoryCost = totalInventoryCost,
+            TotalVariantCount = stockSummary?.TotalVariantCount ?? 0,
+            TotalStockQuantity = stockSummary?.TotalStockQuantity ?? 0,
+            LowStockCount = stockSummary?.LowStockCount ?? 0,
+            OutOfStockCount = stockSummary?.OutOfStockCount ?? 0,
+            PendingReceiptCount = receiptSummary?.PendingReceiptCount ?? 0,
+            TotalReceiptCount = receiptSummary?.TotalReceiptCount ?? 0,
+            DraftReceiptCount = receiptSummary?.DraftReceiptCount ?? 0,
+            ApprovedReceiptCount = receiptSummary?.ApprovedReceiptCount ?? 0,
+            CancelledReceiptCount = receiptSummary?.CancelledReceiptCount ?? 0,
+            TotalApprovedReceiptAmount = receiptSummary?.TotalApprovedReceiptAmount ?? 0m,
+            TotalInventoryCost = stockSummary?.TotalInventoryCost ?? 0m,
         };
     }
 
@@ -650,33 +660,63 @@ public sealed class InventoryAdminService : IInventoryAdminService
         long? selectedId,
         CancellationToken ct)
     {
-        return await _db.Suppliers
-            .AsNoTracking()
-            .OrderBy(supplier => supplier.Name)
-            .Select(supplier => new InventoryFilterOption
+        var options = await _cache.GetOrCreateAsync(
+            "Inventory:SupplierFilterOptions:v1",
+            async entry =>
             {
-                Value = supplier.Id.ToString(),
-                Text = supplier.Name,
-                Selected = selectedId.HasValue && supplier.Id == selectedId.Value,
-            })
-            .ToListAsync(ct);
+                entry.SetOptions(FilterOptionCacheOptions);
+                return await _db.Suppliers
+                    .AsNoTracking()
+                    .OrderBy(supplier => supplier.Name)
+                    .Select(supplier => new InventoryFilterOption
+                    {
+                        Value = supplier.Id.ToString(),
+                        Text = supplier.Name,
+                    })
+                    .ToListAsync(ct);
+            }) ?? [];
+
+        return MarkSelected(options, selectedId);
     }
 
     private async Task<List<InventoryFilterOption>> BuildCategoryFilterOptionsAsync(
         long? selectedId,
         CancellationToken ct)
     {
-        return await _db.Categories
-            .AsNoTracking()
-            .Where(category => category.Products.Any(product => product.ProductVariants.Any()))
-            .OrderBy(category => category.Name)
-            .Select(category => new InventoryFilterOption
+        var options = await _cache.GetOrCreateAsync(
+            "Inventory:CategoryFilterOptions:v1",
+            async entry =>
             {
-                Value = category.Id.ToString(),
-                Text = category.Name,
-                Selected = selectedId.HasValue && category.Id == selectedId.Value,
+                entry.SetOptions(FilterOptionCacheOptions);
+                return await _db.Categories
+                    .AsNoTracking()
+                    .Where(category => category.Products.Any(product => product.ProductVariants.Any()))
+                    .OrderBy(category => category.Name)
+                    .Select(category => new InventoryFilterOption
+                    {
+                        Value = category.Id.ToString(),
+                        Text = category.Name,
+                    })
+                    .ToListAsync(ct);
+            }) ?? [];
+
+        return MarkSelected(options, selectedId);
+    }
+
+    private static List<InventoryFilterOption> MarkSelected(
+        IEnumerable<InventoryFilterOption> options,
+        long? selectedId)
+    {
+        var selectedValue = selectedId?.ToString(CultureInfo.InvariantCulture);
+        return options
+            .Select(option => new InventoryFilterOption
+            {
+                Value = option.Value,
+                Text = option.Text,
+                Selected = selectedValue is not null &&
+                    string.Equals(option.Value, selectedValue, StringComparison.Ordinal),
             })
-            .ToListAsync(ct);
+            .ToList();
     }
 
     private static List<InventoryFilterOption> BuildReceiptStatusOptions(string? selectedValue) =>

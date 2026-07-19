@@ -22,10 +22,15 @@ public sealed class CustomerAdminService(ApplicationDbContext db) : ICustomerAdm
         var firstDayOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var totalCount = await filteredQuery.CountAsync(ct);
-        var totalCustomerCount = await baseQuery.CountAsync(ct);
-        var activeCount = await baseQuery.CountAsync(user => user.IsActive, ct);
-        var inactiveCount = totalCustomerCount - activeCount;
-        var newThisMonthCount = await baseQuery.CountAsync(user => user.CreatedAt >= firstDayOfMonth, ct);
+        var customerSummary = await baseQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCustomerCount = group.Count(),
+                ActiveCount = group.Count(user => user.IsActive),
+                NewThisMonthCount = group.Count(user => user.CreatedAt >= firstDayOfMonth),
+            })
+            .FirstOrDefaultAsync(ct);
         var completedRevenue = await db.Orders
             .AsNoTracking()
             .Where(order =>
@@ -70,10 +75,10 @@ public sealed class CustomerAdminService(ApplicationDbContext db) : ICustomerAdm
             Page = page,
             PageSize = DefaultPageSize,
             TotalCount = totalCount,
-            TotalCustomerCount = totalCustomerCount,
-            ActiveCount = activeCount,
-            InactiveCount = inactiveCount,
-            NewThisMonthCount = newThisMonthCount,
+            TotalCustomerCount = customerSummary?.TotalCustomerCount ?? 0,
+            ActiveCount = customerSummary?.ActiveCount ?? 0,
+            InactiveCount = (customerSummary?.TotalCustomerCount ?? 0) - (customerSummary?.ActiveCount ?? 0),
+            NewThisMonthCount = customerSummary?.NewThisMonthCount ?? 0,
             CompletedRevenue = completedRevenue,
             StatusOptions = BuildStatusOptions(query.Status),
             GenderOptions = BuildGenderOptions(query.Gender),

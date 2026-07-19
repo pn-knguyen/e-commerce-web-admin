@@ -48,9 +48,16 @@ public sealed class FulfillmentLocationAdminService : IFulfillmentLocationAdminS
         }
 
         var totalCount = await dbQuery.CountAsync(ct);
-        var activeCount = await _db.FulfillmentLocations.AsNoTracking().CountAsync(location => location.IsActive, ct);
-        var inactiveCount = await _db.FulfillmentLocations.AsNoTracking().CountAsync(location => !location.IsActive, ct);
-        var defaultCount = await _db.FulfillmentLocations.AsNoTracking().CountAsync(location => location.IsDefault, ct);
+        var locationSummary = await _db.FulfillmentLocations
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                ActiveCount = group.Count(location => location.IsActive),
+                InactiveCount = group.Count(location => !location.IsActive),
+                DefaultCount = group.Count(location => location.IsDefault),
+            })
+            .FirstOrDefaultAsync(ct);
         var shipmentCount = await _db.Shipments.AsNoTracking().CountAsync(ct);
 
         var rows = await dbQuery
@@ -88,9 +95,9 @@ public sealed class FulfillmentLocationAdminService : IFulfillmentLocationAdminS
             Page = page,
             PageSize = DefaultPageSize,
             TotalCount = totalCount,
-            ActiveCount = activeCount,
-            InactiveCount = inactiveCount,
-            DefaultCount = defaultCount,
+            ActiveCount = locationSummary?.ActiveCount ?? 0,
+            InactiveCount = locationSummary?.InactiveCount ?? 0,
+            DefaultCount = locationSummary?.DefaultCount ?? 0,
             ShipmentCount = shipmentCount,
         };
     }
