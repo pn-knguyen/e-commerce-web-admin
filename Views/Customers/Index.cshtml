@@ -66,10 +66,10 @@
                 <p>Mới trong tháng</p>
             </div>
         </article>
-        <article>
+        <article class="customer-revenue-metric">
             <span><i data-lucide="badge-dollar-sign" class="w-5 h-5"></i></span>
             <div>
-                <p>@Money(Model.CompletedRevenue)</p>
+                <p class="customer-money-value">@Money(Model.CompletedRevenue)</p>
                 <p>Doanh thu hoàn tất</p>
             </div>
         </article>
@@ -207,7 +207,7 @@
 
                                 <div class="customer-spend-cell text-right">
                                     <span class="customer-cell-label">Chi tiêu</span>
-                                    <strong class="customer-title">@Money(customer.TotalSpent)</strong>
+                                    <strong class="customer-title customer-money-value">@Money(customer.TotalSpent)</strong>
                                     <p class="customer-subtitle">đã thanh toán</p>
                                 </div>
                             </div>
