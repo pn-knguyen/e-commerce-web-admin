@@ -1,0 +1,35 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">TechStore Admin Logo</title>
+  <desc id="desc">Modern teal and slate logo for the TechStore ecommerce admin system.</desc>
+  <defs>
+    <linearGradient id="bg" x1="32" y1="20" x2="224" y2="236" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="73" y1="62" x2="185" y2="195" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+    <filter id="shadow" x="36" y="39" width="184" height="184" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="10"/>
+      <feGaussianBlur stdDeviation="12"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.02 0 0 0 0 0.11 0 0 0 0 0.10 0 0 0 0.32 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <path d="M44 68C44 54.7452 54.7452 44 68 44H188C201.255 44 212 54.7452 212 68V188C212 201.255 201.255 212 188 212H68C54.7452 212 44 201.255 44 188V68Z" fill="white" fill-opacity="0.08"/>
+  <g filter="url(#shadow)">
+    <path d="M79 93.5C79 84.3873 86.3873 77 95.5 77H160.5C169.613 77 177 84.3873 177 93.5V171C177 175.418 173.418 179 169 179H87C82.5817 179 79 175.418 79 171V93.5Z" fill="url(#mark)"/>
+    <path d="M101 78V71C101 56.0883 113.088 44 128 44C142.912 44 155 56.0883 155 71V78" stroke="white" stroke-width="12" stroke-linecap="round"/>
+    <path d="M103 143L122 124L137 139L155 110" stroke="#0F172A" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>
+    <circle cx="158" cy="108" r="8" fill="#0F172A" opacity="0.92"/>
+  </g>
+  <path d="M64 64L92 64" stroke="#99F6E4" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  <path d="M164 194L192 194" stroke="#CCFBF1" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  <text x="128" y="225" fill="#ECFEFF" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="800" text-anchor="middle" letter-spacing="2">ADMIN</text>
+</svg>
